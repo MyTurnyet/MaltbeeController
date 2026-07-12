@@ -1,0 +1,69 @@
+# PlatformIO build output
+.pio/
+
+# PlatformIO generated project metadata
+.pioenvs/
+.piolibdeps/
+
+# CLion / JetBrains project files
+.idea/
+cmake-build-*/
+
+# CMake generated files
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+Makefile
+
+# Compiled binaries and object files
+*.o
+*.obj
+*.a
+*.lib
+*.elf
+*.hex
+*.bin
+*.exe
+*.out
+
+# Dependency files
+*.d
+
+# Debug files
+*.map
+*.lst
+
+# Test output and coverage
+coverage/
+*.gcda
+*.gcno
+*.gcov
+
+# Logs
+*.log
+
+# Operating system files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Editor swap and temporary files
+*.swp
+*.swo
+*~
+*.tmp
+*.temp
+
+# Visual Studio Code settings, if used later
+.vscode/
+
+# Local environment files
+.env
+.env.*
+
+# Python cache, if helper scripts are added later
+__pycache__/
+*.py[cod]
+
+# Keep empty project directories if they contain .gitkeep files
+!.gitkeep
