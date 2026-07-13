@@ -5,15 +5,17 @@
 #include "domain/TurnoutCollection.h"
 #include "domain/Turnout.h"
 
-TEST_CASE("TurnoutService can construct", "[TurnoutService]") {
-    TurnoutService service;
+TEST_CASE("TurnoutService can construct with injected collection", "[TurnoutService]") {
+    TurnoutCollection collection;
+    TurnoutService service(collection);
 
     // If we get here, construction succeeded
     REQUIRE(true);
 }
 
 TEST_CASE("TurnoutService can add turnout", "[TurnoutService]") {
-    TurnoutService service;
+    TurnoutCollection collection;
+    TurnoutService service(collection);
     Turnout turnout(101, "Main Yard", TurnoutPosition::Closed, false, false);
 
     service.addTurnout(turnout);
@@ -23,7 +25,8 @@ TEST_CASE("TurnoutService can add turnout", "[TurnoutService]") {
 }
 
 TEST_CASE("TurnoutService can throw turnout straight by address", "[TurnoutService]") {
-    TurnoutService service;
+    TurnoutCollection collection;
+    TurnoutService service(collection);
     Turnout turnout(101, "Main Yard", TurnoutPosition::Thrown, false, false);
     service.addTurnout(turnout);
 
@@ -37,7 +40,8 @@ TEST_CASE("TurnoutService can throw turnout straight by address", "[TurnoutServi
 }
 
 TEST_CASE("TurnoutService can throw turnout diverging by address", "[TurnoutService]") {
-    TurnoutService service;
+    TurnoutCollection collection;
+    TurnoutService service(collection);
     Turnout turnout(102, "East Siding", TurnoutPosition::Closed, false, false);
     service.addTurnout(turnout);
 
@@ -51,7 +55,8 @@ TEST_CASE("TurnoutService can throw turnout diverging by address", "[TurnoutServ
 }
 
 TEST_CASE("TurnoutService can toggle turnout by address", "[TurnoutService]") {
-    TurnoutService service;
+    TurnoutCollection collection;
+    TurnoutService service(collection);
     Turnout turnout(103, "West Junction", TurnoutPosition::Closed, false, false);
     service.addTurnout(turnout);
 
@@ -65,7 +70,8 @@ TEST_CASE("TurnoutService can toggle turnout by address", "[TurnoutService]") {
 }
 
 TEST_CASE("TurnoutService toggle returns turnout to original position", "[TurnoutService]") {
-    TurnoutService service;
+    TurnoutCollection collection;
+    TurnoutService service(collection);
     Turnout turnout(104, "North Switch", TurnoutPosition::Closed, false, false);
     service.addTurnout(turnout);
 
@@ -80,7 +86,8 @@ TEST_CASE("TurnoutService toggle returns turnout to original position", "[Turnou
 }
 
 TEST_CASE("TurnoutService throw unknown turnout returns NotFound", "[TurnoutService]") {
-    TurnoutService service;
+    TurnoutCollection collection;
+    TurnoutService service(collection);
 
     TurnoutServiceResult result = service.throwStraight(999);
 
@@ -88,7 +95,8 @@ TEST_CASE("TurnoutService throw unknown turnout returns NotFound", "[TurnoutServ
 }
 
 TEST_CASE("TurnoutService toggle unknown turnout returns NotFound", "[TurnoutService]") {
-    TurnoutService service;
+    TurnoutCollection collection;
+    TurnoutService service(collection);
 
     TurnoutServiceResult result = service.toggle(999);
 
@@ -96,7 +104,8 @@ TEST_CASE("TurnoutService toggle unknown turnout returns NotFound", "[TurnoutSer
 }
 
 TEST_CASE("TurnoutService throw locked turnout returns Locked", "[TurnoutService]") {
-    TurnoutService service;
+    TurnoutCollection collection;
+    TurnoutService service(collection);
     Turnout turnout(105, "Locked Switch", TurnoutPosition::Closed, true, false);
     service.addTurnout(turnout);
 
@@ -110,7 +119,8 @@ TEST_CASE("TurnoutService throw locked turnout returns Locked", "[TurnoutService
 }
 
 TEST_CASE("TurnoutService throw disabled turnout returns Disabled", "[TurnoutService]") {
-    TurnoutService service;
+    TurnoutCollection collection;
+    TurnoutService service(collection);
     Turnout turnout(106, "Disabled Switch", TurnoutPosition::Closed, false, true);
     service.addTurnout(turnout);
 
@@ -124,7 +134,8 @@ TEST_CASE("TurnoutService throw disabled turnout returns Disabled", "[TurnoutSer
 }
 
 TEST_CASE("TurnoutService toggle locked turnout returns Locked", "[TurnoutService]") {
-    TurnoutService service;
+    TurnoutCollection collection;
+    TurnoutService service(collection);
     Turnout turnout(107, "Locked Toggle", TurnoutPosition::Closed, true, false);
     service.addTurnout(turnout);
 
@@ -134,7 +145,8 @@ TEST_CASE("TurnoutService toggle locked turnout returns Locked", "[TurnoutServic
 }
 
 TEST_CASE("TurnoutService toggle disabled turnout returns Disabled", "[TurnoutService]") {
-    TurnoutService service;
+    TurnoutCollection collection;
+    TurnoutService service(collection);
     Turnout turnout(108, "Disabled Toggle", TurnoutPosition::Closed, false, true);
     service.addTurnout(turnout);
 

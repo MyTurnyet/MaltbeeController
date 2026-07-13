@@ -1,16 +1,18 @@
 #include "TurnoutService.h"
 
+TurnoutService::TurnoutService(TurnoutCollection& collection)
+    : collection_(collection) {
+}
+
 void TurnoutService::addTurnout(const Turnout& turnout) {
-    collection.add(turnout);
+    collection_.add(turnout);
 }
 
 const Turnout* TurnoutService::getTurnout(int address) const {
-    return collection.getByAddress(address);
+    return collection_.getByAddress(address);
 }
 
-TurnoutServiceResult TurnoutService::throwStraight(int address) {
-    Turnout* turnout = collection.getByAddress(address);
-
+TurnoutServiceResult TurnoutService::validateTurnout(Turnout* turnout) const {
     if (turnout == nullptr) {
         return TurnoutServiceResult::NotFound;
     }
@@ -21,6 +23,16 @@ TurnoutServiceResult TurnoutService::throwStraight(int address) {
 
     if (turnout->isDisabled()) {
         return TurnoutServiceResult::Disabled;
+    }
+
+    return TurnoutServiceResult::Success;
+}
+
+TurnoutServiceResult TurnoutService::throwStraight(int address) {
+    Turnout* turnout = collection_.getByAddress(address);
+    TurnoutServiceResult validation = validateTurnout(turnout);
+    if (validation != TurnoutServiceResult::Success) {
+        return validation;
     }
 
     turnout->throwStraight();
@@ -28,18 +40,10 @@ TurnoutServiceResult TurnoutService::throwStraight(int address) {
 }
 
 TurnoutServiceResult TurnoutService::throwDiverging(int address) {
-    Turnout* turnout = collection.getByAddress(address);
-
-    if (turnout == nullptr) {
-        return TurnoutServiceResult::NotFound;
-    }
-
-    if (turnout->isLocked()) {
-        return TurnoutServiceResult::Locked;
-    }
-
-    if (turnout->isDisabled()) {
-        return TurnoutServiceResult::Disabled;
+    Turnout* turnout = collection_.getByAddress(address);
+    TurnoutServiceResult validation = validateTurnout(turnout);
+    if (validation != TurnoutServiceResult::Success) {
+        return validation;
     }
 
     turnout->throwDiverging();
@@ -47,18 +51,10 @@ TurnoutServiceResult TurnoutService::throwDiverging(int address) {
 }
 
 TurnoutServiceResult TurnoutService::toggle(int address) {
-    Turnout* turnout = collection.getByAddress(address);
-
-    if (turnout == nullptr) {
-        return TurnoutServiceResult::NotFound;
-    }
-
-    if (turnout->isLocked()) {
-        return TurnoutServiceResult::Locked;
-    }
-
-    if (turnout->isDisabled()) {
-        return TurnoutServiceResult::Disabled;
+    Turnout* turnout = collection_.getByAddress(address);
+    TurnoutServiceResult validation = validateTurnout(turnout);
+    if (validation != TurnoutServiceResult::Success) {
+        return validation;
     }
 
     turnout->toggle();

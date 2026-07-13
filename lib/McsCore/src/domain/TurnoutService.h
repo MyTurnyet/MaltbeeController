@@ -13,10 +13,13 @@ enum class TurnoutServiceResult {
 
 class TurnoutService {
 private:
-    TurnoutCollection collection;
+    TurnoutCollection& collection_;
+
+    // Validation helper to eliminate duplication
+    TurnoutServiceResult validateTurnout(Turnout* turnout) const;
 
 public:
-    TurnoutService() = default;
+    TurnoutService(TurnoutCollection& collection);
 
     void addTurnout(const Turnout& turnout);
     const Turnout* getTurnout(int address) const;
