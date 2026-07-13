@@ -1,6 +1,41 @@
 # MaltBee Control System (MCS)
 ## Architecture, TDD, and Development Roadmap
 
+---
+
+## Project Merge (2026-07-13)
+
+This project is the result of merging two MaltBee projects:
+- **MaltbeeController** (architectural foundation, ports/adapters, Button/Indicator)
+- **MaltBee-Control-System** (domain logic: Turnout, Route, services)
+
+The merge used MaltbeeController as the base and incrementally ported domain classes
+from MaltBee-Control-System. All code now uses Catch2 for testing and targets the
+Arduino Mega 2560 via PlatformIO.
+
+**Current Status:** Milestones 1-5 complete. Next: TurnoutIndicator (Milestone 6).
+
+---
+
+## Architecture Decision Records (from original project)
+
+### Turnout Addressing
+- Valid range: 1-9999
+- Uniqueness is expected but not enforced at domain level
+- Enforcement will be added at the repository/configuration level later
+
+### Route Validation
+- Routes must not be empty
+- No duplicate turnouts within a route
+- All referenced addresses must exist in the collection
+
+### Hardware Abstraction
+- Domain logic must not call Arduino APIs directly
+- All hardware interactions go through port interfaces
+- Hardware drivers implement ports
+
+---
+
 ## 1. Project Purpose
 
 The MaltBee Control System is a reusable Arduino/PlatformIO-based control platform for model railroad panels.
@@ -783,100 +818,29 @@ pio device monitor
 
 ## 10. Development Milestones
 
-## Milestone 1: Establish the Testing Foundation
+### ✅ Milestone 1: Establish the Testing Foundation
+**Status:** COMPLETE
 
-### Tasks
+### ✅ Milestone 2: Build Digital Input and Output Ports
+**Status:** COMPLETE
 
-- Create the native PlatformIO test environment.
-- Add one example Unity test.
-- Create the `ports`, `domain`, `application`, and `adapters` directories.
-- Move Arduino-specific code into `adapters/arduino`.
-- Confirm native tests run without the Mega connected.
-- Confirm the embedded build still uploads.
+### ✅ Milestone 3: TDD the Indicator
+**Status:** COMPLETE
 
-### Completion Criteria
+### ✅ Milestone 4: TDD the Debounced Button
+**Status:** COMPLETE
 
-- `pio test -e native` passes.
-- `pio run -e megaatmega2560` succeeds.
-- No domain class includes `Arduino.h`.
+### ✅ Milestone 5: TDD the Turnout Domain Model
+**Status:** COMPLETE (ported from MaltBee-Control-System 2026-07-13)
 
----
+**Additional domain classes ported:**
+- ✅ TurnoutCollection (registry/lookup)
+- ✅ TurnoutService (coordination)
+- ✅ Route (command sequences)
+- ✅ RouteService (execution)
 
-## Milestone 2: Build Digital Input and Output Ports
-
-### Tasks
-
-- Define `DigitalInput`.
-- Define `DigitalOutput`.
-- Implement `FakeDigitalInput`.
-- Implement `FakeDigitalOutput`.
-- Implement `ArduinoDigitalInput`.
-- Implement `ArduinoDigitalOutput`.
-- Write hardware smoke tests.
-
-### Completion Criteria
-
-- A fake input can drive a unit test.
-- A fake output records state.
-- A real button and LED work through adapters.
-
----
-
-## Milestone 3: TDD the Indicator
-
-### Test Order
-
-1. Indicator begins off.
-2. Calling `on()` sets the output.
-3. Calling `off()` clears the output.
-4. Calling `set()` delegates correctly.
-5. Repeated calls remain safe.
-
-### Completion Criteria
-
-- Indicator has no Arduino dependencies.
-- All tests pass in the native environment.
-
----
-
-## Milestone 4: TDD the Debounced Button
-
-### Test Order
-
-1. Button begins released.
-2. A raw active input does not immediately count as pressed.
-3. The input becomes pressed after the debounce interval.
-4. `wasPressed()` is true once.
-5. Holding the button does not repeat the event.
-6. Releasing follows the same debounce rules.
-7. `wasReleased()` is true once.
-
-### Completion Criteria
-
-- Button behavior is fully controlled by fake input and fake clock.
-- No `delay()` is used.
-- No `millis()` call exists in the domain class.
-
----
-
-## Milestone 5: TDD the Turnout Domain Model
-
-### Test Order
-
-1. Stores address.
-2. Begins closed by default.
-3. Can begin thrown when configured.
-4. Can be thrown.
-5. Can be closed.
-6. Reports current position.
-7. Repeated state assignment is safe.
-
-### Completion Criteria
-
-- Turnout contains no LEDs, buttons, or LocoNet calls.
-- Turnout is a pure domain object.
-
----
+### → Milestone 6: TDD Turnout Indicators
+**Status:** NEXT - Ready to implement
 
 ## Milestone 6: TDD Turnout Indicators
 

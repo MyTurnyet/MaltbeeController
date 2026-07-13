@@ -42,12 +42,27 @@ Domain           → Button, Indicator, Turnout, Route, Signal, Panel, domain ev
 
 ### Current source layout
 
-- `lib/McsCore/src/domain/` — domain classes (pure C++, e.g. `Indicator`)
-- `lib/McsCore/src/ports/` — port interfaces (e.g. `DigitalOutput`)
-- `src/main.cpp` — composition root (Arduino entry point)
-- `test/test_<name>/test_main.cpp` — one Unity test binary per PlatformIO `test/` subdirectory; test doubles are currently defined inline in the test file (the roadmap calls for extracting reusable fakes to `test/support/` as they multiply)
+- `lib/McsCore/src/domain/` — domain classes
+  - Button, Indicator (I/O primitives)
+  - Turnout, TurnoutCollection, TurnoutService (turnout model and coordination)
+  - Route, RouteService (route sequences and execution)
+- `lib/McsCore/src/ports/` — port interfaces (DigitalInput, DigitalOutput, Clock)
+- `src/main.cpp` — composition root (Arduino entry point, currently placeholder)
+- `test/test_<name>/test_main.cpp` — Catch2 test binaries (7 test suites)
+- `test/support/` — test doubles (FakeDigitalInput, FakeClock, FakeDigitalOutput)
 
-The roadmap's target layout (`src/domain/`, `src/application/`, `src/adapters/{arduino,loconet,storage,logging}/`, `include/{domain,application,ports}/`) has not been fully built out yet — code is still consolidating under `lib/McsCore/`. Check current file locations rather than assuming the roadmap's target tree is already in place.
+**Test coverage (all Catch2, all passing):**
+- ✅ Button (debouncing, edge detection)
+- ✅ Indicator (on/off control)
+- ✅ Turnout (position, address, locking, disable)
+- ✅ TurnoutCollection (registry, lookup)
+- ✅ TurnoutService (coordination)
+- ✅ Route (command sequences)
+- ✅ RouteService (execution)
+
+**Completed milestones:** 1-5 (foundation, ports, Button, Indicator, Turnout domain model)
+
+**Next milestones:** TurnoutIndicator (6), TurnoutControl (7), hardware integration (8), LocoNet (9+)
 
 ## Engineering Principles (from the roadmap)
 
