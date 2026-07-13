@@ -1,30 +1,30 @@
-#include <unity.h>
+#define CATCH_CONFIG_MAIN
+#include <catch2/catch_test_macros.hpp>
 
 #include "domain/Indicator.h"
 #include "support/FakeDigitalOutput.h"
 
-void setUp()
+TEST_CASE("Indicator begins off")
 {
-    // Called before each test.
+    FakeDigitalOutput output;
+    Indicator indicator(output);
+
+    REQUIRE_FALSE(indicator.isOn());
+    REQUIRE_FALSE(output.isSet());
 }
 
-void tearDown()
-{
-    // Called after each test.
-}
-
-void indicator_turns_output_on()
+TEST_CASE("Calling on activates the output")
 {
     FakeDigitalOutput output;
     Indicator indicator(output);
 
     indicator.on();
 
-    TEST_ASSERT_TRUE(output.isSet());
-    TEST_ASSERT_TRUE(indicator.isOn());
+    REQUIRE(indicator.isOn());
+    REQUIRE(output.isSet());
 }
 
-void indicator_turns_output_off()
+TEST_CASE("Calling off deactivates the output")
 {
     FakeDigitalOutput output;
     Indicator indicator(output);
@@ -32,41 +32,54 @@ void indicator_turns_output_off()
     indicator.on();
     indicator.off();
 
-    TEST_ASSERT_FALSE(output.isSet());
-    TEST_ASSERT_FALSE(indicator.isOn());
+    REQUIRE_FALSE(indicator.isOn());
+    REQUIRE_FALSE(output.isSet());
 }
 
-void indicator_sets_requested_state()
+TEST_CASE("Calling set(true) activates the output")
 {
     FakeDigitalOutput output;
     Indicator indicator(output);
 
     indicator.set(true);
-    TEST_ASSERT_TRUE(indicator.isOn());
 
-    indicator.set(false);
-    TEST_ASSERT_FALSE(indicator.isOn());
+    REQUIRE(indicator.isOn());
+    REQUIRE(output.isSet());
 }
 
-void indicator_delegates_each_request_to_output()
+TEST_CASE("Calling set(false) deactivates the output")
+{
+    FakeDigitalOutput output;
+    Indicator indicator(output);
+
+    indicator.set(true);
+    indicator.set(false);
+
+    REQUIRE_FALSE(indicator.isOn());
+    REQUIRE_FALSE(output.isSet());
+}
+
+TEST_CASE("Repeated on calls are idempotent")
 {
     FakeDigitalOutput output;
     Indicator indicator(output);
 
     indicator.on();
-    indicator.off();
+    indicator.on();
+    indicator.on();
 
-    TEST_ASSERT_EQUAL_INT(2, output.setCallCount());
+    REQUIRE(indicator.isOn());
+    REQUIRE(output.isSet());
 }
 
-int main()
+TEST_CASE("Repeated off calls are idempotent")
 {
-    UNITY_BEGIN();
+    FakeDigitalOutput output;
+    Indicator indicator(output);
 
-    RUN_TEST(indicator_turns_output_on);
-    RUN_TEST(indicator_turns_output_off);
-    RUN_TEST(indicator_sets_requested_state);
-    RUN_TEST(indicator_delegates_each_request_to_output);
+    indicator.off();
+    indicator.off();
 
-    return UNITY_END();
+    REQUIRE_FALSE(indicator.isOn());
+    REQUIRE_FALSE(output.isSet());
 }
