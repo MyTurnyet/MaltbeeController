@@ -61,6 +61,7 @@ TEST_CASE("Button does not repeatedly report wasPressed while held")
     button.update();
 
     REQUIRE(button.wasPressed());
+    button.update();
     REQUIRE_FALSE(button.wasPressed());
 }
 
@@ -82,5 +83,6 @@ TEST_CASE("Button reports wasReleased once per release")
     button.update();
 
     REQUIRE(button.wasReleased());
+    button.update();
     REQUIRE_FALSE(button.wasReleased());
 }
