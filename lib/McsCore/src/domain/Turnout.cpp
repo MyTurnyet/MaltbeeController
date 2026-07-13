@@ -14,16 +14,18 @@ Turnout::Turnout(int address,
                  bool turnout_disabled) {
     this->currentPosition = turnout_position;
     this->displayName = std::move(name);
-    this->layoutAddress = address;\
+    this->layoutAddress = address;
     this->turnoutLocked = turnout_locked;
     this->turnoutDisabled = turnout_disabled;
 }
 
 void Turnout::throwStraight() {
+    if (!canThrow()) return;
     currentPosition = TurnoutPosition::Closed;
 }
 
 void Turnout::throwDiverging() {
+    if (!canThrow()) return;
     currentPosition = TurnoutPosition::Thrown;
 }
 
@@ -40,6 +42,7 @@ int Turnout::address() const {
 }
 
 void Turnout::toggle() {
+    if (!canThrow()) return;
     if (currentPosition == TurnoutPosition::Closed) {
         throwDiverging();
         return;

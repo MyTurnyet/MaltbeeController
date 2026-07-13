@@ -131,3 +131,36 @@ TEST_CASE("Turnout cannot throw when locked") {
         turnout.canThrow() == false
     );
 }
+
+TEST_CASE("Locked turnout cannot be thrown") {
+    Turnout turnout = createTurnout(TurnoutPosition::Closed, true);
+    REQUIRE(turnout.isLocked() == true);
+
+    turnout.throwDiverging();
+
+    REQUIRE(
+        turnout.position() == TurnoutPosition::Closed
+    );
+}
+
+TEST_CASE("Disabled turnout cannot be thrown") {
+    Turnout turnout = createTurnout(TurnoutPosition::Closed, false, true);
+    REQUIRE(turnout.isDisabled() == true);
+
+    turnout.throwDiverging();
+
+    REQUIRE(
+        turnout.position() == TurnoutPosition::Closed
+    );
+}
+
+TEST_CASE("Locked turnout cannot be toggled") {
+    Turnout turnout = createTurnout(TurnoutPosition::Closed, true);
+    REQUIRE(turnout.isLocked() == true);
+
+    turnout.toggle();
+
+    REQUIRE(
+        turnout.position() == TurnoutPosition::Closed
+    );
+}
