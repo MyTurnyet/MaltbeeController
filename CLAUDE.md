@@ -47,10 +47,12 @@ Domain           → Button, Indicator, Turnout, Route, Signal, Panel, domain ev
   - Turnout, TurnoutCollection, TurnoutService (turnout model and coordination)
   - TurnoutIndicator (displays turnout position via thrown/closed indicators)
   - Route, RouteService (route sequences and execution)
-- `lib/McsCore/src/ports/` — port interfaces (DigitalInput, DigitalOutput, Clock)
+- `lib/McsCore/src/application/` — application/use-case classes
+  - TurnoutControl (wires buttons, turnout, indicator, and TurnoutCommandPort together)
+- `lib/McsCore/src/ports/` — port interfaces (DigitalInput, DigitalOutput, Clock, TurnoutCommandPort)
 - `src/main.cpp` — composition root (Arduino entry point, currently placeholder)
-- `test/test_<name>/test_main.cpp` — Catch2 test binaries (8 test suites)
-- `test/support/` — test doubles (FakeDigitalInput, FakeClock, FakeDigitalOutput)
+- `test/test_<name>/test_main.cpp` — Catch2 test binaries (9 test suites)
+- `test/support/` — test doubles (FakeDigitalInput, FakeClock, FakeDigitalOutput, FakeTurnoutCommandPort)
 
 **Test coverage (all Catch2, all passing):**
 - ✅ Button (debouncing, edge detection)
@@ -59,12 +61,13 @@ Domain           → Button, Indicator, Turnout, Route, Signal, Panel, domain ev
 - ✅ TurnoutCollection (registry, lookup)
 - ✅ TurnoutService (coordination)
 - ✅ TurnoutIndicator (display/clear reflecting thrown/closed position)
+- ✅ TurnoutControl (button-edge commands, feedback applying to turnout/indicator)
 - ✅ Route (command sequences)
 - ✅ RouteService (execution)
 
-**Completed milestones:** 1-6 (foundation, ports, Button, Indicator, Turnout domain model, TurnoutIndicator)
+**Completed milestones:** 1-7 (foundation, ports, Button, Indicator, Turnout domain model, TurnoutIndicator, TurnoutControl)
 
-**Next milestones:** TurnoutControl (7), hardware integration (8), LocoNet (9+)
+**Next milestones:** hardware integration (8), LocoNet (9+)
 
 ## Engineering Principles (from the roadmap)
 
