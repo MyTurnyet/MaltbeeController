@@ -38,36 +38,51 @@ Domain           → Button, Indicator, Turnout, Route, Signal, Panel, domain ev
 - **Domain classes** depend only on abstractions (ports), never on `digitalRead`/`digitalWrite`/LocoNet library calls directly.
 - **Ports** (e.g. `DigitalInput`, `DigitalOutput`, `Clock`, `TurnoutCommandPort`, `Logger`, `ConfigurationRepository`) are pure interfaces that the domain/application depend on.
 - **Adapters** implement ports against real hardware (Arduino GPIO, MRRWA LocoNet, EEPROM). Test doubles (`FakeDigitalOutput`, `FakeClock`, etc.) implement the same ports for native unit tests.
-- **`main.cpp` is the composition root only** — it defines pin assignments, constructs adapters/domain objects/application services, calls `begin()` in `setup()`, and calls non-blocking `update()`/`poll()` methods in `loop()`. It must not contain business logic. (Note: the current `main.cpp` is a placeholder blink sketch and has not yet been rebuilt on this architecture — see the roadmap's Milestone 1.)
+- **`main.cpp` is the composition root only** — it defines pin assignments, constructs adapters/domain objects/application services, calls `begin()` in `setup()`, and calls non-blocking `update()`/`poll()` methods in `loop()`. It must not contain business logic.
+- **No C++ standard library on the AVR target.** The `megaatmega2560` toolchain has no real libstdc++ — `std::string`, `std::map`, and `std::optional` do not compile there (confirmed; a third-party port, ArduinoSTL, was evaluated and rejected for missing `std::optional`/`map::insert_or_assign`). Domain code must avoid all STL containers/strings/optionals and use fixed-capacity alternatives instead:
+  - `FixedString32` (`lib/McsCore/src/domain/FixedString32.h`) replaces `std::string` — a 32-char buffer, truncates safely if constructed from a longer literal.
+  - `TurnoutCollection` and `RouteService` use fixed-size arrays (`Turnout[64]`, `Route[32]`) with linear scan instead of `std::map`, since capacity has to be bounded on an 8KB-RAM part. Adding past capacity is a no-op (existing entries and count are unaffected) — this is a behavior TurnoutCollection/RouteService never had with `std::map` and is covered by dedicated tests.
+  - `Route` uses a fixed `TurnoutCommand[64]` array instead of `std::map<int, TurnoutPosition>`, and a `TurnoutPositionLookup{bool found; TurnoutPosition position;}` struct instead of `std::optional<TurnoutPosition>`.
+  - This was caught only once `main.cpp` first included domain headers (Milestone 8) — before that, `main.cpp` was a placeholder blink sketch and never forced the AVR compiler to build the domain layer.
 
 ### Current source layout
 
 - `lib/McsCore/src/domain/` — domain classes
   - Button, Indicator (I/O primitives)
+  - FixedString32 (fixed 32-char buffer, replaces std::string for AVR compatibility)
   - Turnout, TurnoutCollection, TurnoutService (turnout model and coordination)
   - TurnoutIndicator (displays turnout position via thrown/closed indicators)
   - Route, RouteService (route sequences and execution)
 - `lib/McsCore/src/application/` — application/use-case classes
   - TurnoutControl (wires buttons, turnout, indicator, and TurnoutCommandPort together)
 - `lib/McsCore/src/ports/` — port interfaces (DigitalInput, DigitalOutput, Clock, TurnoutCommandPort)
-- `src/main.cpp` — composition root (Arduino entry point, currently placeholder)
-- `test/test_<name>/test_main.cpp` — Catch2 test binaries (9 test suites)
+- `lib/McsCore/src/adapters/` — hardware adapters (ArduinoDigitalInput/Output, ArduinoClock — guarded with `#ifdef ARDUINO` so they don't break the native build; NullTurnoutCommandPort placeholder until LocoNet lands)
+- `src/main.cpp` — composition root: wires one throw/close button, one thrown/closed indicator, one Turnout, and one TurnoutControl (with NullTurnoutCommandPort standing in for LocoNet)
+- `test/test_<name>/test_main.cpp` — Catch2 test binaries (11 test suites)
 - `test/support/` — test doubles (FakeDigitalInput, FakeClock, FakeDigitalOutput, FakeTurnoutCommandPort)
 
 **Test coverage (all Catch2, all passing):**
 - ✅ Button (debouncing, edge detection)
 - ✅ Indicator (on/off control)
+- ✅ FixedString32 (construction, truncation, equality, default/empty state)
 - ✅ Turnout (position, address, locking, disable)
-- ✅ TurnoutCollection (registry, lookup)
+- ✅ TurnoutCollection (registry, lookup, capacity limit)
 - ✅ TurnoutService (coordination)
 - ✅ TurnoutIndicator (display/clear reflecting thrown/closed position)
 - ✅ TurnoutControl (button-edge commands, feedback applying to turnout/indicator)
-- ✅ Route (command sequences)
-- ✅ RouteService (execution)
+- ✅ NullTurnoutCommandPort (no-op send is safely callable)
+- ✅ Route (command sequences, capacity limit)
+- ✅ RouteService (execution, capacity limit)
 
-**Completed milestones:** 1-7 (foundation, ports, Button, Indicator, Turnout domain model, TurnoutIndicator, TurnoutControl)
+**Completed milestones:** 1-8 (foundation, ports, Button, Indicator, Turnout domain model, TurnoutIndicator, TurnoutControl, hardware integration programming). `pio run -e megaatmega2560` compiles successfully (RAM 2.2%, Flash 1.3% used). Physical wiring and on-hardware verification are still outstanding — see the "Milestone 8 hardware" note below.
 
-**Next milestones:** hardware integration (8), LocoNet (9+)
+**Next milestones:** LocoNet output (9), LocoNet feedback (10), multiple turnouts (11+)
+
+### Milestone 8 hardware (not yet done)
+
+The programming portion of Milestone 8 is complete and builds cleanly for the Mega 2560, but the hands-on portion still needs a physically connected board: wire one throw button (pin 22), one close button (pin 23), one thrown-position LED (pin 8), one closed-position LED (pin 9), flash with `pio run -e megaatmega2560 --target upload`, and verify.
+
+Important: with `NullTurnoutCommandPort` standing in for the real LocoNet adapter, pressing a button sends a command nowhere, and `TurnoutIndicator` only updates via `TurnoutControl::applyFeedback()` — which nothing calls yet (no LocoNet feedback until Milestone 10). So button presses will not visibly light the LEDs end-to-end yet. "Verify behavior on hardware" for Milestone 8 realistically means confirming button reads and LED drive work in isolation, not a full button-to-LED demo — that arrives after Milestones 9 and 10.
 
 ## Engineering Principles (from the roadmap)
 
