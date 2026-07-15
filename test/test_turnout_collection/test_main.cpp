@@ -91,3 +91,22 @@ TEST_CASE("TurnoutCollection can handle duplicate addresses", "[TurnoutCollectio
     REQUIRE(found != nullptr);
     REQUIRE(found->name() == "Second");
 }
+
+TEST_CASE("TurnoutCollection ignores a new turnout added beyond capacity", "[TurnoutCollection]") {
+    TurnoutCollection collection;
+
+    for (int address = 1; address <= 64; ++address) {
+        collection.add(Turnout(address, "Existing", TurnoutPosition::Closed, false, false));
+    }
+
+    REQUIRE(collection.count() == 64);
+
+    collection.add(Turnout(65, "Overflow", TurnoutPosition::Closed, false, false));
+
+    REQUIRE(collection.count() == 64);
+    REQUIRE(collection.getByAddress(65) == nullptr);
+
+    const Turnout* stillThere = collection.getByAddress(1);
+    REQUIRE(stillThere != nullptr);
+    REQUIRE(stillThere->name() == "Existing");
+}

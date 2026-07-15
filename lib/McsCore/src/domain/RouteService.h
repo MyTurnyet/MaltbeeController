@@ -1,7 +1,6 @@
 #ifndef ROUTESERVICE_H
 #define ROUTESERVICE_H
 
-#include <map>
 #include "Route.h"
 #include "TurnoutService.h"
 
@@ -15,8 +14,11 @@ enum class RouteActivationResult {
 
 class RouteService {
 private:
+    static constexpr int MAX_ROUTES = 32;
+
     TurnoutService& turnoutService;
-    std::map<int, Route> routes;
+    Route routes_[MAX_ROUTES] = {};
+    int count_ = 0;
 
 public:
     explicit RouteService(TurnoutService& service);

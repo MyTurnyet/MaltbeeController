@@ -4,16 +4,16 @@
 
 #include "Turnout.h"
 
-#include <utility>
-
+Turnout::Turnout() : Turnout(0, "", TurnoutPosition::Closed, false, false) {
+}
 
 Turnout::Turnout(int address,
-                 std::string name,
+                 const char* name,
                  TurnoutPosition turnout_position,
                  bool turnout_locked,
                  bool turnout_disabled) {
     this->currentPosition = turnout_position;
-    this->displayName = std::move(name);
+    this->displayName = FixedString32(name);
     this->layoutAddress = address;
     this->turnoutLocked = turnout_locked;
     this->turnoutDisabled = turnout_disabled;
@@ -33,7 +33,7 @@ TurnoutPosition Turnout::position() const {
     return currentPosition;
 }
 
-std::string Turnout::name() const {
+FixedString32 Turnout::name() const {
     return displayName;
 }
 

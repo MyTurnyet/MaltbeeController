@@ -73,19 +73,19 @@ TEST_CASE("Route reports turnout position", "[Route]") {
     auto position1 = route.getTurnoutPosition(101);
     auto position2 = route.getTurnoutPosition(102);
 
-    REQUIRE(position1.has_value());
-    REQUIRE(position1.value() == TurnoutPosition::Closed);
-    REQUIRE(position2.has_value());
-    REQUIRE(position2.value() == TurnoutPosition::Thrown);
+    REQUIRE(position1.found);
+    REQUIRE(position1.position == TurnoutPosition::Closed);
+    REQUIRE(position2.found);
+    REQUIRE(position2.position == TurnoutPosition::Thrown);
 }
 
-TEST_CASE("Route unknown turnout position returns nullopt", "[Route]") {
+TEST_CASE("Route unknown turnout position returns not found", "[Route]") {
     Route route(1, "Main Line");
     route.addTurnout(101, TurnoutPosition::Closed);
 
     auto position = route.getTurnoutPosition(999);
 
-    REQUIRE_FALSE(position.has_value());
+    REQUIRE_FALSE(position.found);
 }
 
 TEST_CASE("Route reports turnout count", "[Route]") {
@@ -119,4 +119,40 @@ TEST_CASE("Route with multiple turnouts", "[Route]") {
     REQUIRE(route.containsTurnout(102));
     REQUIRE(route.containsTurnout(103));
     REQUIRE(route.containsTurnout(104));
+}
+
+TEST_CASE("Default-constructed route has id 0, empty name, and zero commands", "[Route]") {
+    Route route;
+
+    REQUIRE(route.id() == 0);
+    REQUIRE(route.name() == "");
+    REQUIRE(route.getTurnoutCount() == 0);
+}
+
+TEST_CASE("Route rejects adding a turnout beyond capacity", "[Route]") {
+    Route route(1, "Full Route");
+
+    for (int i = 0; i < 64; ++i) {
+        REQUIRE(route.addTurnout(1000 + i, TurnoutPosition::Closed));
+    }
+    REQUIRE(route.getTurnoutCount() == 64);
+
+    bool added = route.addTurnout(9999, TurnoutPosition::Thrown);
+
+    REQUIRE_FALSE(added);
+    REQUIRE(route.getTurnoutCount() == 64);
+}
+
+TEST_CASE("Route commandAt returns the turnout command at an index", "[Route]") {
+    Route route(1, "Main Line");
+    route.addTurnout(101, TurnoutPosition::Closed);
+    route.addTurnout(102, TurnoutPosition::Thrown);
+
+    TurnoutCommand first = route.commandAt(0);
+    TurnoutCommand second = route.commandAt(1);
+
+    REQUIRE(first.address == 101);
+    REQUIRE(first.position == TurnoutPosition::Closed);
+    REQUIRE(second.address == 102);
+    REQUIRE(second.position == TurnoutPosition::Thrown);
 }

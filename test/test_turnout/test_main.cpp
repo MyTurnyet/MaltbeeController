@@ -6,9 +6,19 @@ Turnout createTurnout(TurnoutPosition defaultPosition = TurnoutPosition::Closed,
                       bool isLocked = false,
                       bool isDisabled = false) {
     int address = 9999;
-    std::string name = "Turnout";
+    const char* name = "Turnout";
 
     return Turnout(address, name, defaultPosition, isLocked, isDisabled);
+}
+
+TEST_CASE("Default-constructed turnout has address 0, empty name, closed, unlocked, enabled") {
+    Turnout turnout;
+
+    REQUIRE(turnout.address() == 0);
+    REQUIRE(turnout.name() == "");
+    REQUIRE(turnout.position() == TurnoutPosition::Closed);
+    REQUIRE(turnout.isLocked() == false);
+    REQUIRE(turnout.isDisabled() == false);
 }
 
 TEST_CASE("Turnout takes all needed parameters") {

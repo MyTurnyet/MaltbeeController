@@ -5,14 +5,22 @@ RouteService::RouteService(TurnoutService& service)
 }
 
 bool RouteService::addRoute(const Route& route) {
-    auto result = routes.insert({route.id(), route});
-    return result.second;
+    if (getRoute(route.id()) != nullptr) {
+        return false;
+    }
+    if (count_ >= MAX_ROUTES) {
+        return false;
+    }
+    routes_[count_] = route;
+    ++count_;
+    return true;
 }
 
 const Route* RouteService::getRoute(int id) const {
-    auto it = routes.find(id);
-    if (it != routes.end()) {
-        return &it->second;
+    for (int i = 0; i < count_; ++i) {
+        if (routes_[i].id() == id) {
+            return &routes_[i];
+        }
     }
     return nullptr;
 }
@@ -24,21 +32,20 @@ RouteActivationResult RouteService::activateRoute(int routeId) {
         return RouteActivationResult::RouteNotFound;
     }
 
-    const auto& turnouts = route->getTurnouts();
-
-    if (turnouts.empty()) {
+    if (route->getTurnoutCount() == 0) {
         return RouteActivationResult::Success;
     }
 
     bool hadMissingTurnout = false;
 
-    for (const auto& [address, position] : turnouts) {
+    for (int i = 0; i < route->getTurnoutCount(); ++i) {
+        TurnoutCommand cmd = route->commandAt(i);
         TurnoutServiceResult result;
 
-        if (position == TurnoutPosition::Closed) {
-            result = turnoutService.throwStraight(address);
+        if (cmd.position == TurnoutPosition::Closed) {
+            result = turnoutService.throwStraight(cmd.address);
         } else {
-            result = turnoutService.throwDiverging(address);
+            result = turnoutService.throwDiverging(cmd.address);
         }
 
         if (result == TurnoutServiceResult::NotFound) {

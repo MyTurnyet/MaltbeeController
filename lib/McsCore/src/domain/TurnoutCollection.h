@@ -1,12 +1,14 @@
 #ifndef TURNOUTCOLLECTION_H
 #define TURNOUTCOLLECTION_H
 
-#include <map>
 #include "Turnout.h"
 
 class TurnoutCollection {
 private:
-    std::map<int, Turnout> turnouts;
+    static constexpr int MAX_TURNOUTS = 64;
+
+    Turnout turnouts_[MAX_TURNOUTS] = {};
+    int count_ = 0;
 
 public:
     TurnoutCollection() = default;

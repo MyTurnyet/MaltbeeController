@@ -1,5 +1,5 @@
 #pragma once
-#include <string>
+#include "FixedString32.h"
 
 enum class TurnoutPosition {
     Closed,
@@ -9,7 +9,9 @@ enum class TurnoutPosition {
 
 class Turnout {
 public:
-    Turnout(int address, std::string name, TurnoutPosition turnout_position, bool turnout_locked,
+    Turnout();
+
+    Turnout(int address, const char* name, TurnoutPosition turnout_position, bool turnout_locked,
             bool turnout_disabled);
 
 
@@ -19,7 +21,7 @@ public:
 
     [[nodiscard]] TurnoutPosition position() const;
 
-    std::string name() const;
+    FixedString32 name() const;
 
     [[nodiscard]] int address() const;
 
@@ -41,7 +43,7 @@ public:
 
 private:
     int layoutAddress;
-    std::string displayName;
+    FixedString32 displayName;
     TurnoutPosition currentPosition;
     bool turnoutDisabled;
     bool turnoutLocked;

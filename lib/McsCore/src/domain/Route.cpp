@@ -1,39 +1,51 @@
 #include "Route.h"
-#include <utility>
 
-Route::Route(int id, std::string name)
-    : routeId(id), routeName(std::move(name)) {
+Route::Route(int id, const char* name)
+    : routeId(id), routeName(name) {
 }
 
 int Route::id() const {
     return routeId;
 }
 
-std::string Route::name() const {
+FixedString32 Route::name() const {
     return routeName;
 }
 
 bool Route::addTurnout(int address, TurnoutPosition position) {
-    auto result = turnouts.insert({address, position});
-    return result.second; // true if inserted, false if already exists
+    if (containsTurnout(address)) {
+        return false;
+    }
+    if (commandCount_ >= MAX_TURNOUT_COMMANDS_PER_ROUTE) {
+        return false;
+    }
+    commands_[commandCount_] = TurnoutCommand{address, position};
+    ++commandCount_;
+    return true;
 }
 
 int Route::getTurnoutCount() const {
-    return static_cast<int>(turnouts.size());
+    return commandCount_;
 }
 
 bool Route::containsTurnout(int address) const {
-    return turnouts.find(address) != turnouts.end();
-}
-
-std::optional<TurnoutPosition> Route::getTurnoutPosition(int address) const {
-    auto it = turnouts.find(address);
-    if (it != turnouts.end()) {
-        return it->second;
+    for (int i = 0; i < commandCount_; ++i) {
+        if (commands_[i].address == address) {
+            return true;
+        }
     }
-    return std::nullopt;
+    return false;
 }
 
-const std::map<int, TurnoutPosition>& Route::getTurnouts() const {
-    return turnouts;
+TurnoutPositionLookup Route::getTurnoutPosition(int address) const {
+    for (int i = 0; i < commandCount_; ++i) {
+        if (commands_[i].address == address) {
+            return TurnoutPositionLookup{true, commands_[i].position};
+        }
+    }
+    return TurnoutPositionLookup{false, TurnoutPosition::Closed};
+}
+
+TurnoutCommand Route::commandAt(int index) const {
+    return commands_[index];
 }

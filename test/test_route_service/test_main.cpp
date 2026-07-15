@@ -184,3 +184,24 @@ TEST_CASE("RouteService can activate empty route", "[RouteService]") {
 
     REQUIRE(result == RouteActivationResult::Success);
 }
+
+TEST_CASE("RouteService rejects adding a route beyond capacity", "[RouteService]") {
+    TurnoutCollection collection;
+    TurnoutService turnoutService(collection);
+    RouteService routeService(turnoutService);
+
+    for (int i = 0; i < 32; ++i) {
+        Route route(i, "Route");
+        REQUIRE(routeService.addRoute(route));
+    }
+
+    Route overflowRoute(32, "Overflow Route");
+    bool added = routeService.addRoute(overflowRoute);
+
+    REQUIRE_FALSE(added);
+    REQUIRE(routeService.getRoute(32) == nullptr);
+
+    const Route* stillThere = routeService.getRoute(0);
+    REQUIRE(stillThere != nullptr);
+    REQUIRE(stillThere->id() == 0);
+}
