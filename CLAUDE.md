@@ -45,10 +45,11 @@ Domain           → Button, Indicator, Turnout, Route, Signal, Panel, domain ev
 - `lib/McsCore/src/domain/` — domain classes
   - Button, Indicator (I/O primitives)
   - Turnout, TurnoutCollection, TurnoutService (turnout model and coordination)
+  - TurnoutIndicator (displays turnout position via thrown/closed indicators)
   - Route, RouteService (route sequences and execution)
 - `lib/McsCore/src/ports/` — port interfaces (DigitalInput, DigitalOutput, Clock)
 - `src/main.cpp` — composition root (Arduino entry point, currently placeholder)
-- `test/test_<name>/test_main.cpp` — Catch2 test binaries (7 test suites)
+- `test/test_<name>/test_main.cpp` — Catch2 test binaries (8 test suites)
 - `test/support/` — test doubles (FakeDigitalInput, FakeClock, FakeDigitalOutput)
 
 **Test coverage (all Catch2, all passing):**
@@ -57,12 +58,13 @@ Domain           → Button, Indicator, Turnout, Route, Signal, Panel, domain ev
 - ✅ Turnout (position, address, locking, disable)
 - ✅ TurnoutCollection (registry, lookup)
 - ✅ TurnoutService (coordination)
+- ✅ TurnoutIndicator (display/clear reflecting thrown/closed position)
 - ✅ Route (command sequences)
 - ✅ RouteService (execution)
 
-**Completed milestones:** 1-5 (foundation, ports, Button, Indicator, Turnout domain model)
+**Completed milestones:** 1-6 (foundation, ports, Button, Indicator, Turnout domain model, TurnoutIndicator)
 
-**Next milestones:** TurnoutIndicator (6), TurnoutControl (7), hardware integration (8), LocoNet (9+)
+**Next milestones:** TurnoutControl (7), hardware integration (8), LocoNet (9+)
 
 ## Engineering Principles (from the roadmap)
 
