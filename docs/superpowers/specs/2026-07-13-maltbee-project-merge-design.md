@@ -800,16 +800,18 @@ mv MaltBee-Control-System MaltBee-Control-System-ARCHIVED
 
 ## Implementation Checklist
 
-- [ ] **Phase 1:** Rename MaltbeeController → MaltbeeControllerSystem
-- [ ] **Phase 2:** Convert existing tests from Unity to Catch2
-- [ ] **Phase 3:** Port Turnout class and tests
-- [ ] **Phase 4:** Port TurnoutCollection class and tests
-- [ ] **Phase 5:** Port TurnoutService class and tests
-- [ ] **Phase 6:** Port Route and RouteService classes and tests
-- [ ] **Phase 7:** Merge and update documentation
-- [ ] **Phase 8:** Update build configuration
-- [ ] **Phase 9:** Verify full test suite passes
-- [ ] **Phase 10:** Archive old MaltBee-Control-System project
+- [x] **Phase 1:** Rename MaltbeeController → MaltbeeControllerSystem
+- [x] **Phase 2:** Convert existing tests from Unity to Catch2
+- [x] **Phase 3:** Port Turnout class and tests
+- [x] **Phase 4:** Port TurnoutCollection class and tests
+- [x] **Phase 5:** Port TurnoutService class and tests
+- [x] **Phase 6:** Port Route and RouteService classes and tests
+- [x] **Phase 7:** Merge and update documentation
+- [x] **Phase 8:** Update build configuration
+- [x] **Phase 9:** Verify full test suite passes
+- [x] **Phase 10:** Archive old MaltBee-Control-System project
+
+**Status (2026-07-16):** All 10 merge phases complete. The merge itself is done; the project has since moved on to Milestones 6-8 (TurnoutIndicator, TurnoutControl, hardware-integration programming) beyond the scope of this design doc. Remaining work is tracked in `internal_documents/MaltBee_Control_System_Architecture_and_Roadmap.md`, not here — see Milestone 8's outstanding hardware wiring/verification step and Milestone 9+ (LocoNet).
 
 ---
 
