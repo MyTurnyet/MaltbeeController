@@ -9,6 +9,9 @@
 .idea/
 cmake-build-*/
 
+# CLion MCP server config (session-local port, not stable across machines/restarts)
+.mcp.json
+
 # CMake generated files
 CMakeFiles/
 CMakeCache.txt
