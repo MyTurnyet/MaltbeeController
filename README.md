@@ -1,22 +1,31 @@
 # MaltBee Control System (MCS)
 
-An embedded railroad control system for model railroad panels, targeting the Arduino Mega 2560.
+An embedded railroad control system for model railroad panels. The original target is an
+Arduino Mega 2560 talking to a Digitrax LocoNet layout; a second panel type, an ESP32-based
+panel that talks to JMRI over Wi-Fi, is in planning (see `docs/`).
 
 Built with professional software engineering practices: Test-Driven Development, Hexagonal
 Architecture, and Dependency Inversion. The core control logic is testable on a desktop
-computer, independent of the Arduino hardware.
+computer, independent of any specific hardware target — that's also what lets the same
+`lib/McsCore` domain/application code be shared across the Mega and (soon) ESP32 environments.
 
 ## Current Status
 
-The project has completed Milestones 1-5:
+The project has completed Milestones 1-8, and Milestone 9 (LocoNet output) is in progress:
 
 - ✅ Native test environment with Catch2
 - ✅ Digital I/O ports (DigitalInput, DigitalOutput, Clock)
-- ✅ Domain classes: Button, Indicator, Turnout, TurnoutCollection, Route
+- ✅ Domain classes: Button, Indicator, Turnout, TurnoutCollection, TurnoutIndicator, Route, RouteService
 - ✅ Service classes: TurnoutService, RouteService
-- ✅ Test doubles for all ports (FakeDigitalInput, FakeDigitalOutput, FakeClock)
+- ✅ Application layer: TurnoutControl (Milestone 7)
+- ✅ Hardware integration: Arduino GPIO adapters and composition root wired for one turnout (Milestone 8; physical wiring/on-hardware verification still outstanding)
+- ✅ Test doubles for all ports (FakeDigitalInput, FakeDigitalOutput, FakeClock, FakeTurnoutCommandPort, FakeLocoNetTransport, FakeLocoNetSwitchDriver)
+- 🚧 LocoNet output (Milestone 9): translation and pulse-timing adapters implemented and natively tested, wired into `main.cpp`, firmware builds for the Mega 2560. Electrical LocoNet interface verification and on-hardware DR5000/DR4018 confirmation still outstanding.
 
-**Next:** TurnoutIndicator (connect turnout state to panel LEDs) — Milestone 6
+**Next:** finish Milestone 9 hardware verification, then LocoNet feedback (Milestone 10).
+In parallel, an ESP32 panel (Wi-Fi to JMRI, 12 turnouts per board) is being planned as a
+second PlatformIO environment — see `docs/ESP32_Turnout_Panel_Implementation.md` and
+`docs/Refactoring_Recommendations_Multi_Hardware.md`.
 
 See `internal_documents/MaltBee_Control_System_Architecture_and_Roadmap.md` for
 the complete development plan.
@@ -24,7 +33,9 @@ the complete development plan.
 ## Requirements
 
 - PlatformIO
-- Arduino Mega 2560 (for hardware deployment)
+- Arduino Mega 2560 (for hardware deployment on the existing `megaatmega2560` environment)
+- ESP32-WROOM-32 dev board (planned `esp32dev` environment — not yet added, see
+  `docs/ESP32_Turnout_Panel_Implementation.md`)
 - C++17 compiler (for native tests)
 
 ## Building and Testing
@@ -57,7 +68,10 @@ This project uses **Hexagonal Architecture** (Ports & Adapters):
 
 The Arduino is treated as an implementation detail behind the domain layer, not the center
 of the design. Domain and application layers compile and run natively (no Arduino required)
-for fast test feedback.
+for fast test feedback. This is also what makes a second hardware target additive rather
+than a rewrite: the planned ESP32 environment reuses `lib/McsCore`'s domain and application
+layers unchanged and only needs new adapters (button-matrix input, shared-GPIO LED pairs,
+Wi-Fi/JMRI transport) behind the existing ports.
 
 ## Project History
 
@@ -77,7 +91,9 @@ See `internal_documents/archive/original-overview.md` for historical context.
 
 ## Next Steps
 
-- Implement TurnoutIndicator (Milestone 6)
-- Implement TurnoutControl use case (Milestone 7)
-- Integrate hardware buttons and LEDs (Milestone 8)
-- Add LocoNet communication (Milestone 9+)
+- Verify the electrical LocoNet interface and confirm DR5000/DR4018 behavior on hardware (finish Milestone 9)
+- Add LocoNet feedback (Milestone 10)
+- Support multiple turnouts on the Mega (Milestone 11)
+- Add the `esp32dev` PlatformIO environment and ESP32 panel support — see
+  `docs/ESP32_Turnout_Panel_Implementation.md` for the milestone plan and
+  `docs/Refactoring_Recommendations_Multi_Hardware.md` for prerequisite refactoring
