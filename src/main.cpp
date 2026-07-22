@@ -2,47 +2,26 @@
 #include <LocoNet.h>
 
 #include "adapters/ArduinoClock.h"
-#include "adapters/ArduinoDigitalInput.h"
-#include "adapters/ArduinoDigitalOutput.h"
 #include "adapters/LocoNetFeedbackDecoder.h"
 #include "adapters/MrrwaLocoNetFeedbackSource.h"
 #include "adapters/MrrwaLocoNetSwitchDriver.h"
 #include "adapters/MrrwaLocoNetTurnoutAdapter.h"
 #include "adapters/PulsingLocoNetTransport.h"
-#include "application/TurnoutControl.h"
-#include "domain/Button.h"
-#include "domain/Indicator.h"
-#include "domain/Turnout.h"
-#include "domain/TurnoutIndicator.h"
+#include "adapters/TurnoutStation.h"
 
 namespace
 {
-    constexpr int THROW_BUTTON_PIN = 22;
-    constexpr int CLOSE_BUTTON_PIN = 23;
-    constexpr int THROWN_LED_PIN = 8;
-    constexpr int CLOSED_LED_PIN = 9;
-    constexpr unsigned long DEBOUNCE_MS = 30;
-    constexpr int TURNOUT_ADDRESS = 101;
+    constexpr int STATION_COUNT = 4;
+    constexpr TurnoutConfig STATION_CONFIGS[STATION_COUNT] = {
+        {101, "Turnout 1", 22, 23, 8, 9},
+        {102, "Turnout 2", 24, 25, 10, 11},
+        {103, "Turnout 3", 26, 27, 12, 13},
+        {104, "Turnout 4", 28, 29, 14, 15},
+    };
     constexpr unsigned long LOCONET_PULSE_DURATION_MS = 250;
 }
 
 ArduinoClock clock;
-
-ArduinoDigitalInput throwInput(THROW_BUTTON_PIN, true, true);
-ArduinoDigitalInput closeInput(CLOSE_BUTTON_PIN, true, true);
-
-ArduinoDigitalOutput thrownOutput(THROWN_LED_PIN, false);
-ArduinoDigitalOutput closedOutput(CLOSED_LED_PIN, false);
-
-Button throwButton(throwInput, clock, DEBOUNCE_MS);
-Button closeButton(closeInput, clock, DEBOUNCE_MS);
-
-Indicator thrownIndicator(thrownOutput);
-Indicator closedIndicator(closedOutput);
-
-Turnout turnout(TURNOUT_ADDRESS, "Turnout 1", TurnoutPosition::Closed, false, false);
-
-TurnoutIndicator turnoutIndicator(thrownIndicator, closedIndicator);
 
 MrrwaLocoNetSwitchDriver locoNetSwitchDriver;
 PulsingLocoNetTransport locoNetTransport(locoNetSwitchDriver, clock, LOCONET_PULSE_DURATION_MS);
@@ -51,25 +30,30 @@ MrrwaLocoNetTurnoutAdapter turnoutCommandPort(locoNetTransport);
 MrrwaLocoNetFeedbackSource locoNetFeedbackSource;
 LocoNetFeedbackDecoder locoNetFeedbackDecoder;
 
-TurnoutControl control(throwButton, closeButton, turnout, turnoutIndicator, turnoutCommandPort);
+TurnoutStation stations[STATION_COUNT] = {
+    TurnoutStation(STATION_CONFIGS[0], clock, turnoutCommandPort),
+    TurnoutStation(STATION_CONFIGS[1], clock, turnoutCommandPort),
+    TurnoutStation(STATION_CONFIGS[2], clock, turnoutCommandPort),
+    TurnoutStation(STATION_CONFIGS[3], clock, turnoutCommandPort),
+};
 
 void setup()
 {
-    throwInput.begin();
-    closeInput.begin();
-
-    thrownOutput.begin();
-    closedOutput.begin();
+    for (auto& station : stations)
+    {
+        station.begin();
+    }
 
     LocoNet.init();
 }
 
 void loop()
 {
-    throwButton.update();
-    closeButton.update();
+    for (auto& station : stations)
+    {
+        station.update();
+    }
 
-    control.update();
     locoNetTransport.update();
 
     SwitchOutputsReport report;
@@ -78,7 +62,10 @@ void loop()
         const TurnoutFeedbackLookup lookup = locoNetFeedbackDecoder.decode(report);
         if (lookup.found)
         {
-            control.applyFeedback(lookup.feedback);
+            for (auto& station : stations)
+            {
+                station.applyFeedback(lookup.feedback);
+            }
         }
     }
 }

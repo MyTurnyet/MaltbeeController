@@ -13,7 +13,7 @@ The merge used MaltbeeController as the base and incrementally ported domain cla
 from MaltBee-Control-System. All code now uses Catch2 for testing and targets the
 Arduino Mega 2560 via PlatformIO.
 
-**Current Status:** Milestones 1-8 complete. Milestones 9 (LocoNet Output) and 10 (LocoNet Feedback) are complete on the programming side — send and receive translation adapters implemented and natively tested, wired into `main.cpp`, firmware builds for the Mega 2560. Electrical LocoNet interface verification and on-hardware DR5000/DR4018 confirmation (both directions) still outstanding.
+**Current Status:** Milestones 1-8 complete. Milestones 9 (LocoNet Output), 10 (LocoNet Feedback), and 11 (Multiple Turnouts) are complete on the programming side — send/receive translation adapters and a config-driven 4-station composition root implemented and (where native-testable) tested, firmware builds for the Mega 2560. Electrical LocoNet interface verification and on-hardware DR5000/DR4018 confirmation across all 4 stations still outstanding.
 
 ---
 
@@ -851,8 +851,11 @@ pio device monitor
 ### ✅ Milestone 9: Add LocoNet Output
 **Status:** COMPLETE (programming portion). `MrrwaLocoNetTurnoutAdapter`, `PulsingLocoNetTransport`, and `MrrwaLocoNetSwitchDriver` implemented and wired into `main.cpp`; firmware builds for the Mega 2560. Electrical interface verification and on-hardware DR5000/DR4018 confirmation remain.
 
-### → Milestone 10: Add LocoNet Feedback
+### ✅ Milestone 10: Add LocoNet Feedback
 **Status:** COMPLETE (programming portion). `LocoNetFeedbackDecoder`, the `LocoNetFeedbackSource` port, and `MrrwaLocoNetFeedbackSource` implemented and wired into `main.cpp`; firmware builds for the Mega 2560. On-hardware confirmation that a DR4018 state change updates the panel LED remains, blocked on the same electrical bring-up as Milestone 9.
+
+### → Milestone 11: Add Multiple Turnouts
+**Status:** COMPLETE (programming portion). `TurnoutConfig` + `TurnoutStation` (`adapters/TurnoutStation.h/.cpp`) replace the single hand-declared turnout with a 4-entry config table; `main.cpp` builds and drives `stations[4]` via range-`for` loops. On-hardware verification of all 4 stations remains, blocked on the same electrical bring-up as Milestones 9-10.
 
 ## Milestone 6: TDD Turnout Indicators
 
@@ -973,17 +976,31 @@ Remaining work is entirely hands-on, and shared with Milestone 9: verify the ele
 
 ## Milestone 11: Add Multiple Turnouts
 
+**Status:** COMPLETE (programming portion). `src/main.cpp` now wires 4 turnout stations from a config table instead of one hand-declared turnout. On-hardware verification of all 4 remains, blocked on the same electrical bring-up as Milestones 9-10.
+
 ### Tasks
 
-- Replace individually named controls with a fixed collection.
-- Add configuration objects for pin assignments and turnout addresses.
-- Route feedback by turnout address.
-- Verify at least four turnout controls.
+- ✅ Replace individually named controls with a fixed collection.
+- ✅ Add configuration objects for pin assignments and turnout addresses.
+- ✅ Route feedback by turnout address.
+- ⬜ Verify at least four turnout controls (hardware).
 
 ### Completion Criteria
 
 - New turnout controls can be added primarily through configuration.
 - No duplicated control logic exists.
+
+### Implementation Notes (2026-07-21)
+
+Resolves the Priority 2.1 design question from `docs/Refactoring_Recommendations_Multi_Hardware.md` (option b: a new aggregate, not hand-unrolled per-turnout globals):
+
+- `TurnoutConfig` (`adapters/TurnoutStation.h`) — plain data: address, name, and the 4 pin numbers (throw/close button, thrown/closed LED) for one station.
+- `TurnoutStation` (`adapters/TurnoutStation.{h,cpp}`) — owns one turnout's full stack (2 `ArduinoDigitalInput`, 2 `ArduinoDigitalOutput`, `Turnout`, 2 `Button`, 2 `Indicator`, `TurnoutIndicator`, `TurnoutControl`) as value members, built entirely from a `TurnoutConfig` plus the shared `Clock&`/`TurnoutCommandPort&`. Exposes only `begin()`/`update()`/`applyFeedback()` — pure delegation, no decision logic of its own.
+- Because it owns concrete `ArduinoDigitalInput`/`ArduinoDigitalOutput` members (not port references), `TurnoutStation` is `#ifdef ARDUINO`-guarded like `MrrwaLocoNetSwitchDriver` and has no native test — but everything it wires together (`Button`, `Indicator`, `Turnout`, `TurnoutIndicator`, `TurnoutControl`) is already independently native-tested, including `TurnoutControl::applyFeedback` ignoring a non-matching address (`test_turnout_control`). That existing test is also what makes "route feedback by turnout address" free: `main.cpp` broadcasts each decoded `TurnoutFeedback` to every station and each one's own `TurnoutControl` self-filters by address — no dedicated router was needed.
+- `main.cpp` replaced its single set of hand-declared globals with `constexpr TurnoutConfig STATION_CONFIGS[4]` and `TurnoutStation stations[4] = { TurnoutStation(STATION_CONFIGS[0], clock, turnoutCommandPort), ... }` (an explicit array initializer, not a runtime loop — chosen over a placement-new loop and over making `Button`/`Indicator`/`TurnoutControl` default-constructible, to avoid introducing either technique for a 4-8 station panel). `setup()`/`loop()` iterate `stations` with range-`for`, so adding a 5th turnout is one `TurnoutConfig` row plus one array-initializer line, with zero duplicated `update()`/`applyFeedback()` call sites.
+- Firmware still builds cleanly for the Mega 2560 (RAM 9.9%, Flash 2.7% with 4 stations - comfortable headroom).
+
+Remaining work is hands-on, shared with Milestones 9-10: verify the electrical LocoNet interface and confirm all 4 stations behave correctly against a real DR5000/DR4018.
 
 ---
 

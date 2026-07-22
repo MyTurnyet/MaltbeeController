@@ -69,7 +69,7 @@ pressure.
 
 ### 2.1 No existing pattern for wiring more than one turnout
 
-**Status (2026-07-21): DECIDED, not yet implemented.** Going with **(b)** — a new `TurnoutStation`-style aggregate — over (a). Deliberately not building it yet: nothing consumes it today (`src/main.cpp` still wires exactly one turnout, and `esp32dev`/Milestone 0 hasn't started), and this project's engineering principles call for writing the minimum a current test/consumer requires rather than designing ahead for a not-yet-started milestone. Build it when Mega Milestone 11 (multiple turnouts) or ESP32 Milestone 0/5 actually starts driving construction from a config table — at that point TDD the aggregate's `bind()`/`configure()` behavior the normal way.
+**Status (2026-07-21): DONE (Mega side).** Went with **(b)** — `TurnoutStation` (`lib/McsCore/src/adapters/TurnoutStation.{h,cpp}`) plus a `TurnoutConfig` POD struct, built as part of Mega Milestone 11 (multiple turnouts). Resolution of the "change Button/Indicator/TurnoutControl vs. wrap them" sub-question from above: wrap, unchanged — `TurnoutStation` owns them as value members (plus its own concrete `ArduinoDigitalInput`/`ArduinoDigitalOutput`), built entirely from `(TurnoutConfig, Clock&, TurnoutCommandPort&)`. `src/main.cpp` builds `TurnoutStation stations[4]` via an explicit array initializer (`{ TurnoutStation(configs[0], ...), TurnoutStation(configs[1], ...), ... }`) rather than a true runtime loop — deliberately chosen over a placement-new loop and over making `Button`/`Indicator`/`TurnoutControl` default-constructible, to avoid introducing either technique for what is, in practice, a small (4-12 station), compile-time-fixed panel. Because `TurnoutStation` owns concrete Arduino types, it's `#ifdef ARDUINO`-guarded and has no native test of its own — but it adds no decision logic beyond delegation, and everything it wires together was already independently tested. Whether the ESP32 panel can reuse `TurnoutStation` as-is is still open — its matrix-scanned, one-GPIO-per-LED-pair I/O model (see `ESP32_Turnout_Panel_Implementation.md`) doesn't map onto discrete `ArduinoDigitalInput`/`Output` pins the way the Mega's does, so this will need revisiting at ESP32 Milestone 3.
 
 `Button`, `Indicator`, `TurnoutIndicator`, and `TurnoutControl` all take their
 collaborators as C++ **references** in the constructor
@@ -181,9 +181,9 @@ action needed before then.
 2. ✅ Decide 2.1 (multi-station composition pattern) — this is a design
    decision, not code; make it before Milestone 0/3 implementation starts
    since it affects the shape of the config table and composition root.
-   Decided 2026-07-21 (option b, `TurnoutStation` aggregate); implementation
-   deliberately deferred to whichever of Mega Milestone 11 or ESP32
-   Milestone 0/5 starts first.
+   Decided and implemented 2026-07-21 on the Mega side (option b,
+   `TurnoutStation` aggregate, Milestone 11). Whether the ESP32 panel can
+   reuse it as-is is still open — see the 2.1 status note above.
 3. Proceed with `docs/ESP32_Turnout_Panel_Implementation.md` Milestone 0
    (PlatformIO environment split) with 1.1 and 2.1 settled.
 4. Address 3.1 and 3.2 inline during Milestone 3 (ESP32 hardware adapters) —
