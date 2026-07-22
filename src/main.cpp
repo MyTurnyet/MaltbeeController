@@ -1,9 +1,12 @@
 #include <Arduino.h>
+#include <LocoNet.h>
 
 #include "adapters/ArduinoClock.h"
 #include "adapters/ArduinoDigitalInput.h"
 #include "adapters/ArduinoDigitalOutput.h"
-#include "adapters/NullTurnoutCommandPort.h"
+#include "adapters/MrrwaLocoNetSwitchDriver.h"
+#include "adapters/MrrwaLocoNetTurnoutAdapter.h"
+#include "adapters/PulsingLocoNetTransport.h"
 #include "application/TurnoutControl.h"
 #include "domain/Button.h"
 #include "domain/Indicator.h"
@@ -18,6 +21,7 @@ namespace
     constexpr int CLOSED_LED_PIN = 9;
     constexpr unsigned long DEBOUNCE_MS = 30;
     constexpr int TURNOUT_ADDRESS = 101;
+    constexpr unsigned long LOCONET_PULSE_DURATION_MS = 250;
 }
 
 ArduinoClock clock;
@@ -38,7 +42,9 @@ Turnout turnout(TURNOUT_ADDRESS, "Turnout 1", TurnoutPosition::Closed, false, fa
 
 TurnoutIndicator turnoutIndicator(thrownIndicator, closedIndicator);
 
-NullTurnoutCommandPort turnoutCommandPort;
+MrrwaLocoNetSwitchDriver locoNetSwitchDriver;
+PulsingLocoNetTransport locoNetTransport(locoNetSwitchDriver, clock, LOCONET_PULSE_DURATION_MS);
+MrrwaLocoNetTurnoutAdapter turnoutCommandPort(locoNetTransport);
 
 TurnoutControl control(throwButton, closeButton, turnout, turnoutIndicator, turnoutCommandPort);
 
@@ -49,6 +55,8 @@ void setup()
 
     thrownOutput.begin();
     closedOutput.begin();
+
+    LocoNet.init();
 }
 
 void loop()
@@ -57,4 +65,5 @@ void loop()
     closeButton.update();
 
     control.update();
+    locoNetTransport.update();
 }
