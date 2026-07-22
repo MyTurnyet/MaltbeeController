@@ -19,6 +19,8 @@ priority.
 
 ### 1.1 `ArduinoDigitalInput` conflates "active-low" with "use internal pull-up"
 
+**Status (2026-07-21): DONE.** `ArduinoDigitalInput` now takes `(pin, activeLow, useInternalPullup)`; `begin()` calls `pinMode(pin_, useInternalPullup_ ? INPUT_PULLUP : INPUT)` independent of polarity. Both Mega call sites in `src/main.cpp` (throw/close buttons) updated to pass `useInternalPullup=true`, matching prior behavior. No native test exists or is possible for this class (`#ifdef ARDUINO`-guarded, no `Arduino.h` under `native`); verified instead by `pio run -e megaatmega2560` building cleanly and the full native suite staying green.
+
 `lib/McsCore/src/adapters/ArduinoDigitalInput.cpp:14`:
 
 ```cpp
@@ -66,6 +68,8 @@ pressure.
 ## Priority 2 — Decide before writing `src/esp32/main.cpp` (shapes the design)
 
 ### 2.1 No existing pattern for wiring more than one turnout
+
+**Status (2026-07-21): DECIDED, not yet implemented.** Going with **(b)** — a new `TurnoutStation`-style aggregate — over (a). Deliberately not building it yet: nothing consumes it today (`src/main.cpp` still wires exactly one turnout, and `esp32dev`/Milestone 0 hasn't started), and this project's engineering principles call for writing the minimum a current test/consumer requires rather than designing ahead for a not-yet-started milestone. Build it when Mega Milestone 11 (multiple turnouts) or ESP32 Milestone 0/5 actually starts driving construction from a config table — at that point TDD the aggregate's `bind()`/`configure()` behavior the normal way.
 
 `Button`, `Indicator`, `TurnoutIndicator`, and `TurnoutControl` all take their
 collaborators as C++ **references** in the constructor
@@ -172,11 +176,14 @@ action needed before then.
 
 ## Suggested order of work
 
-1. Fix 1.1 (`ArduinoDigitalInput` pull-up/polarity split) — small, isolated,
-   removes a latent bug before matrix code depends on it.
-2. Decide 2.1 (multi-station composition pattern) — this is a design
+1. ✅ Fix 1.1 (`ArduinoDigitalInput` pull-up/polarity split) — small, isolated,
+   removes a latent bug before matrix code depends on it. Done 2026-07-21.
+2. ✅ Decide 2.1 (multi-station composition pattern) — this is a design
    decision, not code; make it before Milestone 0/3 implementation starts
    since it affects the shape of the config table and composition root.
+   Decided 2026-07-21 (option b, `TurnoutStation` aggregate); implementation
+   deliberately deferred to whichever of Mega Milestone 11 or ESP32
+   Milestone 0/5 starts first.
 3. Proceed with `docs/ESP32_Turnout_Panel_Implementation.md` Milestone 0
    (PlatformIO environment split) with 1.1 and 2.1 settled.
 4. Address 3.1 and 3.2 inline during Milestone 3 (ESP32 hardware adapters) —

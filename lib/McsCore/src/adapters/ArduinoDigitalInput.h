@@ -5,7 +5,7 @@
 class ArduinoDigitalInput final : public DigitalInput
 {
 public:
-    ArduinoDigitalInput(int pin, bool activeLow);
+    ArduinoDigitalInput(int pin, bool activeLow, bool useInternalPullup);
 
     void begin();
 
@@ -14,4 +14,5 @@ public:
 private:
     int pin_;
     bool activeLow_;
+    bool useInternalPullup_;
 };

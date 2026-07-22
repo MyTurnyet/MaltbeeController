@@ -4,14 +4,14 @@
 
 #include <Arduino.h>
 
-ArduinoDigitalInput::ArduinoDigitalInput(const int pin, const bool activeLow)
-    : pin_(pin), activeLow_(activeLow)
+ArduinoDigitalInput::ArduinoDigitalInput(const int pin, const bool activeLow, const bool useInternalPullup)
+    : pin_(pin), activeLow_(activeLow), useInternalPullup_(useInternalPullup)
 {
 }
 
 void ArduinoDigitalInput::begin()
 {
-    pinMode(pin_, activeLow_ ? INPUT_PULLUP : INPUT);
+    pinMode(pin_, useInternalPullup_ ? INPUT_PULLUP : INPUT);
 }
 
 bool ArduinoDigitalInput::isActive() const

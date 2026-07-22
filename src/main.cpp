@@ -28,8 +28,8 @@ namespace
 
 ArduinoClock clock;
 
-ArduinoDigitalInput throwInput(THROW_BUTTON_PIN, true);
-ArduinoDigitalInput closeInput(CLOSE_BUTTON_PIN, true);
+ArduinoDigitalInput throwInput(THROW_BUTTON_PIN, true, true);
+ArduinoDigitalInput closeInput(CLOSE_BUTTON_PIN, true, true);
 
 ArduinoDigitalOutput thrownOutput(THROWN_LED_PIN, false);
 ArduinoDigitalOutput closedOutput(CLOSED_LED_PIN, false);
