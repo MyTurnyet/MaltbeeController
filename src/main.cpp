@@ -4,6 +4,8 @@
 #include "adapters/ArduinoClock.h"
 #include "adapters/ArduinoDigitalInput.h"
 #include "adapters/ArduinoDigitalOutput.h"
+#include "adapters/LocoNetFeedbackDecoder.h"
+#include "adapters/MrrwaLocoNetFeedbackSource.h"
 #include "adapters/MrrwaLocoNetSwitchDriver.h"
 #include "adapters/MrrwaLocoNetTurnoutAdapter.h"
 #include "adapters/PulsingLocoNetTransport.h"
@@ -46,6 +48,9 @@ MrrwaLocoNetSwitchDriver locoNetSwitchDriver;
 PulsingLocoNetTransport locoNetTransport(locoNetSwitchDriver, clock, LOCONET_PULSE_DURATION_MS);
 MrrwaLocoNetTurnoutAdapter turnoutCommandPort(locoNetTransport);
 
+MrrwaLocoNetFeedbackSource locoNetFeedbackSource;
+LocoNetFeedbackDecoder locoNetFeedbackDecoder;
+
 TurnoutControl control(throwButton, closeButton, turnout, turnoutIndicator, turnoutCommandPort);
 
 void setup()
@@ -66,4 +71,14 @@ void loop()
 
     control.update();
     locoNetTransport.update();
+
+    SwitchOutputsReport report;
+    if (locoNetFeedbackSource.poll(report))
+    {
+        const TurnoutFeedbackLookup lookup = locoNetFeedbackDecoder.decode(report);
+        if (lookup.found)
+        {
+            control.applyFeedback(lookup.feedback);
+        }
+    }
 }
