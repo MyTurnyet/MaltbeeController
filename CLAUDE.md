@@ -55,11 +55,11 @@ Domain           → Button, Indicator, Turnout, Route, Signal, Panel, domain ev
   - Route, RouteService (route sequences and execution)
 - `lib/McsCore/src/application/` — application/use-case classes
   - TurnoutControl (wires buttons, turnout, indicator, and TurnoutCommandPort together)
-- `lib/McsCore/src/ports/` — port interfaces (DigitalInput, DigitalOutput, Clock, TurnoutCommandPort)
-- `lib/McsCore/src/adapters/` — hardware adapters (ArduinoDigitalInput/Output, ArduinoClock — guarded with `#ifdef ARDUINO` so they don't break the native build; NullTurnoutCommandPort placeholder until LocoNet lands)
-- `src/main.cpp` — composition root: wires one throw/close button, one thrown/closed indicator, one Turnout, and one TurnoutControl (with NullTurnoutCommandPort standing in for LocoNet)
-- `test/test_<name>/test_main.cpp` — Catch2 test binaries (11 test suites)
-- `test/support/` — test doubles (FakeDigitalInput, FakeClock, FakeDigitalOutput, FakeTurnoutCommandPort)
+- `lib/McsCore/src/ports/` — port interfaces (DigitalInput, DigitalOutput, Clock, TurnoutCommandPort, LocoNetTransport, LocoNetSwitchDriver, LocoNetFeedbackSource)
+- `lib/McsCore/src/adapters/` — generic Arduino GPIO adapters (ArduinoDigitalInput/Output, ArduinoClock — guarded with `#ifdef ARDUINO` so they don't break the native build) and LocoNet adapters: `MrrwaLocoNetTurnoutAdapter` and `LocoNetFeedbackDecoder` (native-tested translation layers, no Arduino dependency) plus `MrrwaLocoNetSwitchDriver`, `PulsingLocoNetTransport`, and `MrrwaLocoNetFeedbackSource` (the send/receive hardware shims and pulse-timing logic); `NullTurnoutCommandPort` remains as a no-op fallback
+- `src/main.cpp` — composition root: wires one throw/close button, one thrown/closed indicator, one Turnout, one TurnoutControl, and the real LocoNet send/receive adapter chain (`MrrwaLocoNetSwitchDriver` → `PulsingLocoNetTransport` → `MrrwaLocoNetTurnoutAdapter` for sending; `MrrwaLocoNetFeedbackSource` → `LocoNetFeedbackDecoder` → `TurnoutControl::applyFeedback()` for receiving)
+- `test/test_<name>/test_main.cpp` — Catch2 test binaries (14 test suites)
+- `test/support/` — test doubles (FakeDigitalInput, FakeClock, FakeDigitalOutput, FakeTurnoutCommandPort, FakeLocoNetTransport, FakeLocoNetSwitchDriver)
 
 **Test coverage (all Catch2, all passing):**
 - ✅ Button (debouncing, edge detection)
@@ -73,16 +73,19 @@ Domain           → Button, Indicator, Turnout, Route, Signal, Panel, domain ev
 - ✅ NullTurnoutCommandPort (no-op send is safely callable)
 - ✅ Route (command sequences, capacity limit)
 - ✅ RouteService (execution, capacity limit)
+- ✅ MrrwaLocoNetTurnoutAdapter (command → LocoNet packet translation)
+- ✅ PulsingLocoNetTransport (non-blocking solenoid pulse timing)
+- ✅ LocoNetFeedbackDecoder (switch-outputs report → TurnoutFeedback translation)
 
-**Completed milestones:** 1-8 (foundation, ports, Button, Indicator, Turnout domain model, TurnoutIndicator, TurnoutControl, hardware integration programming). `pio run -e megaatmega2560` compiles successfully (RAM 2.2%, Flash 1.3% used). Physical wiring and on-hardware verification are still outstanding — see the "Milestone 8 hardware" note below.
+**Completed milestones:** 1-10 (foundation, ports, Button, Indicator, Turnout domain model, TurnoutIndicator, TurnoutControl, hardware integration programming, LocoNet output, LocoNet feedback). `pio run -e megaatmega2560` compiles successfully. Milestones 9-10 are complete on the programming side only — physical wiring and on-hardware verification (both button-to-LED and LocoNet send/receive against a real DR5000/DR4018) are still outstanding — see the "Milestone 8 hardware" note below.
 
-**Next milestones:** LocoNet output (9), LocoNet feedback (10), multiple turnouts (11+)
+**Next milestones:** multiple turnouts (11), routes (12), persistent configuration (13)
 
 ### Milestone 8 hardware (not yet done)
 
 The programming portion of Milestone 8 is complete and builds cleanly for the Mega 2560, but the hands-on portion still needs a physically connected board: wire one throw button (pin 22), one close button (pin 23), one thrown-position LED (pin 8), one closed-position LED (pin 9), flash with `pio run -e megaatmega2560 --target upload`, and verify.
 
-Important: with `NullTurnoutCommandPort` standing in for the real LocoNet adapter, pressing a button sends a command nowhere, and `TurnoutIndicator` only updates via `TurnoutControl::applyFeedback()` — which nothing calls yet (no LocoNet feedback until Milestone 10). So button presses will not visibly light the LEDs end-to-end yet. "Verify behavior on hardware" for Milestone 8 realistically means confirming button reads and LED drive work in isolation, not a full button-to-LED demo — that arrives after Milestones 9 and 10.
+`main.cpp` now wires the real LocoNet send and receive adapters (Milestones 9-10), not `NullTurnoutCommandPort`, so a button press does reach `LocoNet.requestSwitch()` and `TurnoutControl::applyFeedback()` is driven by real incoming `OPC_SW_REP` messages — but none of that has been exercised against real LocoNet hardware yet. "Verify behavior on hardware" for Milestone 8 realistically still means confirming button reads and LED drive work in isolation; full button-to-LED-via-LocoNet verification is Milestones 9-10's remaining hardware work, not Milestone 8's.
 
 ## Engineering Principles (from the roadmap)
 

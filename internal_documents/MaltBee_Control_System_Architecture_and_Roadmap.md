@@ -13,7 +13,7 @@ The merge used MaltbeeController as the base and incrementally ported domain cla
 from MaltBee-Control-System. All code now uses Catch2 for testing and targets the
 Arduino Mega 2560 via PlatformIO.
 
-**Current Status:** Milestones 1-8 complete. Milestone 9 (LocoNet Output) in progress: translation and pulse-timing adapters implemented and natively tested, wired into `main.cpp`, firmware builds for the Mega 2560. Electrical LocoNet interface verification and on-hardware DR5000/DR4018 confirmation still outstanding.
+**Current Status:** Milestones 1-8 complete. Milestones 9 (LocoNet Output) and 10 (LocoNet Feedback) are complete on the programming side — send and receive translation adapters implemented and natively tested, wired into `main.cpp`, firmware builds for the Mega 2560. Electrical LocoNet interface verification and on-hardware DR5000/DR4018 confirmation (both directions) still outstanding.
 
 ---
 
@@ -848,8 +848,11 @@ pio device monitor
 ### ✅ Milestone 8: Integrate Physical Buttons and LEDs
 **Status:** COMPLETE (programming portion). Physical wiring and on-hardware verification still outstanding.
 
-### → Milestone 9: Add LocoNet Output
-**Status:** IN PROGRESS - `MrrwaLocoNetTurnoutAdapter`, `PulsingLocoNetTransport`, and `MrrwaLocoNetSwitchDriver` implemented and wired into `main.cpp`; firmware builds for the Mega 2560. Electrical interface verification and on-hardware DR5000/DR4018 confirmation remain.
+### ✅ Milestone 9: Add LocoNet Output
+**Status:** COMPLETE (programming portion). `MrrwaLocoNetTurnoutAdapter`, `PulsingLocoNetTransport`, and `MrrwaLocoNetSwitchDriver` implemented and wired into `main.cpp`; firmware builds for the Mega 2560. Electrical interface verification and on-hardware DR5000/DR4018 confirmation remain.
+
+### → Milestone 10: Add LocoNet Feedback
+**Status:** COMPLETE (programming portion). `LocoNetFeedbackDecoder`, the `LocoNetFeedbackSource` port, and `MrrwaLocoNetFeedbackSource` implemented and wired into `main.cpp`; firmware builds for the Mega 2560. On-hardware confirmation that a DR4018 state change updates the panel LED remains, blocked on the same electrical bring-up as Milestone 9.
 
 ## Milestone 6: TDD Turnout Indicators
 
@@ -905,7 +908,7 @@ pio device monitor
 
 ## Milestone 9: Add LocoNet Output
 
-**Status:** IN PROGRESS
+**Status:** COMPLETE (programming portion). Hardware verification remains — see Milestone 10 below, which is blocked on the same electrical bring-up.
 
 ### Tasks
 
@@ -938,18 +941,33 @@ Remaining work is entirely hands-on: verify the electrical LocoNet interface, fl
 
 ## Milestone 10: Add LocoNet Feedback
 
+**Status:** COMPLETE (programming portion). On-hardware confirmation remains, blocked on the same electrical bring-up as Milestone 9.
+
 ### Tasks
 
-- Poll LocoNet messages.
-- Decode turnout state messages.
-- Convert messages into `TurnoutFeedback`.
-- Route feedback to the appropriate control.
-- Update panel indicators from confirmed state.
+- ✅ Poll LocoNet messages.
+- ✅ Decode turnout state messages.
+- ✅ Convert messages into `TurnoutFeedback`.
+- ✅ Route feedback to the appropriate control.
+- ✅ Update panel indicators from confirmed state.
+- ⬜ Confirm on real hardware that a DR4018 state change updates the panel LED.
 
 ### Completion Criteria
 
 - LED state changes when a turnout command is sent from another LocoNet device.
 - The panel remains synchronized with JMRI, throttles, and other controllers.
+
+### Implementation Notes (2026-07-21)
+
+Mirrors Milestone 9's split between a native-testable translation layer and a thin, untested Arduino shim:
+
+- `LocoNetFeedbackSource` (`ports/LocoNetFeedbackSource.h`) — new port, `poll(SwitchOutputsReport&)`. `SwitchOutputsReport{address, closedOutputOn, thrownOutputOn}` mirrors the shape of the MRRWA library's own decoded callback (see below) rather than raw LocoNet bytes.
+- `LocoNetFeedbackDecoder` (`adapters/LocoNetFeedbackDecoder.{h,cpp}`) — translates a `SwitchOutputsReport` into a `TurnoutFeedbackLookup{bool found; TurnoutFeedback}` (same `{found, value}` shape as `Route`'s existing `TurnoutPositionLookup`). Treats "neither output line asserted" (mid-transition) and "both asserted" (contradictory) as not-found. Native-tested, 5 test cases, no Arduino or MRRWA dependency.
+- `MrrwaLocoNetFeedbackSource` (`adapters/MrrwaLocoNetFeedbackSource.{h,cpp}`) — implements `LocoNetFeedbackSource` against the real library, `#ifdef ARDUINO`-guarded and not natively tested, same pattern as `MrrwaLocoNetSwitchDriver`. Calls `LocoNet.receive()` + `LocoNet.processSwitchSensorMessage()` each `poll()`, and defines the weak `notifySwitchOutputsReport(Address, ClosedOutput, ThrownOutput)` callback the library invokes for `OPC_SW_REP` "outputs" (not sensor-input) reports — confirmed against the vendored library source (`.pio/libdeps/megaatmega2560/LocoNet/LocoNet.cpp:409-419`), not assumed. The library already decodes the address (1-based) and the closed/thrown line bits before the callback fires, so — consistent with the send side, which also never hand-rolls LocoNet bit math — no raw byte decoding was written in this codebase.
+
+`main.cpp`'s `loop()` polls the feedback source, decodes, and calls `control.applyFeedback()` when a report decodes successfully. No address-matching code was needed there: `TurnoutControl::applyFeedback()` already ignores feedback for a non-matching address (from Milestone 8), so this satisfies "route feedback to the appropriate control" for today's single-turnout setup and needs no rework when Milestone 11 adds a real per-address router.
+
+Remaining work is entirely hands-on, and shared with Milestone 9: verify the electrical LocoNet interface, flash the board, and confirm a DR4018 state change is received and reflected on the panel LED.
 
 ---
 

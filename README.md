@@ -11,7 +11,8 @@ computer, independent of any specific hardware target — that's also what lets 
 
 ## Current Status
 
-The project has completed Milestones 1-8, and Milestone 9 (LocoNet output) is in progress:
+The project has completed Milestones 1-8, and Milestones 9-10 (LocoNet output and feedback)
+are complete on the programming side:
 
 - ✅ Native test environment with Catch2
 - ✅ Digital I/O ports (DigitalInput, DigitalOutput, Clock)
@@ -21,8 +22,10 @@ The project has completed Milestones 1-8, and Milestone 9 (LocoNet output) is in
 - ✅ Hardware integration: Arduino GPIO adapters and composition root wired for one turnout (Milestone 8; physical wiring/on-hardware verification still outstanding)
 - ✅ Test doubles for all ports (FakeDigitalInput, FakeDigitalOutput, FakeClock, FakeTurnoutCommandPort, FakeLocoNetTransport, FakeLocoNetSwitchDriver)
 - 🚧 LocoNet output (Milestone 9): translation and pulse-timing adapters implemented and natively tested, wired into `main.cpp`, firmware builds for the Mega 2560. Electrical LocoNet interface verification and on-hardware DR5000/DR4018 confirmation still outstanding.
+- 🚧 LocoNet feedback (Milestone 10): decode adapter and receive-side port implemented and natively tested, wired into `main.cpp`, firmware builds for the Mega 2560. Blocked on the same on-hardware verification as Milestone 9.
 
-**Next:** finish Milestone 9 hardware verification, then LocoNet feedback (Milestone 10).
+**Next:** verify the electrical LocoNet interface and confirm DR5000/DR4018 behavior on
+hardware (both send and feedback), then multiple turnouts (Milestone 11).
 In parallel, an ESP32 panel (Wi-Fi to JMRI, 12 turnouts per board) is being planned as a
 second PlatformIO environment — see `docs/ESP32_Turnout_Panel_Implementation.md` and
 `docs/Refactoring_Recommendations_Multi_Hardware.md`.
@@ -91,8 +94,7 @@ See `internal_documents/archive/original-overview.md` for historical context.
 
 ## Next Steps
 
-- Verify the electrical LocoNet interface and confirm DR5000/DR4018 behavior on hardware (finish Milestone 9)
-- Add LocoNet feedback (Milestone 10)
+- Verify the electrical LocoNet interface and confirm DR5000/DR4018 behavior on hardware, both send and feedback (finish Milestones 9-10)
 - Support multiple turnouts on the Mega (Milestone 11)
 - Add the `esp32dev` PlatformIO environment and ESP32 panel support — see
   `docs/ESP32_Turnout_Panel_Implementation.md` for the milestone plan and
