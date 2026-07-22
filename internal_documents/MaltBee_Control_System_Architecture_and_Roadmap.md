@@ -13,7 +13,7 @@ The merge used MaltbeeController as the base and incrementally ported domain cla
 from MaltBee-Control-System. All code now uses Catch2 for testing and targets the
 Arduino Mega 2560 via PlatformIO.
 
-**Current Status:** Milestones 1-5 complete. Next: TurnoutIndicator (Milestone 6).
+**Current Status:** Milestones 1-8 complete. Milestone 9 (LocoNet Output) in progress: translation and pulse-timing adapters implemented and natively tested, wired into `main.cpp`, firmware builds for the Mega 2560. Electrical LocoNet interface verification and on-hardware DR5000/DR4018 confirmation still outstanding.
 
 ---
 
@@ -839,8 +839,17 @@ pio device monitor
 - ✅ Route (command sequences)
 - ✅ RouteService (execution)
 
-### → Milestone 6: TDD Turnout Indicators
-**Status:** NEXT - Ready to implement
+### ✅ Milestone 6: TDD Turnout Indicators
+**Status:** COMPLETE
+
+### ✅ Milestone 7: TDD Turnout Control Use Case
+**Status:** COMPLETE
+
+### ✅ Milestone 8: Integrate Physical Buttons and LEDs
+**Status:** COMPLETE (programming portion). Physical wiring and on-hardware verification still outstanding.
+
+### → Milestone 9: Add LocoNet Output
+**Status:** IN PROGRESS - `MrrwaLocoNetTurnoutAdapter`, `PulsingLocoNetTransport`, and `MrrwaLocoNetSwitchDriver` implemented and wired into `main.cpp`; firmware builds for the Mega 2560. Electrical interface verification and on-hardware DR5000/DR4018 confirmation remain.
 
 ## Milestone 6: TDD Turnout Indicators
 
@@ -896,20 +905,34 @@ pio device monitor
 
 ## Milestone 9: Add LocoNet Output
 
+**Status:** IN PROGRESS
+
 ### Tasks
 
-- Install the MRRWA LocoNet library.
-- Verify the electrical LocoNet interface.
-- Create a minimal LocoNet send experiment.
-- Implement `MrrwaLocoNetTurnoutAdapter`.
-- Send a turnout command to the DR5000.
-- Confirm the DR4018 responds.
+- ✅ Install the MRRWA LocoNet library (pinned to `mrrwa/LocoNet` GitHub tag `1.1.13`, not the PlatformIO registry's `1.1.6`, which fails to build for Mega 2560 — see note below).
+- ⬜ Verify the electrical LocoNet interface.
+- ⬜ Create a minimal LocoNet send experiment.
+- ✅ Implement `MrrwaLocoNetTurnoutAdapter`.
+- ⬜ Send a turnout command to the DR5000.
+- ⬜ Confirm the DR4018 responds.
 
 ### Completion Criteria
 
 - Button press sends a LocoNet turnout command.
 - The correct DR4018 output operates.
 - The application depends only on `TurnoutCommandPort`.
+
+### Implementation Notes (2026-07-21)
+
+The LocoNet output path ended up as three classes instead of one, to keep the pulse-timing logic natively testable without Arduino or the MRRWA library:
+
+- `MrrwaLocoNetTurnoutAdapter` — translates `TurnoutCommandPort::send()` into a `LocoNetPacket` on the `LocoNetTransport` port (native-tested).
+- `PulsingLocoNetTransport` — implements `LocoNetTransport`. The DR4018 expects a solenoid-style pulse, so this sends an immediate ON `requestSwitch`, then a non-blocking timed OFF release via `update()` (called from `loop()`), driven through a new `LocoNetSwitchDriver` port. Fully native-tested (7 test cases) using a fake driver and `FakeClock`, including the case where a new command arrives while a release is still pending.
+- `MrrwaLocoNetSwitchDriver` — implements `LocoNetSwitchDriver` against the real `LocoNet.requestSwitch()` call, `#ifdef ARDUINO`-guarded like the other hardware adapters and not natively tested (thin hardware shim, same pattern as `ArduinoDigitalOutput`/`ArduinoClock`).
+
+`main.cpp` wires `MrrwaLocoNetSwitchDriver` → `PulsingLocoNetTransport` → `MrrwaLocoNetTurnoutAdapter` in place of `NullTurnoutCommandPort`, calls `LocoNet.init()` in `setup()`, and `locoNetTransport.update()` in `loop()`. `LOCONET_PULSE_DURATION_MS` (currently 250ms) is a placeholder pending on-hardware tuning against the real DR4018.
+
+Remaining work is entirely hands-on: verify the electrical LocoNet interface, flash the board, confirm a button press reaches the DR5000, and confirm the DR4018 output responds.
 
 ---
 
