@@ -1,81 +1,106 @@
-# Indicator LED Wiring
+# Indicator LED Wiring (ESP32 panel)
 
-Reference for wiring the thrown/closed panel LEDs to the Mega 2560. Each
-turnout station drives two LEDs — **thrown** and **closed** — from a pair of
-adjacent digital pins, active-high
-(`ArduinoDigitalOutput(pin, activeLow=false)` in `TurnoutStation.cpp`), through
-a series resistor straight to a shared ground bus. No external supply rail is
-needed — the Mega pin itself sources the LED current.
+Reference for wiring the red/green turnout-position LEDs to the ESP32. Unlike
+the Mega panel (one GPIO per LED, see git history if you need that version),
+the ESP32 panel drives a **red LED and a green LED from a single GPIO** by
+wiring them in opposite directions, so 12 turnouts need only 12 GPIOs for 24
+LEDs. See `docs/ESP32_Turnout_Panel_Implementation.md` for the full hardware
+plan this diagram is drawn from.
 
-An interactive breadboard diagram for Station 1 was built as a Claude
-artifact; this file is the durable, offline copy of that reference.
+An interactive breadboard diagram for Turnout 1 (GPIO 4) was built as a
+Claude artifact; this file is the durable, offline copy of that reference.
 
-## Circuit (per LED)
-
-```
-Mega Dx ──/\/\/\── 220Ω ──►|── LED (anode → cathode) ── GND
-          resistor          flat edge / short leg = cathode
-```
-
-## Station 1 example (Turnout 101)
+## Circuit (per LED pair)
 
 ```
- Mega D8 ──wire──┐                    Mega D9 ──wire──┐
-                  │                                    │
-              [220Ω]  (red-red-brown-gold)         [220Ω]  (red-red-brown-gold)
-                  │                                    │
-                  ▼                                    ▼
-                 ▲│▼  LED1 — red, THROWN              ▲│▼  LED2 — green, CLOSED
-                  │  (flat edge = cathode)              │  (flat edge = cathode)
-                  │                                    │
-                  └──────────────┬─────────────────────┘
-                                  │
-                         blue (−) GND bus
-                                  │
-                            → Mega GND
+GPIO ── resistor ── green LED anode → cathode ── GND
+
+3.3V ── resistor ── red LED anode → cathode ── GPIO
 ```
 
-Breadboard placement used in the diagram (terminal-strip columns/rows,
-5×5 blocks A–E / F–J with the center gap between them):
+The red LED is wired **backwards** relative to the green one — its cathode
+returns to the GPIO pin instead of to ground, and its resistor goes to 3.3V
+instead of to the GPIO. Each LED gets its own resistor (680Ω–1kΩ; 1kΩ
+recommended starting point) — never shared.
 
-| Signal            | From          | Through                      | To                     |
-|--------------------|---------------|-------------------------------|-------------------------|
-| Pin 8 signal wire   | Mega D8       | —                              | column 3, row A          |
-| Resistor (thrown)   | column 3, row B | 220Ω, spans the row           | column 7, row B          |
-| LED1 (thrown, red)  | column 7, row E (anode) | straddles center gap  | column 7, row F (cathode) |
-| Ground jumper       | column 7, row J | —                              | blue (−) rail             |
-| Pin 9 signal wire   | Mega D9       | —                              | column 11, row A          |
-| Resistor (closed)   | column 11, row B | 220Ω, spans the row          | column 15, row B          |
-| LED2 (closed, green)| column 15, row E (anode) | straddles center gap | column 15, row F (cathode) |
-| Ground jumper       | column 15, row J | —                             | blue (−) rail             |
+| GPIO level     | Green | Red |
+|-----------------|-------|-----|
+| HIGH (~3.3V)     | On    | Off |
+| LOW (~0V)        | Off   | On  |
+
+- **HIGH**: no potential across the red LED (both ends near 3.3V), so it
+  stays off; current flows GPIO → resistor → green LED → GND, so green
+  lights.
+- **LOW**: no potential across the green LED, so it stays off; current flows
+  3.3V → resistor → red LED → GPIO (sinking), so red lights.
+- Both LEDs off is not achievable with this wiring — firmware shows an
+  unconfirmed/unknown turnout state by **blinking** between the two colors,
+  not a true off (see "State Model" in the implementation doc).
+
+## Turnout 1 example (GPIO 4)
+
+```
+                         ESP32 GPIO 4
+                              │
+              ┌───────────────┴───────────────┐
+              │                                │
+          [1kΩ]  (green branch)            (red branch, same row)
+              │                                │
+              ▼                          ▲│▼ LED — RED (thrown)
+        ▲│▼ LED — GREEN (closed)         cathode → GPIO 4 node
+        cathode → GND                    anode →
+              │                                │
+     blue (−) GND bus                      [1kΩ]
+              │                                │
+        → ESP32 GND                   red (+) 3.3V bus
+                                              │
+                                        → ESP32 3.3V
+```
+
+Breadboard placement used in the diagram (terminal-strip columns/rows, 5×5
+blocks A–E / F–J with the center gap between them):
+
+| Signal                | From              | Through                       | To                              |
+|------------------------|-------------------|---------------------------------|-----------------------------------|
+| GPIO 4 signal wire      | ESP32 GPIO 4      | —                                | column 3, row A                   |
+| Resistor (green)        | column 3, row B   | 1kΩ, spans the row              | column 8, row B                   |
+| LED — green (closed)    | column 8, row E (anode) | straddles center gap      | column 8, row F (cathode)         |
+| Ground jumper           | column 8, row J   | —                                | blue (−) rail                     |
+| LED — red (thrown)      | column 3, row C (cathode) | spans the row, same column node as GPIO 4 | column 13, row C (anode) |
+| Resistor (red)          | column 13, row C | 1kΩ, spans the row               | column 17, row C                  |
+| 3.3V jumper             | column 17, row E | —                                | red (+) rail                      |
+
+The red LED's cathode leg lands in the **same breadboard column** as the
+GPIO 4 wire (column 3) — that column's rows A–E are all one electrical node,
+so no extra jumper is needed to tie them together.
 
 ## Notes
 
-- 220Ω is a safe default for a 5V logic pin into a standard 20mA LED — check
-  your LED's datasheet forward voltage/current and retune if it runs dim or
-  you want it dimmer.
-- LED flat edge / shorter leg is the cathode — it's the leg that goes to
-  ground, not to the resistor.
-- Because outputs are active-high, `pinMode(OUTPUT)` + `digitalWrite(HIGH)`
-  lights the LED; `begin()` drives the pin LOW at startup, so both LEDs power
-  up off.
-- Tie the breadboard's blue (−) bus back to a Mega `GND` pin once — both LED
-  cathodes on a station share that same bus.
-- LED colors (red = thrown, green = closed) follow standard railroad signal
-  convention, not a hardware requirement — substitute whatever LEDs you have
-  on hand as long as thrown/closed stay visually distinct.
+- Use 680Ω–1kΩ per LED; 1kΩ is a safe starting point for a 3.3V GPIO into a
+  standard LED — check your LED's datasheet and retune if it runs dim or you
+  want it dimmer.
+- Configure LED GPIOs as outputs and call `TurnoutIndicator::clear()` on
+  every turnout **before** anything else at boot, so LEDs start in
+  blink/unknown mode rather than an undefined level (see "Startup sequence"
+  in the implementation doc).
+- `CLOSED` → green on → GPIO HIGH. `THROWN` → red on → GPIO LOW. (Mapping can
+  be reversed in software to match panel convention.)
+- Green LED's cathode returns to the ESP32 GND bus; red LED's resistor
+  returns to the ESP32 3.3V bus — both are shared rails, tie each back to the
+  ESP32 once.
 
-## Repeat per station
+## Repeat per turnout
 
-From `STATION_CONFIGS` in `src/mega/main.cpp`:
+From the GPIO Assignment table in `docs/ESP32_Turnout_Panel_Implementation.md`:
 
-| Station | Address | Thrown LED pin | Closed LED pin |
-|---------|---------|-----------------|------------------|
-| 1       | 101     | D8               | D9                |
-| 2       | 102     | D10              | D11               |
-| 3       | 103     | D12              | D13               |
-| 4       | 104     | D14              | D15               |
+| Turnout | GPIO | Turnout | GPIO |
+|---------|------|---------|------|
+| 1 (shown above) | 4 | 7 | 23 |
+| 2 | 13 | 8 | 25 |
+| 3 | 14 | 9 | 26 |
+| 4 | 16 | 10 | 27 |
+| 5 | 17 | 11 | 32 |
+| 6 | 22 | 12 | 33 |
 
-Throw/close button pins (for context, not covered by this LED-focused
-diagram): station 1 = D22/D23, station 2 = D24/D25, station 3 = D26/D27,
-station 4 = D28/D29.
+Button matrix wiring (for context, not covered by this LED-focused diagram)
+is in [`button-wiring.md`](button-wiring.md).
