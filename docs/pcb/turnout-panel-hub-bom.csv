@@ -1,0 +1,9 @@
+Reference(s),Qty,Value,Footprint
+C1,1,100uF,Capacitor_THT:CP_Radial_D6.3mm_P2.50mm
+C2,1,100nF,Capacitor_THT:C_Disc_D5.0mm_W2.5mm_P5.00mm
+"J1, J2, J3, J4, J5, J6, J7, J8, J9, J10, J11, J12",12,"Terminal block, 6-post","Connector_Phoenix_MSTB:PhoenixContact_MSTBA_2,5_6-G-5,08_1x06_P5.08mm_Horizontal"
+J13,1,ESP32_DevKit_L,Connector_PinSocket_2.54mm:PinSocket_1x19_P2.54mm_Vertical
+J14,1,ESP32_DevKit_R,Connector_PinSocket_2.54mm:PinSocket_1x19_P2.54mm_Vertical
+J15,1,5V_IN,"Connector_Phoenix_MSTB:PhoenixContact_MSTBA_2,5_2-G-5,08_1x02_P5.08mm_Horizontal"
+"RG1, RG2, RG3, RG4, RG5, RG6, RG7, RG8, RG9, RG10, RG11, RG12, RR1, RR2, RR3, RR4, RR5, RR6, RR7, RR8, RR9, RR10, RR11, RR12",24,1k,Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P10.16mm_Horizontal
+"RPU1, RPU2, RPU3, RPU4",4,10k,Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P10.16mm_Horizontal
