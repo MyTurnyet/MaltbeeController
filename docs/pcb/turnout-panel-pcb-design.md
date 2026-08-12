@@ -254,6 +254,8 @@ The startup `clear()` call resolves this.
               free edge — keep clear
 ```
 
+[<img src="./BoardPCB.jpg" alt="PCB" width="300">](boardPCB.jpg)
+
 - **Terminal blocks:** 4 per edge on three edges. 5.08 mm pitch pluggable
   right-angle headers, roughly 33 mm wide including housing. Four per edge
   is ~132 mm; on a 160 mm edge with 5 mm margins that leaves ~6 mm between
