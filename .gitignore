@@ -70,3 +70,6 @@ __pycache__/
 
 # Keep empty project directories if they contain .gitkeep files
 !.gitkeep
+
+# KiCad local-history auto-backups (contains its own nested .git repo)
+.history/
