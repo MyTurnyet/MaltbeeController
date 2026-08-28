@@ -1,4 +1,4 @@
-#ifdef ARDUINO
+#if defined(ARDUINO) && !defined(ESP32)
 
 #include "MrrwaLocoNetSwitchDriver.h"
 
