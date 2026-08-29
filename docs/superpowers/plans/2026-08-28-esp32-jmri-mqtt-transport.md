@@ -630,7 +630,7 @@ private:
 #include <string>
 
 #include "../domain/NodeConfig.h"
-#include "ports/MqttTransport.h"
+#include "../ports/MqttTransport.h"
 #include "ports/TurnoutCommandPort.h"
 
 class JmriTurnoutCommandAdapter final : public TurnoutCommandPort
@@ -829,7 +829,7 @@ Expected: FAIL to compile — none of this task's files exist yet.
 #include <string>
 
 #include "../domain/NodeConfig.h"
-#include "ports/MqttTransport.h"
+#include "../ports/MqttTransport.h"
 #include "ports/TurnoutCommandPort.h"
 
 class JmriFeedbackSource
@@ -1043,7 +1043,7 @@ void WiFiLink::connect()
 #include <vector>
 
 #include "ports/Clock.h"
-#include "ports/MqttTransport.h"
+#include "../ports/MqttTransport.h"
 
 class MqttLink final : public MqttTransport
 {
