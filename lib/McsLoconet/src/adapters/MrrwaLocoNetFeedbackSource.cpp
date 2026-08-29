@@ -1,4 +1,4 @@
-#if defined(ARDUINO) && !defined(ESP32)
+#ifdef ARDUINO
 
 #include "MrrwaLocoNetFeedbackSource.h"
 

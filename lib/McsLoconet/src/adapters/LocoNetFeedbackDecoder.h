@@ -1,7 +1,7 @@
 #pragma once
 
 #include "../ports/LocoNetFeedbackSource.h"
-#include "../ports/TurnoutCommandPort.h"
+#include "ports/TurnoutCommandPort.h"
 
 struct TurnoutFeedbackLookup
 {

@@ -1,7 +1,7 @@
 #pragma once
 
 #include "../ports/LocoNetTransport.h"
-#include "../ports/TurnoutCommandPort.h"
+#include "ports/TurnoutCommandPort.h"
 
 class MrrwaLocoNetTurnoutAdapter final : public TurnoutCommandPort
 {

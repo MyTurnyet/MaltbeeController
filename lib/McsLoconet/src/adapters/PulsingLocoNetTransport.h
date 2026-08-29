@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../ports/Clock.h"
+#include "ports/Clock.h"
 #include "../ports/LocoNetSwitchDriver.h"
 #include "../ports/LocoNetTransport.h"
 

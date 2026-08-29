@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../domain/Turnout.h"
+#include "domain/Turnout.h"
 
 struct LocoNetPacket
 {
