@@ -67,4 +67,26 @@ too (not just native): both SUCCESS, memory usage identical to every prior
 baseline in this plan (esp32dev RAM 6.4%/Flash 17.8%, megaatmega2560 RAM
 9.9%/Flash 2.7%).
 
-## PLAN COMPLETE — both tasks + final review + fix-and-verify done, all 3 environments (native 23/23, esp32dev, megaatmega2560) confirmed green after the fix commits.
+## Re-review of fix commits (sonnet, commits 102825e..ed514e3): "Ready to merge: Yes"
+All 5 findings verified substantively and accurately addressed against
+actual source (including the sibling repo). Zero Critical. 1 Important
+(non-gating): the new "Scope of what this spec resolves" section stated
+JMRI's MONITORING mode as settled fact when the cited sibling doc itself
+flags it as unverified/to-be-confirmed-empirically — internally
+inconsistent with how the section correctly hedges the /trains-prefix
+claim a few lines later. 1 Minor (non-gating, notation-only): commit
+ed514e3's `^ B` label doesn't fit ACN's definition of B (repairs existing
+undesired behavior) for a test-only coverage addition to already-correct
+code — `. r`/`^ r` would fit better; doesn't affect content, left as-is
+per ACN reference, not worth an amend on a non-pushed local branch commit
+for a labeling nit alone.
+
+Controller fixed the one Important finding directly (commit d40991c,
+`. d`, one-sentence hedge) rather than dispatching another review round —
+purely a prose precision edit with no test/behavior implications, and the
+finding was already explicitly assessed as non-gating ("Ready to merge:
+Yes" both times).
+
+## PLAN COMPLETE — both tasks + final review + fix pass + re-review all
+returned Ready to merge: Yes. All 3 environments (native 23/23, esp32dev,
+megaatmega2560) confirmed green.
