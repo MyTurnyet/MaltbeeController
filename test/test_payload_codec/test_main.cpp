@@ -14,21 +14,21 @@ TEST_CASE("encode Thrown produces THROWN")
 
 TEST_CASE("decode CLOSED produces Closed")
 {
-    const std::optional<TurnoutPosition> position = PayloadCodec::decode("CLOSED");
+    const TurnoutPositionLookup lookup = PayloadCodec::decode("CLOSED");
 
-    REQUIRE(position.has_value());
-    REQUIRE(*position == TurnoutPosition::Closed);
+    REQUIRE(lookup.found);
+    REQUIRE(lookup.position == TurnoutPosition::Closed);
 }
 
 TEST_CASE("decode THROWN produces Thrown")
 {
-    const std::optional<TurnoutPosition> position = PayloadCodec::decode("THROWN");
+    const TurnoutPositionLookup lookup = PayloadCodec::decode("THROWN");
 
-    REQUIRE(position.has_value());
-    REQUIRE(*position == TurnoutPosition::Thrown);
+    REQUIRE(lookup.found);
+    REQUIRE(lookup.position == TurnoutPosition::Thrown);
 }
 
 TEST_CASE("decode an unrecognized payload produces nothing")
 {
-    REQUIRE_FALSE(PayloadCodec::decode("GARBAGE").has_value());
+    REQUIRE_FALSE(PayloadCodec::decode("GARBAGE").found);
 }
