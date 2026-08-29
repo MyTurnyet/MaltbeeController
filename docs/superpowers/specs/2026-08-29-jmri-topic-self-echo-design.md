@@ -105,9 +105,11 @@ two consequences of sharing one topic for commands and feedback:
 outgoing command can no longer be misread as confirmation of its own LED.
 
 Consequence (b), retained-slot contention, is **not** resolved by this spec
-and remains a known, open, separate risk. JMRI is configured in MONITORING
-mode (per the sibling's setup docs), which means JMRI's own "known state"
-for a turnout is just whatever's currently on the shared command topic —
+and remains a known, open, separate risk. JMRI is *expected* to run in
+MONITORING mode for these turnouts (per the sibling's setup docs) — though
+that doc itself flags this as unverified, to be confirmed empirically
+rather than assumed. If so, JMRI's own "known state" for a turnout is just
+whatever's currently on the shared command topic —
 so the panel's own unconfirmed command still becomes JMRI's displayed
 state, even though it no longer becomes this panel's own displayed state.
 That's the same optimistic-confirmation problem the "never optimistic" rule
