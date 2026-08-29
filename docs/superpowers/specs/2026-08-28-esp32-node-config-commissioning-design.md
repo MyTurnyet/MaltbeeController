@@ -2,7 +2,10 @@
 
 ## Status
 
-Design approved 2026-08-28. Not yet implemented.
+Design approved 2026-08-28. **Implemented 2026-08-28** via 5 TDD'd tasks plus
+a final whole-branch review and one follow-up fix commit — see
+"Post-implementation amendments" below for what changed from this document's
+original design during that process.
 
 ## Context
 
@@ -148,13 +151,24 @@ class ConfigStore {
 public:
     virtual ~ConfigStore() = default;
     virtual NodeConfig load() = 0;
-    virtual void save(const NodeConfig&) = 0;
+    virtual bool save(const NodeConfig&) = 0;  // false on a persistence failure
 };
 ```
 
-`NvsConfigStore` (adapter, ESP32 `Preferences`-backed) and `FakeConfigStore`
-(test double, in-memory, returns `factoryDefault()` until `save()` is
-called) implement it.
+`save()` returns `bool`, not `void` as originally designed — see
+"Post-implementation amendments" below for why. `NvsConfigStore` (adapter,
+ESP32 `Preferences`-backed) and `FakeConfigStore` (test double, in-memory,
+returns `factoryDefault()` until `save()` is called, with a `failNextSave`
+flag for testing the failure path) implement it.
+
+`wifiPassword` is persisted by `NvsConfigStore` in cleartext — ESP32 NVS is
+unencrypted by default (flash encryption is an explicit opt-in this project
+doesn't enable), and the flash is readable over UART with `esptool.py
+read_flash`. Accepted for this project's threat model: a home-layout MQTT
+panel where physical access to the board already implies LAN access. Slice
+2c's wireless captive-portal form will transmit the same credential over a
+plaintext local HTTP form, a weaker channel than this one — that slice
+inherits this decision explicitly, not by omission.
 
 ### `ParsedCommand` / `CommandLineParser` (domain)
 
@@ -263,26 +277,73 @@ Build order (TDD, each green before the next): `NodeConfig` →
 
 ## PlatformIO changes
 
-Add `[env:esp32dev]` to `platformio.ini` now (mechanical, folds in
-sub-project #1):
+`[env:esp32dev]` and the `src/mega/` + `src/esp32/` composition-root split
+already existed before this slice (commit `be5583b`), with
+`src/esp32/main.cpp` an empty `setup()`/`loop()` stub throughout this slice's
+implementation and unchanged at the end of it. (This corrects an earlier
+draft of this section, written before that prior commit was discovered
+during pre-implementation file review — no code implication, just this
+paragraph.)
 
-```ini
-[env:esp32dev]
-platform = espressif32
-board = esp32dev
-framework = arduino
-monitor_speed = 115200
-lib_ldf_mode = deep+
-build_unflags = -std=gnu++11
-build_flags = -std=gnu++17
-```
+`[env:esp32dev]`'s `lib_deps` gained an explicit `McsCore` entry (alongside
+the pre-existing `knolleary/PubSubClient@^2.8`) — see "Post-implementation
+amendments" below for why; this makes `lib/McsCore` a permanent, always-built
+dependency for this environment rather than something only pulled in when
+`src/esp32/main.cpp` happens to include from it.
 
-This lets `NvsConfigStore`/`EspUartPort` be build-check-verified via
-`pio run -e esp32dev` as they're written, even with no `main.cpp`
-composition root wiring them up yet (that arrives in slice 2b). No `src/`
-split is needed for this slice — `test_build_src = false` already keeps
-`src/main.cpp` out of native test builds, and this slice adds no code to
-`src/main.cpp` at all.
+## Post-implementation amendments
+
+Two things changed between this document's original design (approved before
+implementation) and what actually shipped, both surfaced by the final
+whole-branch review after all 5 tasks were built and individually approved:
+
+1. **`ConfigStore::save()` returns `bool`, not `void`.** The original design
+   gave `NvsConfigStore` no way to report an NVS write failure back through
+   `CommissioningSession`, which would have unconditionally replied `"saved"`
+   even on a full or corrupt NVS partition — directly undermining this
+   document's own stated goal (§`validate()` checks, above) of making
+   commissioning failures visible rather than silent. Fixed post-review;
+   `NvsConfigStore::save()` checks `Preferences::begin()`'s result and its two
+   `putInt` calls, but deliberately not any `putString` result, since
+   ESP-IDF's `putString()` returns 0 both on failure and on a legitimate
+   empty-string write (which this config's optional fields use routinely).
+
+2. **PlatformIO compiles every `.cpp` file in a "used" library, not just
+   files reachable from a given environment's `main.cpp`.** This was
+   discovered during Task 5, when wiring `NvsConfigStore`/`EspUartPort` into
+   `src/esp32/main.cpp` for a build-check (as this design's Testing section
+   specified) first made PlatformIO treat `lib/McsCore` as "used" for
+   `megaatmega2560` and `esp32dev`, not just `native` — breaking the Mega
+   build (AVR-gcc has no `<string>`/`<array>` at all) and would have broken
+   the ESP32 build (two pre-existing LocoNet adapter files pull in
+   `LocoNet.h`, unavailable there). Fixed with per-file preprocessor guards:
+   `#if !defined(__AVR__)` on this slice's four `std::string`-using files,
+   `#ifdef ESP32` on the two new hardware shims (narrowed from this
+   document's original `#ifdef ARDUINO`), and
+   `#if defined(ARDUINO) && !defined(ESP32)` on the two pre-existing LocoNet
+   files. `[env:esp32dev]`'s `lib_deps` also gained an explicit `McsCore`
+   entry, so this environment's build always exercises the library and can
+   catch a regression like this again, rather than silently compiling
+   nothing whenever `src/esp32/main.cpp` doesn't happen to include from it.
+
+   **This is flagged, not resolved, as real technical debt:** the branch now
+   carries four different preprocessor-guard idioms across `lib/McsCore`
+   (`#ifdef ARDUINO`, `#ifdef ESP32`, the two narrowed variants above). The
+   final review's recommendation — agreed, not yet acted on — is to split
+   `lib/McsCore` into target-specific libraries (e.g. `McsCore` for portable
+   domain/ports code, `McsAvr` for LocoNet/Mega-only adapters, `McsEsp32` for
+   NVS/UART/and everything slice 2b adds) as the **first task of slice 2b**,
+   before that slice's own ESP32-only files (`WiFiLink`, `MqttLink`,
+   `TopicScheme`, `PayloadCodec`, JMRI adapters) compound the pattern by
+   needing the same guard treatment. Also deferred to that pass: moving
+   `CommissioningSession` from `lib/McsCore/src/domain/` to `application/`
+   (it wires a `ConfigStore&` port directly, which is arguably
+   application-layer work per this project's own `CLAUDE.md`, not domain
+   work — a plan-level placement decision, not an implementer deviation);
+   and capping `SerialCommissioningAdapter`'s `lineBuffer_`, which grows
+   unbounded on a never-terminated line (inert today since nothing
+   constructs this adapter outside tests, but must be fixed before slice 2b
+   wires it to a real `EspUartPort`).
 
 ## Error handling
 
