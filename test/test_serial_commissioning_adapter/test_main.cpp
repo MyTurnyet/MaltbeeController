@@ -95,8 +95,7 @@ TEST_CASE("a line far exceeding the max length does not break subsequent command
     FakeUartPort uart;
     SerialCommissioningAdapter adapter(uart, session);
 
-    const std::string overlong(SerialCommissioningAdapter::kMaxLineLength * 2, 'x');
-    uart.queueInput(overlong + "\nid 5\n");
+    uart.queueInput(std::string(SerialCommissioningAdapter::kMaxLineLength + 1, 'x') + "id 5\n");
     adapter.poll();
 
     REQUIRE(uart.written.find("OK\n") != std::string::npos);

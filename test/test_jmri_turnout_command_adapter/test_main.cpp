@@ -70,7 +70,7 @@ TEST_CASE("send is a no-op for an out-of-range channel")
     JmriTurnoutCommandAdapter adapter(transport, names);
 
     adapter.send(0, TurnoutPosition::Closed);
-    adapter.send(13, TurnoutPosition::Closed);
+    adapter.send(NodeConfig::kChannelCount + 1, TurnoutPosition::Closed);
 
     REQUIRE(transport.published.empty());
 }

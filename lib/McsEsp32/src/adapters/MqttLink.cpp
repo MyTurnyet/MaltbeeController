@@ -14,6 +14,7 @@ MqttLink::MqttLink(Clock& clock, const unsigned long retryIntervalMs, std::strin
     client_.setCallback([this](char* topic, byte* payload, unsigned int length) {
         dispatch(topic, std::string(reinterpret_cast<char*>(payload), length));
     });
+    client_.setSocketTimeout(2);
 }
 
 void MqttLink::begin(const std::string& host, const int port)
