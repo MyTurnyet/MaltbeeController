@@ -17,7 +17,7 @@ JmriFeedbackSource::JmriFeedbackSource(MqttTransport& transport,
         }
 
         const int channel = i + 1;
-        transport.subscribe(TopicScheme::topicFor(jmriName), [this, channel](const std::string& payload) {
+        transport.subscribe(TopicScheme::stateTopicFor(jmriName), [this, channel](const std::string& payload) {
             const std::optional<TurnoutPosition> position = PayloadCodec::decode(payload);
             if (!position.has_value())
             {

@@ -16,3 +16,13 @@ TEST_CASE("topicFor handles an empty name")
 {
     REQUIRE(TopicScheme::topicFor("") == "track/turnout/");
 }
+
+TEST_CASE("stateTopicFor builds the expected state-suffixed topic")
+{
+    REQUIRE(TopicScheme::stateTopicFor("LT5") == "track/turnout/LT5/state");
+}
+
+TEST_CASE("stateTopicFor differs from topicFor for the same name")
+{
+    REQUIRE(TopicScheme::stateTopicFor("LT1") != TopicScheme::topicFor("LT1"));
+}

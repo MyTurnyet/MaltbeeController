@@ -14,7 +14,7 @@ namespace
     }
 }
 
-TEST_CASE("construction subscribes only the configured channels' topics")
+TEST_CASE("construction subscribes only the configured channels' state topics")
 {
     FakeMqttTransport transport;
     const auto names = namesWithChannel(1, "LT1");
@@ -22,10 +22,10 @@ TEST_CASE("construction subscribes only the configured channels' topics")
     JmriFeedbackSource source(transport, names);
 
     REQUIRE(transport.subscribedTopics.size() == 1);
-    REQUIRE(transport.subscribedTopics[0] == "track/turnout/LT1");
+    REQUIRE(transport.subscribedTopics[0] == "track/turnout/LT1/state");
 }
 
-TEST_CASE("construction subscribes each configured channel among several")
+TEST_CASE("construction subscribes each configured channel's state topic among several")
 {
     FakeMqttTransport transport;
     auto names = namesWithChannel(1, "LT1");
@@ -36,13 +36,13 @@ TEST_CASE("construction subscribes each configured channel among several")
     REQUIRE(transport.subscribedTopics.size() == 2);
 }
 
-TEST_CASE("a valid incoming payload becomes a pollable TurnoutFeedback")
+TEST_CASE("a valid incoming payload on the state topic becomes a pollable TurnoutFeedback")
 {
     FakeMqttTransport transport;
     const auto names = namesWithChannel(3, "LT3");
     JmriFeedbackSource source(transport, names);
 
-    transport.deliver("track/turnout/LT3", "THROWN");
+    transport.deliver("track/turnout/LT3/state", "THROWN");
 
     TurnoutFeedback feedback{};
     REQUIRE(source.poll(feedback));
@@ -50,13 +50,25 @@ TEST_CASE("a valid incoming payload becomes a pollable TurnoutFeedback")
     REQUIRE(feedback.position == TurnoutPosition::Thrown);
 }
 
-TEST_CASE("an unrecognized payload produces nothing")
+TEST_CASE("an unrecognized payload on the state topic produces nothing")
 {
     FakeMqttTransport transport;
     const auto names = namesWithChannel(1, "LT1");
     JmriFeedbackSource source(transport, names);
 
-    transport.deliver("track/turnout/LT1", "GARBAGE");
+    transport.deliver("track/turnout/LT1/state", "GARBAGE");
+
+    TurnoutFeedback feedback{};
+    REQUIRE_FALSE(source.poll(feedback));
+}
+
+TEST_CASE("a message on the plain command topic is not picked up as feedback")
+{
+    FakeMqttTransport transport;
+    const auto names = namesWithChannel(1, "LT1");
+    JmriFeedbackSource source(transport, names);
+
+    transport.deliver("track/turnout/LT1", "THROWN");
 
     TurnoutFeedback feedback{};
     REQUIRE_FALSE(source.poll(feedback));
@@ -68,7 +80,7 @@ TEST_CASE("poll returns false once the queue is drained")
     const auto names = namesWithChannel(1, "LT1");
     JmriFeedbackSource source(transport, names);
 
-    transport.deliver("track/turnout/LT1", "CLOSED");
+    transport.deliver("track/turnout/LT1/state", "CLOSED");
 
     TurnoutFeedback feedback{};
     REQUIRE(source.poll(feedback));
@@ -81,8 +93,8 @@ TEST_CASE("multiple queued messages drain in FIFO order")
     const auto names = namesWithChannel(1, "LT1");
     JmriFeedbackSource source(transport, names);
 
-    transport.deliver("track/turnout/LT1", "CLOSED");
-    transport.deliver("track/turnout/LT1", "THROWN");
+    transport.deliver("track/turnout/LT1/state", "CLOSED");
+    transport.deliver("track/turnout/LT1/state", "THROWN");
 
     TurnoutFeedback first{};
     TurnoutFeedback second{};
