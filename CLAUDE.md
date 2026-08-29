@@ -57,8 +57,8 @@ preprocessor guard. PlatformIO compiles every `.cpp` file in a library that's
 `megaatmega2560`, `esp32dev`) compiles a given file is controlled entirely by
 which library it lives in — `platformio.ini`'s per-environment `lib_deps`/
 `lib_ignore` — not by `#ifdef`. The one guard idiom that remains is
-`#ifdef ARDUINO`, on the 8 files that are genuine hardware shims (4 in
-`McsCore`, 2 in `McsLoconet`, 2 in `McsEsp32`); every other file needs no
+`#ifdef ARDUINO`, on the 10 files that are genuine hardware shims (4 in
+`McsCore`, 2 in `McsLoconet`, 4 in `McsEsp32`); every other file needs no
 guard at all because it's structurally impossible for the wrong environment
 to ever compile it.
 
@@ -71,11 +71,12 @@ to ever compile it.
   - `ports/`: LocoNetFeedbackSource, LocoNetSwitchDriver, LocoNetTransport
   - `adapters/`: LocoNetFeedbackDecoder, MrrwaLocoNetTurnoutAdapter (native-tested translation layers, no Arduino dependency); MrrwaLocoNetFeedbackSource, MrrwaLocoNetSwitchDriver (`#ifdef ARDUINO`-guarded send/receive hardware shims); PulsingLocoNetTransport (non-blocking solenoid pulse-timing logic)
 - `lib/McsEsp32/src/` — ESP32-specific code, compiled for `native` (pure-logic pieces only) and `esp32dev`
-  - `domain/`: CommandLineParser, CommissioningSession, NodeConfig, ParsedCommand
-  - `ports/`: ConfigStore, UartPort
-  - `adapters/`: SerialCommissioningAdapter (native-tested translation layer); EspUartPort, NvsConfigStore (`#ifdef ARDUINO`-guarded hardware shims)
+  - `domain/`: CommandLineParser, NodeConfig, ParsedCommand, TopicScheme (JMRI/MQTT topic naming), PayloadCodec (turnout position ↔ MQTT payload encoding)
+  - `ports/`: ConfigStore, UartPort, MqttTransport
+  - `application/`: CommissioningSession (commissioning command handling, wires a `ConfigStore` port)
+  - `adapters/`: SerialCommissioningAdapter, JmriTurnoutCommandAdapter, JmriFeedbackSource (native-tested translation layers, no Arduino dependency); EspUartPort, NvsConfigStore, WiFiLink, MqttLink (`#ifdef ARDUINO`-guarded hardware shims)
 - `src/mega/main.cpp` and `src/esp32/main.cpp` — the two composition roots. `src/mega/main.cpp` builds a `TurnoutConfig[4]` table and 4 `TurnoutStation`s from it (range-`for` over `stations[]` in `setup()`/`loop()`, no per-turnout duplication), plus the shared real LocoNet send/receive adapter chain (`MrrwaLocoNetSwitchDriver` → `PulsingLocoNetTransport` → `MrrwaLocoNetTurnoutAdapter` for sending; `MrrwaLocoNetFeedbackSource` → `LocoNetFeedbackDecoder` → broadcast `TurnoutStation::applyFeedback()` for receiving, each station's own `TurnoutControl` self-filtering by address)
-- `test/test_<name>/test_main.cpp` — Catch2 test binaries (18 test suites)
+- `test/test_<name>/test_main.cpp` — Catch2 test binaries (22 test suites)
 - `test/support/` — test doubles (FakeDigitalInput, FakeClock, FakeDigitalOutput, FakeTurnoutCommandPort, FakeLocoNetTransport, FakeLocoNetSwitchDriver)
 
 **Include convention:** within a library, includes stay relative
@@ -113,6 +114,10 @@ mode is confusing rather than a clean error.
 - ✅ CommissioningSession (commissioning command handling)
 - ✅ NodeConfig (node configuration construction/validation)
 - ✅ SerialCommissioningAdapter (serial line framing → ParsedCommand translation)
+- ✅ TopicScheme (channel/JMRI-name → MQTT topic naming)
+- ✅ PayloadCodec (turnout position ↔ MQTT payload encoding)
+- ✅ JmriTurnoutCommandAdapter (channel → JMRI topic/payload publish translation)
+- ✅ JmriFeedbackSource (MQTT payload → TurnoutFeedback translation)
 
 **Completed milestones:** 1-11 (foundation, ports, Button, Indicator, Turnout domain model, TurnoutIndicator, TurnoutControl, hardware integration programming, LocoNet output, LocoNet feedback, multiple turnouts). `pio run -e megaatmega2560` compiles successfully (RAM 9.9%, Flash 2.7% with 4 stations). Milestones 9-11 are complete on the programming side only — physical wiring and on-hardware verification (button-to-LED and LocoNet send/receive against a real DR5000/DR4018, across all 4 stations) are still outstanding — see the "Milestone 8 hardware" note below.
 
