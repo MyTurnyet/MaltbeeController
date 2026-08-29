@@ -38,12 +38,27 @@ button) and `McsCore` must stay AVR/STL-safe while this code can freely use
   cross-library dependency). Each `update()` call advances exactly one row:
   deassert the previous row, assert the next, immediately read that row's
   columns into a cached grid. A full scan cycle takes as many `update()`
-  calls as there are rows. No settle-delay timing logic is needed — GPIO
-  settling is microseconds, far faster than any realistic loop cadence, so
-  reading immediately after asserting is safe. This was chosen over a
-  settle-time state machine (mirroring `PulsingLocoNetTransport`'s pattern)
-  because that would add a timing parameter and extra states to test for a
-  delay that isn't actually needed at these signal speeds.
+  calls as there are rows. No settle-delay timing logic is needed. The
+  relevant comparison isn't loop cadence (the column read happens within the
+  same `update()` call, microseconds after the row switch, not on a later
+  loop tick) — it's the column line's RC recovery time against the read
+  timing itself. The 10kΩ pull-up against the roughly 30–60pF of pin-plus-
+  breadboard capacitance on a column line gives an RC recovery time on the
+  order of 1–2 microseconds to clear the ESP32's ~2.5V input-high threshold,
+  while an Arduino-core `digitalWrite`/`digitalRead` round trip on the ESP32
+  is itself roughly 1 microsecond. So the real margin is more like 1x–2x,
+  not orders of magnitude — tight enough to be worth watching, not tight
+  enough to justify a settle-time state machine (mirroring
+  `PulsingLocoNetTransport`'s pattern) that would add a timing parameter and
+  extra states to test. If cross-row ghosting is ever observed during
+  hardware bring-up (a button held on the previous row leaving its column
+  line not-yet-recovered, so the next row's read sees a phantom press in
+  that column), there's a zero-cost mitigation available with no new timing
+  parameter, no new state, and no `Clock` dependency: reorder `update()` to
+  read the *current* row's columns first, then deassert/advance/assert for
+  the next row, which gives a full loop period of settling time instead of
+  microseconds. This is a watch-item for sub-project #5/#8's hardware
+  bring-up checklist, not something to implement now.
 - **`MatrixDigitalInput`** (adapter) implements `McsCore`'s `DigitalInput`
   port for one fixed `(row, col)` cell: `isActive()` forwards to the
   scanner's cached reading for that cell. This is what lets the existing
@@ -65,7 +80,7 @@ project's roadmap calls for a different matrix size, and this matches the
 project's existing YAGNI convention (e.g. `NodeConfig::kChannelCount` is
 also a plain fixed constant, not a template parameter).
 
-### Row electrical polarity (composition-root note, not this sub-project's code)
+### Row and column electrical polarity (composition-root note, not this sub-project's code)
 
 `docs/button-wiring.md`'s circuit requires the *currently scanned* row to be
 driven LOW (so a pressed button on that row pulls its column LOW through
@@ -81,6 +96,39 @@ state is HIGH (deselected) — matching `ArduinoDigitalOutput`'s existing
 (`lib/McsCore/src/adapters/ArduinoDigitalOutput.cpp`) exactly, with no new
 mechanism needed. This is called out here so it isn't lost before #7, but
 there is no code in this sub-project that depends on it.
+
+The four columns have the same trap, plus an extra parameter to get right.
+`ArduinoDigitalInput`'s constructor is `(int pin, bool activeLow, bool
+useInternalPullup)`
+(`lib/McsCore/src/adapters/ArduinoDigitalInput.h`). Per
+`docs/button-wiring.md`, the composition root (#7) must construct each of
+the 4 column `ArduinoDigitalInput`s with `activeLow = true` **and**
+`useInternalPullup = false`: `activeLow = true` because the column idles
+HIGH via the external 10kΩ pull-up and a press pulls it LOW (same polarity
+reasoning as the rows); `useInternalPullup = false` because GPIO 34/35/36/39
+are input-only pins on the ESP32 with no usable internal pull-up at all —
+passing `useInternalPullup = true` would silently do nothing on those pins,
+which would look like correct configuration while masking a real wiring
+mistake (a missing or miswired external 10kΩ resistor) instead of surfacing
+it. See `docs/button-wiring.md`'s "Notes" section for the input-only-pin
+detail this depends on.
+
+### Residual same-column short risk (documentation caveat, not a defect)
+
+The one-asserted-row invariant bounds short risk but doesn't fully eliminate
+it: unselected rows are actively driven HIGH (push-pull outputs, not
+floating), so if two buttons on the *same column* but *different rows* are
+pressed at the same instant, the selected (LOW) row and an unselected (HIGH)
+row end up connected through two closed switches — a direct output-to-output
+short. `docs/button-wiring.md` waives this by assuming only one button is
+ever pressed at a time ("Only one button is expected pressed at a time, so
+no anti-ghosting diodes are needed per button"), which is a reasonable
+operational assumption but is an assumption, not something enforced in
+software or hardware. Small series resistors (~220Ω) on the three row
+outputs would make even that simultaneous-same-column-press scenario
+non-destructive — cheap insurance worth considering during hardware
+bring-up (sub-project #8), though not something this sub-project's software
+can address.
 
 ## Components
 
