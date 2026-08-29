@@ -1,14 +1,9 @@
 #pragma once
 
+#include <optional>
 #include <string>
 
 #include "domain/Turnout.h"
-
-struct TurnoutPositionLookup
-{
-    bool found;
-    TurnoutPosition position;
-};
 
 class PayloadCodec
 {
@@ -18,16 +13,16 @@ public:
         return position == TurnoutPosition::Closed ? "CLOSED" : "THROWN";
     }
 
-    static TurnoutPositionLookup decode(const std::string& payload)
+    static std::optional<TurnoutPosition> decode(const std::string& payload)
     {
         if (payload == "CLOSED")
         {
-            return {true, TurnoutPosition::Closed};
+            return TurnoutPosition::Closed;
         }
         if (payload == "THROWN")
         {
-            return {true, TurnoutPosition::Thrown};
+            return TurnoutPosition::Thrown;
         }
-        return {false, TurnoutPosition::Closed};
+        return std::nullopt;
     }
 };

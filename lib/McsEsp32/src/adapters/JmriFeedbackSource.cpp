@@ -1,5 +1,7 @@
 #include "JmriFeedbackSource.h"
 
+#include <optional>
+
 #include "../domain/PayloadCodec.h"
 #include "../domain/TopicScheme.h"
 
@@ -16,12 +18,12 @@ JmriFeedbackSource::JmriFeedbackSource(MqttTransport& transport,
 
         const int channel = i + 1;
         transport.subscribe(TopicScheme::topicFor(jmriName), [this, channel](const std::string& payload) {
-            const TurnoutPositionLookup lookup = PayloadCodec::decode(payload);
-            if (!lookup.found)
+            const std::optional<TurnoutPosition> position = PayloadCodec::decode(payload);
+            if (!position.has_value())
             {
                 return;
             }
-            pending_.push_back(TurnoutFeedback{channel, lookup.position});
+            pending_.push_back(TurnoutFeedback{channel, *position});
         });
     }
 }
