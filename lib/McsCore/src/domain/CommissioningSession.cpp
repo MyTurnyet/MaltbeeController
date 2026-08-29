@@ -50,6 +50,11 @@ std::string CommissioningSession::apply(const ParsedCommand& command)
         return "OK\n";
 
     case CommandKind::TurnoutName:
+        if (command.intArg < 1 || command.intArg > NodeConfig::kChannelCount)
+        {
+            return "error: turnout channel must be between 1 and " +
+                   std::to_string(NodeConfig::kChannelCount) + "\n";
+        }
         draft_ = draft_.withChannelName(command.intArg, command.stringArg1);
         return "OK\n";
 
@@ -63,7 +68,10 @@ std::string CommissioningSession::apply(const ParsedCommand& command)
         {
             return formatErrors(errors);
         }
-        store_.save(draft_);
+        if (!store_.save(draft_))
+        {
+            return "save failed: could not write to storage\n";
+        }
         return "saved\n";
     }
 

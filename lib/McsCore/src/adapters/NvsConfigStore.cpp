@@ -37,16 +37,25 @@ NodeConfig NvsConfigStore::load()
     return config;
 }
 
-void NvsConfigStore::save(const NodeConfig& config)
+bool NvsConfigStore::save(const NodeConfig& config)
 {
     Preferences prefs;
-    prefs.begin(kNamespace, false);
+    bool ok = prefs.begin(kNamespace, false);
 
-    prefs.putInt(kKeyNodeId, config.nodeId);
+    ok = prefs.putInt(kKeyNodeId, config.nodeId) > 0 && ok;
+    // putString()'s return (bytes written) is not checked here: ESP-IDF's
+    // Preferences::putString() returns 0 both on failure AND when writing a
+    // legitimate empty string (e.g. an unconfigured wifiPassword or
+    // channelJmriNames[i], which default to "" and are valid per
+    // NodeConfig::validate()'s partial-commissioning rules). ANDing these
+    // into `ok` would report failure on every normal partial-commissioning
+    // save, so only prefs.begin() and the two putInt calls (which always
+    // write a fixed non-zero byte count on success, since nodeId/brokerPort
+    // are never legitimately absent once validate() has passed) are trusted.
     prefs.putString(kKeyWifiSsid, config.wifiSsid.c_str());
     prefs.putString(kKeyWifiPassword, config.wifiPassword.c_str());
     prefs.putString(kKeyBrokerHost, config.brokerHost.c_str());
-    prefs.putInt(kKeyBrokerPort, config.brokerPort);
+    ok = prefs.putInt(kKeyBrokerPort, config.brokerPort) > 0 && ok;
 
     for (int i = 0; i < NodeConfig::kChannelCount; ++i)
     {
@@ -55,6 +64,7 @@ void NvsConfigStore::save(const NodeConfig& config)
     }
 
     prefs.end();
+    return ok;
 }
 
 #endif

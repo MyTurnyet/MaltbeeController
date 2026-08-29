@@ -6,5 +6,5 @@ class NvsConfigStore final : public ConfigStore
 {
 public:
     NodeConfig load() override;
-    void save(const NodeConfig& config) override;
+    bool save(const NodeConfig& config) override;
 };

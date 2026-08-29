@@ -64,6 +64,27 @@ TEST_CASE("show reports a configured turnout name")
     REQUIRE(response.find("turnout 1: LT1") != std::string::npos);
 }
 
+TEST_CASE("an out-of-range turnout channel reports an error and stores nothing")
+{
+    FakeConfigStore store;
+    CommissioningSession session(store);
+
+    ParsedCommand nameCommand;
+    nameCommand.kind = CommandKind::TurnoutName;
+    nameCommand.intArg = 13;
+    nameCommand.stringArg1 = "LT13";
+
+    const std::string response = session.apply(nameCommand);
+
+    REQUIRE(response.rfind("error:", 0) == 0);
+
+    ParsedCommand showCommand;
+    showCommand.kind = CommandKind::Show;
+    const std::string showResponse = session.apply(showCommand);
+
+    REQUIRE(showResponse.find("LT13") == std::string::npos);
+}
+
 TEST_CASE("save persists a valid draft to the config store")
 {
     FakeConfigStore store;
@@ -105,6 +126,38 @@ TEST_CASE("save refuses an invalid draft and does not persist")
     const std::string response = session.apply(saveCommand);
 
     REQUIRE(response.find("invalid config") != std::string::npos);
+    REQUIRE(store.saveCount == 0);
+}
+
+TEST_CASE("save reports a failure when the config store cannot persist")
+{
+    FakeConfigStore store;
+    CommissioningSession session(store);
+
+    ParsedCommand idCommand;
+    idCommand.kind = CommandKind::Id;
+    idCommand.intArg = 1;
+    session.apply(idCommand);
+
+    ParsedCommand wifiCommand;
+    wifiCommand.kind = CommandKind::Wifi;
+    wifiCommand.stringArg1 = "MyLayoutWifi";
+    wifiCommand.stringArg2 = "hunter2";
+    session.apply(wifiCommand);
+
+    ParsedCommand brokerCommand;
+    brokerCommand.kind = CommandKind::Broker;
+    brokerCommand.stringArg1 = "192.168.1.50";
+    brokerCommand.intArg2 = 1883;
+    session.apply(brokerCommand);
+
+    store.failNextSave = true;
+
+    ParsedCommand saveCommand;
+    saveCommand.kind = CommandKind::Save;
+    const std::string response = session.apply(saveCommand);
+
+    REQUIRE(response == "save failed: could not write to storage\n");
     REQUIRE(store.saveCount == 0);
 }
 
