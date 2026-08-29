@@ -57,15 +57,30 @@ green with no new test cases needed.
 ### Task 1: Split `lib/McsLoconet` out of `lib/McsCore`
 
 **Files:**
+
+**Correction (added after Task 1 executed and was reviewed):** the original
+version of this section swapped `LocoNetFeedbackSource.h` and
+`LocoNetTransport.h` between the "no edit" and "needs a cross-library
+include fix" lists below — a transcription error from a batch of 15
+parallel grep results during design (`LocoNetFeedbackSource.h` actually has
+no includes at all; `LocoNetTransport.h` is the one that includes
+`../domain/Turnout.h`). The lists below are now corrected to match reality.
+The as-executed Task 1 commit (`27a60a2`) already has this right — the
+implementer diagnosed and fixed the actual file rather than following the
+original wrong instruction, confirmed by the task review reading both
+files' real content and by independently-passing builds across all three
+environments. This note exists so a future re-read of this plan doesn't
+inherit the original error.
+
 - Move (`git mv`, no further edit needed):
-  - `lib/McsCore/src/ports/LocoNetTransport.h` → `lib/McsLoconet/src/ports/LocoNetTransport.h`
+  - `lib/McsCore/src/ports/LocoNetFeedbackSource.h` → `lib/McsLoconet/src/ports/LocoNetFeedbackSource.h`
   - `lib/McsCore/src/adapters/LocoNetFeedbackDecoder.cpp` → `lib/McsLoconet/src/adapters/LocoNetFeedbackDecoder.cpp`
   - `lib/McsCore/src/adapters/MrrwaLocoNetFeedbackSource.h` → `lib/McsLoconet/src/adapters/MrrwaLocoNetFeedbackSource.h`
   - `lib/McsCore/src/adapters/MrrwaLocoNetSwitchDriver.h` → `lib/McsLoconet/src/adapters/MrrwaLocoNetSwitchDriver.h`
   - `lib/McsCore/src/adapters/MrrwaLocoNetTurnoutAdapter.cpp` → `lib/McsLoconet/src/adapters/MrrwaLocoNetTurnoutAdapter.cpp`
   - `lib/McsCore/src/adapters/PulsingLocoNetTransport.cpp` → `lib/McsLoconet/src/adapters/PulsingLocoNetTransport.cpp`
 - Move + fix a cross-library include:
-  - `lib/McsCore/src/ports/LocoNetFeedbackSource.h` → `lib/McsLoconet/src/ports/LocoNetFeedbackSource.h`
+  - `lib/McsCore/src/ports/LocoNetTransport.h` → `lib/McsLoconet/src/ports/LocoNetTransport.h`
   - `lib/McsCore/src/ports/LocoNetSwitchDriver.h` → `lib/McsLoconet/src/ports/LocoNetSwitchDriver.h`
   - `lib/McsCore/src/adapters/LocoNetFeedbackDecoder.h` → `lib/McsLoconet/src/adapters/LocoNetFeedbackDecoder.h`
   - `lib/McsCore/src/adapters/MrrwaLocoNetTurnoutAdapter.h` → `lib/McsLoconet/src/adapters/MrrwaLocoNetTurnoutAdapter.h`
@@ -89,10 +104,10 @@ green with no new test cases needed.
 mkdir -p lib/McsLoconet/src/ports lib/McsLoconet/src/adapters
 ```
 
-- [ ] **Step 2: Move the six files that need no further edit**
+- [ ] **Step 2: Move the six files that need no further edit** ✅ done as part of Task 1 (`27a60a2`)
 
 ```bash
-git mv lib/McsCore/src/ports/LocoNetTransport.h lib/McsLoconet/src/ports/LocoNetTransport.h
+git mv lib/McsCore/src/ports/LocoNetFeedbackSource.h lib/McsLoconet/src/ports/LocoNetFeedbackSource.h
 git mv lib/McsCore/src/adapters/LocoNetFeedbackDecoder.cpp lib/McsLoconet/src/adapters/LocoNetFeedbackDecoder.cpp
 git mv lib/McsCore/src/adapters/MrrwaLocoNetFeedbackSource.h lib/McsLoconet/src/adapters/MrrwaLocoNetFeedbackSource.h
 git mv lib/McsCore/src/adapters/MrrwaLocoNetSwitchDriver.h lib/McsLoconet/src/adapters/MrrwaLocoNetSwitchDriver.h
@@ -100,17 +115,17 @@ git mv lib/McsCore/src/adapters/MrrwaLocoNetTurnoutAdapter.cpp lib/McsLoconet/sr
 git mv lib/McsCore/src/adapters/PulsingLocoNetTransport.cpp lib/McsLoconet/src/adapters/PulsingLocoNetTransport.cpp
 ```
 
-- [ ] **Step 3: Move the five files needing a cross-library include fix, then fix each**
+- [ ] **Step 3: Move the five files needing a cross-library include fix, then fix each** ✅ done as part of Task 1 (`27a60a2`)
 
 ```bash
-git mv lib/McsCore/src/ports/LocoNetFeedbackSource.h lib/McsLoconet/src/ports/LocoNetFeedbackSource.h
+git mv lib/McsCore/src/ports/LocoNetTransport.h lib/McsLoconet/src/ports/LocoNetTransport.h
 git mv lib/McsCore/src/ports/LocoNetSwitchDriver.h lib/McsLoconet/src/ports/LocoNetSwitchDriver.h
 git mv lib/McsCore/src/adapters/LocoNetFeedbackDecoder.h lib/McsLoconet/src/adapters/LocoNetFeedbackDecoder.h
 git mv lib/McsCore/src/adapters/MrrwaLocoNetTurnoutAdapter.h lib/McsLoconet/src/adapters/MrrwaLocoNetTurnoutAdapter.h
 git mv lib/McsCore/src/adapters/PulsingLocoNetTransport.h lib/McsLoconet/src/adapters/PulsingLocoNetTransport.h
 ```
 
-In `lib/McsLoconet/src/ports/LocoNetFeedbackSource.h`, change:
+In `lib/McsLoconet/src/ports/LocoNetTransport.h`, change:
 ```cpp
 #include "../domain/Turnout.h"
 ```
