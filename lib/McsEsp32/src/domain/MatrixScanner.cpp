@@ -1,7 +1,7 @@
 #include "MatrixScanner.h"
 
 MatrixScanner::MatrixScanner(std::array<DigitalOutput*, kRowCount> rows,
-                              std::array<DigitalInput*, kColumnCount> columns)
+                             std::array<DigitalInput*, kColumnCount> columns)
     : rows_(rows), columns_(columns)
 {
 }

@@ -15,8 +15,8 @@ TEST_CASE("MatrixDigitalInput reflects the scanner's cached reading for its cell
 
     REQUIRE_FALSE(input.isActive());
 
-    col2.active = true;
     scanner.update();
+    col2.active = true;
     scanner.update();
 
     REQUIRE(input.isActive());
