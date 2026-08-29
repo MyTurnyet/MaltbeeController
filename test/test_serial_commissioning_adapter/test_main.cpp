@@ -87,3 +87,17 @@ TEST_CASE("rebootRequested delegates to the underlying session")
 
     REQUIRE(adapter.rebootRequested());
 }
+
+TEST_CASE("a line far exceeding the max length does not break subsequent commands")
+{
+    FakeConfigStore store;
+    CommissioningSession session(store);
+    FakeUartPort uart;
+    SerialCommissioningAdapter adapter(uart, session);
+
+    const std::string overlong(SerialCommissioningAdapter::kMaxLineLength * 2, 'x');
+    uart.queueInput(overlong + "\nid 5\n");
+    adapter.poll();
+
+    REQUIRE(uart.written.find("OK\n") != std::string::npos);
+}

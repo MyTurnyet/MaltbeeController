@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstddef>
 #include <string>
 
 #include "../application/CommissioningSession.h"
@@ -8,6 +9,8 @@
 class SerialCommissioningAdapter
 {
 public:
+    static constexpr size_t kMaxLineLength = 128;
+
     SerialCommissioningAdapter(UartPort& uart, CommissioningSession& session);
 
     void poll();

@@ -22,6 +22,10 @@ void SerialCommissioningAdapter::poll()
             uart_.write(session_.apply(command));
             lineBuffer_.clear();
         }
+        else if (lineBuffer_.size() >= kMaxLineLength)
+        {
+            lineBuffer_.clear();
+        }
         else
         {
             lineBuffer_ += c;
