@@ -1,3 +1,5 @@
+#if !defined(__AVR__)
+
 #include "CommissioningSession.h"
 
 CommissioningSession::CommissioningSession(ConfigStore& store)
@@ -79,3 +81,5 @@ bool CommissioningSession::rebootRequested() const
 {
     return rebootRequested_;
 }
+
+#endif

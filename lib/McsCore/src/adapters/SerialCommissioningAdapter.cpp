@@ -1,3 +1,5 @@
+#if !defined(__AVR__)
+
 #include "SerialCommissioningAdapter.h"
 
 #include "../domain/CommandLineParser.h"
@@ -33,3 +35,5 @@ bool SerialCommissioningAdapter::rebootRequested() const
 {
     return session_.rebootRequested();
 }
+
+#endif

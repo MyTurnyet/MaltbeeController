@@ -1,3 +1,5 @@
+#if !defined(__AVR__)
+
 #include "NodeConfig.h"
 
 NodeConfig NodeConfig::factoryDefault()
@@ -83,3 +85,5 @@ std::vector<std::string> NodeConfig::validate() const
 
     return errors;
 }
+
+#endif
