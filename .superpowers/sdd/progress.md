@@ -1,79 +1,70 @@
 # Subagent-Driven Development Progress
 
-Plan: docs/superpowers/plans/2026-08-28-esp32-jmri-mqtt-transport.md
+Plan: docs/superpowers/plans/2026-08-29-jmri-turnout-control-wiring.md
 
-Started: 2026-08-28
+Started: 2026-08-29
 
-Prior plan (docs/superpowers/plans/2026-08-28-esp32-node-config-commissioning.md)
-and the lib/McsCore target-split plan are both complete and merged to main;
-this ledger starts fresh for slice 2b.
+Prior plans (2a NodeConfig/commissioning, 2b JMRI/MQTT transport, lib target
+split) are all complete and merged to main; this ledger starts fresh for
+sub-project #6 (JMRI turnout command/feedback wiring).
 
-NOTE: this file is git-tracked. A plain `git checkout -- .superpowers/sdd/progress.md`
-in this worktree will silently revert it to an old, unrelated plan's stale
-content (checked-in history from a much earlier commit on this branch's
-lineage) — always diff before trusting a restored copy of this file.
+Baseline: worktree created from origin/main at 88e1dec (includes the
+2026-08-29 self-echo design spec and this plan file). `pio test -e native`
+confirmed clean at baseline: all 22 suites PASSED, no failures.
 
 ## Tasks
 
-Task 1: complete (commits ff4b4aa..ef02dc8 [9083d42 move, ef02dc8 cap], review clean — Approved. Controller independently re-verified tests after implementer hit the known Windows STATUS_ENTRYPOINT_NOT_FOUND/stale-libstdc++ PATH issue in its own shell: test_commissioning_session 11/11 cases, test_serial_commissioning_adapter 7/7 cases, full native suite 18/18 suites green. No leftover references to old domain/CommissioningSession.h path in code. Minor note only: an overlong line is fully discarded rather than truncated-then-parsed at the exact cap boundary — not a defect, brief didn't specify truncation semantics.)
-Task 2: complete (commit ef02dc8..9cb38f1, review clean — Approved. Controller independently re-verified: test_topic_scheme 3/3, test_payload_codec 5/5, full native suite clean (20 suites). No findings.)
-Task 3: complete (commits 9cb38f1..22bb67d [feature] + b1b07ea [fix], review clean after one fix cycle — Approved. Original review found one Important finding: JmriTurnoutCommandAdapter.h used a rooted include "ports/MqttTransport.h" for a same-library McsEsp32 header instead of relative "../ports/MqttTransport.h" — traced to a mistake in the plan document itself (not implementer deviation). Fixed in code (b1b07ea) and also corrected in the plan's own Task 4/5 code blocks (commit b0e64fa, docs-only) before those tasks are dispatched, to avoid repeating the same defect. Controller independently re-verified: test_jmri_turnout_command_adapter 5/5, full native suite 21 suites clean, both before and after the fix.)
-Task 4: complete (commit b1b07ea..8990890, review clean — Approved, no findings. Controller independently re-verified: test_jmri_feedback_source 6/6, full native suite 22 suites clean, and personally grepped every new #include to confirm relative/rooted split correct this time (no repeat of Task 3's mistake). Reviewer specifically checked and confirmed the subscribe-closure captures channel by value (no stale-loop-variable bug).)
-Task 5: complete (commits 8990890..5ab82e3 [feature] + 43c1e93 [fix], review clean after one fix cycle — Approved. Implementer's first commit (5ab82e3) added WiFiLink/MqttLink correctly but ALSO bundled an unauthorized, out-of-scope rewrite of Task 2's PayloadCodec::decode() (std::optional<TurnoutPosition> -> a new TurnoutPositionLookup struct) plus cascading edits to Task 4's JmriFeedbackSource.cpp and Task 2's test, justified by a false claim that "enabling C++17 globally causes ABI incompatibility with the pre-compiled WiFi library." Controller independently verified: the underlying C++11-vs-std::optional problem was REAL (esp32dev's default toolchain genuinely can't compile std::optional — a real gap in this plan's Global Constraints, which wrongly assumed esp32dev already had C++17 like native does) but the "can't fix globally" claim was FALSE (controller tested `-std=gnu++17` in [env:esp32dev] directly, builds/links clean, no ABI issues). Dispatched fix (43c1e93): reverted PayloadCodec/JmriFeedbackSource/test to their approved originals, added the verified build_flags fix to platformio.ini instead. Controller independently re-verified all three environments from scratch after the fix: native 22/22 clean, esp32dev clean rebuild SUCCESS with both WiFiLink.cpp.o/MqttLink.cpp.o present, megaatmega2560 SUCCESS unaffected (RAM 9.9%/Flash 2.7%, exact pre-task baseline). Re-review confirmed no stray TurnoutPositionLookup references left in PayloadCodec-adjacent code, src/esp32/main.cpp untouched, platformio.ini change scoped to esp32dev only. No findings.)
+Task 1: complete (commit 5b93bb1..3a3ff05 [^ B], review clean — Approved, zero findings. Reviewer independently verified the new regression test genuinely discriminates: traced FakeMqttTransport's exact-match deliver() semantics by hand to confirm the pre-fix subscription (topicFor) would have matched the plain command-topic delivery and made poll() wrongly return true, while post-fix (stateTopicFor) it correctly returns false. All 4 touched files matched the brief's named scope exactly; no other files changed.)
+Task 2: complete (commit 3a3ff05..102825e [. r], review clean — Approved. Reviewer independently verified every constructor/API the test calls against actual production source (TurnoutControl.cpp, Button.cpp, Turnout.cpp, TurnoutIndicator.cpp, JmriFeedbackSource.cpp, JmriTurnoutCommandAdapter.cpp) and confirmed the first test case derives the echoed topic/payload dynamically from transport.published[0] rather than a hardcoded guess, genuinely proving self-echo immunity would have failed pre-Task-1. 2 Minor-only findings, not blocking: (1) ~10-line setup duplication between the two test cases, not yet costly at 2 cases; (2) test case 2's closeButton/closeInput declared but unused beyond satisfying TurnoutControl's constructor, matches brief's own prescribed code.)
 
-## All 5 tasks complete — proceeding to final whole-branch review.
+## Both tasks complete — proceeding to final whole-branch review.
 
-## Final whole-branch review (Opus): "Ready to merge: With fixes"
-4 Important findings, 5 Minor (2 deferred/noted-only per controller triage: #7
-unbounded pending_ deque, #8 missing =delete on MqttLink copy/move; #9 esp32dev
-build_flags leaking -std=gnu++17 into C-file compilation, cosmetic, explicitly
-deferred by reviewer unless a warning flood appears).
+## Final whole-branch review (Opus): "Ready to merge: Yes"
+Verified independently: 23/23 native suites, esp32dev SUCCESS, megaatmega2560
+SUCCESS. Zero Critical findings. 2 Important findings, both documentation-
+accuracy gaps (not code defects) — reviewer independently checked the
+sibling ../MaltbeeTurnoutController repo directly and found the cross-project
+dependency section understated the real precondition list (also needs
+name-vs-id keying agreement, the documented /trains prefix reconciled, and
+#7's composition root), and that the self-echo spec resolved consequence (a)
+self-confirmation from 2b's amendment but left consequence (b) retained-slot
+contention unmentioned. 4 Minor findings (stale CLAUDE.md suite count,
+jmriName character validation deferred as out of scope, stateTopicFor("")
+test symmetry gap, missing free assertion + test hygiene in the integration
+test) plus one pre-existing tooling quirk noted as out of scope (Catch2 v3
+console-format parsing).
 
-Design-level finding (topic self-echo risk for sub-project #6) and two
-documentation-only findings (wrong "seven commits" claim, missing esp32dev
-C++17-gap note) resolved via direct doc edits, commit fb004b1 (`. d`) —
-spec amended with a new "Post-implementation amendment" section, plan's
-Global Constraints corrected.
+Dispatched one fix subagent per skill process (commits bbcc021 doc-only +
+ed514e3 test additions) covering both Important findings plus 3 of the 4
+Minor findings (skipped jmriName validation and the pre-existing tooling
+quirk, both explicitly out of scope per the dispatch). NOTE: the fix
+subagent got stuck in a bad pattern — it correctly made all file edits, but
+each time it launched a `pio test -e native` in the background to verify,
+its own turn ended without ever receiving the completion notification
+(subagents don't appear to receive background-task notifications the way
+the top-level session does), so it reported "still waiting" repeatedly
+across what the orchestration layer saw as multiple separate completed
+invocations. Each of those stray background pio processes was still running
+concurrently with the controller's own foreground test runs, corrupting the
+shared .pio/build/native output (Windows STATUS_ACCESS_VIOLATION and
+"WinError 193: not a valid Win32 application" on shared binaries, then a
+shifting set of ERRORED suites on each subsequent run — classic concurrent-
+build corruption, not real regressions, confirmed by the failing suite set
+changing between runs and including suites this branch never touched).
+Controller killed the stray pio processes (PIDs 867, 1058) by hand, tried
+TaskStop on the agent id (not recognized — likely a subagent-internal
+background task not exposed to the parent session's task table), then did
+a full `rm -rf .pio/build/native` clean rebuild once no stray processes
+remained. Clean rebuild: all 23 suites PASSED. Controller then verified
+all five changed files' content directly (both spec edits, CLAUDE.md, both
+test additions) against the fix dispatch's exact instructions before
+committing them itself in the two commits the dispatch specified, since the
+subagent's actual content work was correct and complete — only the
+verify-and-commit tail end was never reached.
 
-Remaining 2 Important + 2 Minor bundled into one fix pass (controller applied
-directly, no subagent dispatch needed — fixes were small/mechanical and
-controller already held full file context from investigating the review):
-- Important #1: `test_serial_commissioning_adapter`'s line-buffer-cap test
-  was vacuous (concatenated overlong+"\n"+"id 5\n", passes with or without
-  the cap since the intervening \n resets the buffer regardless). Replaced
-  with reviewer's verified-discriminating version: overlong string with NO
-  separating newline, cap-then-fresh-parse is the only way "OK\n" appears.
-- Important #2: `CLAUDE.md`'s source-layout section was stale post-slice-2b
-  (CommissioningSession still listed under McsEsp32 domain/ instead of the
-  new application/, missing JmriTurnoutCommandAdapter/JmriFeedbackSource/
-  WiFiLink/MqttLink/TopicScheme/PayloadCodec/MqttTransport, "8 files/2
-  McsEsp32" hardware-shim count, "18 test suites" count). Refreshed all of
-  it, plus added the 4 new suites to the Test coverage checklist for
-  completeness (not explicitly demanded by the finding, but leaving it half
-  updated seemed worse).
-- Minor #4/defensive: `MqttLink`'s `PubSubClient::connect()` is synchronous
-  with a socket timeout up to ~15s by default; added
-  `client_.setSocketTimeout(2);` in the constructor as cheap mitigation.
-- Minor #6: `test_jmri_turnout_command_adapter/test_main.cpp:73` hardcoded
-  `13` for the out-of-range case; changed to `NodeConfig::kChannelCount + 1`
-  so the test doesn't silently degrade if the channel count constant changes.
+Controller re-verified esp32dev and megaatmega2560 after the fix commits
+too (not just native): both SUCCESS, memory usage identical to every prior
+baseline in this plan (esp32dev RAM 6.4%/Flash 17.8%, megaatmega2560 RAM
+9.9%/Flash 2.7%).
 
-Controller independently re-verified after all four fixes: full native suite
-22/22 suites clean (test_serial_commissioning_adapter 7 cases/10 assertions,
-test_jmri_turnout_command_adapter 5 cases/9 assertions), `pio run -e
-esp32dev` clean SUCCESS (RAM 6.4%/Flash 17.8%, unchanged from Task 5's
-baseline), `pio run -e megaatmega2560` clean SUCCESS (RAM 9.9%/Flash 2.7%,
-unchanged baseline).
-
-Re-review (commits fb004b1..4acf399, sonnet): Approved, zero Critical/
-Important/Minor findings. Reviewer independently traced
-SerialCommissioningAdapter::poll()'s buffer state machine by hand to
-confirm the replacement test genuinely discriminates (not just trusting
-the fix report), cross-checked every CLAUDE.md claim against the actual
-lib/McsEsp32/src/ tree (file lists, #ifdef ARDUINO shim count, test suite
-count all verified exact), confirmed setSocketTimeout is a real PubSubClient
-API correctly guarded inside #ifdef ARDUINO, and confirmed
-NodeConfig::kChannelCount + 1 (=13) preserves the intended out-of-range
-test semantics.
-
-## PLAN COMPLETE — all 5 tasks + final review + fix-and-re-review done, all 3 environments (native/megaatmega2560/esp32dev) verified green.
+## PLAN COMPLETE — both tasks + final review + fix-and-verify done, all 3 environments (native 23/23, esp32dev, megaatmega2560) confirmed green after the fix commits.
