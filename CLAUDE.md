@@ -51,19 +51,48 @@ Domain           → Button, Indicator, Turnout, Route, Signal, Panel, domain ev
 
 ### Current source layout
 
-- `lib/McsCore/src/domain/` — domain classes
-  - Button, Indicator (I/O primitives)
-  - FixedString32 (fixed 32-char buffer, replaces std::string for AVR compatibility)
-  - Turnout, TurnoutCollection, TurnoutService (turnout model and coordination)
-  - TurnoutIndicator (displays turnout position via thrown/closed indicators)
-  - Route, RouteService (route sequences and execution)
-- `lib/McsCore/src/application/` — application/use-case classes
-  - TurnoutControl (wires buttons, turnout, indicator, and TurnoutCommandPort together)
-- `lib/McsCore/src/ports/` — port interfaces (DigitalInput, DigitalOutput, Clock, TurnoutCommandPort, LocoNetTransport, LocoNetSwitchDriver, LocoNetFeedbackSource)
-- `lib/McsCore/src/adapters/` — generic Arduino GPIO adapters (ArduinoDigitalInput/Output, ArduinoClock — guarded with `#ifdef ARDUINO` so they don't break the native build) and LocoNet adapters: `MrrwaLocoNetTurnoutAdapter` and `LocoNetFeedbackDecoder` (native-tested translation layers, no Arduino dependency) plus `MrrwaLocoNetSwitchDriver`, `PulsingLocoNetTransport`, and `MrrwaLocoNetFeedbackSource` (the send/receive hardware shims and pulse-timing logic); `TurnoutStation`/`TurnoutConfig` (config-driven, per-turnout composition helper — owns one turnout's full Button/Indicator/Turnout/TurnoutIndicator/TurnoutControl stack, `#ifdef ARDUINO`-guarded like the hardware shims since it owns concrete `ArduinoDigitalInput`/`Output` members, no native test of its own); `NullTurnoutCommandPort` remains as a no-op fallback
-- `src/main.cpp` — composition root: builds a `TurnoutConfig[4]` table and 4 `TurnoutStation`s from it (range-`for` over `stations[]` in `setup()`/`loop()`, no per-turnout duplication), plus the shared real LocoNet send/receive adapter chain (`MrrwaLocoNetSwitchDriver` → `PulsingLocoNetTransport` → `MrrwaLocoNetTurnoutAdapter` for sending; `MrrwaLocoNetFeedbackSource` → `LocoNetFeedbackDecoder` → broadcast `TurnoutStation::applyFeedback()` for receiving, each station's own `TurnoutControl` self-filtering by address)
-- `test/test_<name>/test_main.cpp` — Catch2 test binaries (14 test suites)
+The codebase is split into three PlatformIO libraries by target, not by a
+preprocessor guard. PlatformIO compiles every `.cpp` file in a library that's
+"used" by an environment, so which of the three environments (`native`,
+`megaatmega2560`, `esp32dev`) compiles a given file is controlled entirely by
+which library it lives in — `platformio.ini`'s per-environment `lib_deps`/
+`lib_ignore` — not by `#ifdef`. The one guard idiom that remains is
+`#ifdef ARDUINO`, on the 8 files that are genuine hardware shims (4 in
+`McsCore`, 2 in `McsLoconet`, 2 in `McsEsp32`); every other file needs no
+guard at all because it's structurally impossible for the wrong environment
+to ever compile it.
+
+- `lib/McsCore/src/` — portable domain/ports/application/adapter classes usable from any of the three environments
+  - `domain/`: Button, FixedString32 (fixed 32-char buffer, replaces std::string for AVR compatibility), Indicator, Route, RouteService, Turnout, TurnoutCollection, TurnoutIndicator, TurnoutService
+  - `ports/`: Clock, DigitalInput, DigitalOutput, TurnoutCommandPort
+  - `application/`: TurnoutControl (wires buttons, turnout, indicator, and TurnoutCommandPort together)
+  - `adapters/`: ArduinoClock, ArduinoDigitalInput, ArduinoDigitalOutput (`#ifdef ARDUINO`-guarded generic GPIO adapters), NullTurnoutCommandPort (no-op fallback), TurnoutStation (`#ifdef ARDUINO`-guarded, config-driven per-turnout composition helper — owns one turnout's full Button/Indicator/Turnout/TurnoutIndicator/TurnoutControl stack)
+- `lib/McsLoconet/src/` — LocoNet-specific code, compiled for `native` (pure-logic pieces only) and `megaatmega2560`
+  - `ports/`: LocoNetFeedbackSource, LocoNetSwitchDriver, LocoNetTransport
+  - `adapters/`: LocoNetFeedbackDecoder, MrrwaLocoNetTurnoutAdapter (native-tested translation layers, no Arduino dependency); MrrwaLocoNetFeedbackSource, MrrwaLocoNetSwitchDriver (`#ifdef ARDUINO`-guarded send/receive hardware shims); PulsingLocoNetTransport (non-blocking solenoid pulse-timing logic)
+- `lib/McsEsp32/src/` — ESP32-specific code, compiled for `native` (pure-logic pieces only) and `esp32dev`
+  - `domain/`: CommandLineParser, CommissioningSession, NodeConfig, ParsedCommand
+  - `ports/`: ConfigStore, UartPort
+  - `adapters/`: SerialCommissioningAdapter (native-tested translation layer); EspUartPort, NvsConfigStore (`#ifdef ARDUINO`-guarded hardware shims)
+- `src/mega/main.cpp` and `src/esp32/main.cpp` — the two composition roots. `src/mega/main.cpp` builds a `TurnoutConfig[4]` table and 4 `TurnoutStation`s from it (range-`for` over `stations[]` in `setup()`/`loop()`, no per-turnout duplication), plus the shared real LocoNet send/receive adapter chain (`MrrwaLocoNetSwitchDriver` → `PulsingLocoNetTransport` → `MrrwaLocoNetTurnoutAdapter` for sending; `MrrwaLocoNetFeedbackSource` → `LocoNetFeedbackDecoder` → broadcast `TurnoutStation::applyFeedback()` for receiving, each station's own `TurnoutControl` self-filtering by address)
+- `test/test_<name>/test_main.cpp` — Catch2 test binaries (18 test suites)
 - `test/support/` — test doubles (FakeDigitalInput, FakeClock, FakeDigitalOutput, FakeTurnoutCommandPort, FakeLocoNetTransport, FakeLocoNetSwitchDriver)
+
+**Include convention:** within a library, includes stay relative
+(`../ports/X.h`). A file depending on a header from a *different* library it
+needs uses a rooted include (`"ports/X.h"`) instead — currently only 5 such
+includes exist, all in `McsLoconet` referencing `McsCore` headers
+(`domain/Turnout.h`, `ports/Clock.h`, `ports/TurnoutCommandPort.h`).
+
+**Trap to watch for:** basenames must stay globally unique across all three
+libraries. All three have parallel `domain/`/`ports/`/`adapters/` subtrees,
+and `native`'s build has all three library roots on the include path
+simultaneously (see `lib_deps` in `platformio.ini`'s `[env:native]`) — a
+rooted include like `#include "ports/Clock.h"` only resolves correctly today
+because no other library happens to have a file named `Clock.h` under
+`ports/`. If a future file collides with an existing basename in a different
+library, resolution becomes include-path-order-dependent and the failure
+mode is confusing rather than a clean error.
 
 **Test coverage (all Catch2, all passing):**
 - ✅ Button (debouncing, edge detection)
@@ -80,6 +109,10 @@ Domain           → Button, Indicator, Turnout, Route, Signal, Panel, domain ev
 - ✅ MrrwaLocoNetTurnoutAdapter (command → LocoNet packet translation)
 - ✅ PulsingLocoNetTransport (non-blocking solenoid pulse timing)
 - ✅ LocoNetFeedbackDecoder (switch-outputs report → TurnoutFeedback translation)
+- ✅ CommandLineParser (command-line tokenizing/parsing)
+- ✅ CommissioningSession (commissioning command handling)
+- ✅ NodeConfig (node configuration construction/validation)
+- ✅ SerialCommissioningAdapter (serial line framing → ParsedCommand translation)
 
 **Completed milestones:** 1-11 (foundation, ports, Button, Indicator, Turnout domain model, TurnoutIndicator, TurnoutControl, hardware integration programming, LocoNet output, LocoNet feedback, multiple turnouts). `pio run -e megaatmega2560` compiles successfully (RAM 9.9%, Flash 2.7% with 4 stations). Milestones 9-11 are complete on the programming side only — physical wiring and on-hardware verification (button-to-LED and LocoNet send/receive against a real DR5000/DR4018, across all 4 stations) are still outstanding — see the "Milestone 8 hardware" note below.
 
@@ -87,9 +120,9 @@ Domain           → Button, Indicator, Turnout, Route, Signal, Panel, domain ev
 
 ### Milestone 8 hardware (not yet done)
 
-The programming portion of Milestone 8 is complete and builds cleanly for the Mega 2560, but the hands-on portion still needs a physically connected board: `src/main.cpp` now defines 4 stations (`STATION_CONFIGS[0..3]`) — pins 22/23/8/9 (throw/close/thrown-LED/closed-LED) for station 1, 24/25/10/11 for station 2, 26/27/12/13 for station 3, 28/29/14/15 for station 4. Wire at least one (ideally all 4, since Milestone 11's completion criteria calls for verifying 4), flash with `pio run -e megaatmega2560 --target upload`, and verify.
+The programming portion of Milestone 8 is complete and builds cleanly for the Mega 2560, but the hands-on portion still needs a physically connected board: `src/mega/main.cpp` now defines 4 stations (`STATION_CONFIGS[0..3]`) — pins 22/23/8/9 (throw/close/thrown-LED/closed-LED) for station 1, 24/25/10/11 for station 2, 26/27/12/13 for station 3, 28/29/14/15 for station 4. Wire at least one (ideally all 4, since Milestone 11's completion criteria calls for verifying 4), flash with `pio run -e megaatmega2560 --target upload`, and verify.
 
-`main.cpp` now wires the real LocoNet send and receive adapters (Milestones 9-10), not `NullTurnoutCommandPort`, so a button press does reach `LocoNet.requestSwitch()` and `TurnoutControl::applyFeedback()` is driven by real incoming `OPC_SW_REP` messages — but none of that has been exercised against real LocoNet hardware yet. "Verify behavior on hardware" for Milestone 8 realistically still means confirming button reads and LED drive work in isolation; full button-to-LED-via-LocoNet verification is Milestones 9-11's remaining hardware work, not Milestone 8's.
+`src/mega/main.cpp` now wires the real LocoNet send and receive adapters (Milestones 9-10), not `NullTurnoutCommandPort`, so a button press does reach `LocoNet.requestSwitch()` and `TurnoutControl::applyFeedback()` is driven by real incoming `OPC_SW_REP` messages — but none of that has been exercised against real LocoNet hardware yet. "Verify behavior on hardware" for Milestone 8 realistically still means confirming button reads and LED drive work in isolation; full button-to-LED-via-LocoNet verification is Milestones 9-11's remaining hardware work, not Milestone 8's.
 
 ## Engineering Principles (from the roadmap)
 

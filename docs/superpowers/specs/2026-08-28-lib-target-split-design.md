@@ -101,7 +101,7 @@ and referencing a type staying in `McsCore`:
 | File (post-move path) | Change |
 |---|---|
 | `lib/McsLoconet/src/ports/LocoNetSwitchDriver.h` | `#include "../domain/Turnout.h"` → `#include "domain/Turnout.h"` |
-| `lib/McsLoconet/src/ports/LocoNetFeedbackSource.h` | `#include "../domain/Turnout.h"` → `#include "domain/Turnout.h"` |
+| `lib/McsLoconet/src/ports/LocoNetTransport.h` | `#include "../domain/Turnout.h"` → `#include "domain/Turnout.h"` |
 | `lib/McsLoconet/src/adapters/MrrwaLocoNetTurnoutAdapter.h` | `#include "../ports/TurnoutCommandPort.h"` → `#include "ports/TurnoutCommandPort.h"` |
 | `lib/McsLoconet/src/adapters/LocoNetFeedbackDecoder.h` | `#include "../ports/TurnoutCommandPort.h"` → `#include "ports/TurnoutCommandPort.h"` |
 | `lib/McsLoconet/src/adapters/PulsingLocoNetTransport.h` | `#include "../ports/Clock.h"` → `#include "ports/Clock.h"` |
