@@ -4,7 +4,7 @@
 #include <string>
 
 #include "../domain/NodeConfig.h"
-#include "ports/MqttTransport.h"
+#include "../ports/MqttTransport.h"
 #include "ports/TurnoutCommandPort.h"
 
 class JmriTurnoutCommandAdapter final : public TurnoutCommandPort
