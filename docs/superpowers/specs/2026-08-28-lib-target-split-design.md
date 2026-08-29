@@ -145,8 +145,10 @@ Similarly, the `#if !defined(__AVR__)` files never had any Arduino
 dependency to begin with; their guard existed solely to keep them out of
 `megaatmega2560`'s accidental whole-library compilation, which is now
 structurally impossible. End state: one guard idiom (`#ifdef ARDUINO`),
-seven files, all genuine hardware shims — the same shape the project had
-before this ESP32 slice began.
+eight files total (the four already-`#ifdef ARDUINO` files in `McsCore`
+this spec doesn't touch, plus the four simplified above), all genuine
+hardware shims — the same shape the project had before this ESP32 slice
+began.
 
 ### `platformio.ini` changes
 
