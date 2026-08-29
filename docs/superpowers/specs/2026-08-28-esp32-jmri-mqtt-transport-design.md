@@ -381,3 +381,37 @@ into `src/esp32/main.cpp`, constructing real `TurnoutStation`s against them,
 subscribing at boot, node presence/collision detection (slice 2d), wireless
 captive-portal commissioning (slice 2c), and anything involving matrix-scan
 button input or shared-GPIO LED output (slices 3–5).
+
+## Post-implementation amendment: topic self-echo risk for sub-project #6
+
+The final whole-branch review for this slice flagged a design question that
+sub-project #6 (JMRI turnout command/feedback wiring into `TurnoutControl`)
+must resolve explicitly, not inherit by accident: `JmriTurnoutCommandAdapter`
+publishes retained to `track/turnout/<name>` and `JmriFeedbackSource`
+subscribes that *same* topic. The sibling project does the same thing safely
+because it plays the opposite role — it's a turnout driver, subscribing
+commands and publishing state on the same topic, so the two directions never
+collide for one node. This project's panel is the mirror image: it publishes
+commands and would (once wired) also treat that topic's messages as
+feedback. Two consequences once #6 wires these together:
+
+- **Self-confirmation.** MQTT 3.1.1 has no `noLocal`; a broker echoes a
+  client's own publish back to its own subscription. A button press would
+  light the panel's LED off its own outgoing command, not off any
+  confirmation that the turnout actually moved. The LocoNet path doesn't
+  have this problem because `OPC_SW_REQ` (command) and `OPC_SW_REP` (report)
+  are distinct message types.
+- **Retained-slot contention.** The panel and JMRI (and any turnout-driver
+  node) would all publish retained to the same topic; last writer wins,
+  including across a panel reboot re-loading its own stale command as
+  "feedback."
+
+Sub-project #6 must decide, before wiring `JmriFeedbackSource`'s
+subscriptions to any real `TurnoutStation`: either confirm this
+self-echo is acceptable for v1 (e.g. because the panel's own state update
+on send is actually the desired immediate-feedback UX and true
+turnout-moved confirmation isn't needed yet), or split into distinct
+command/state topics (e.g. `track/turnout/<name>` for commands,
+`track/turnout/<name>/state` for feedback) before that slice's own
+`TopicScheme`/`PayloadCodec` usage is locked in. Not resolved by this slice
+since 2b deliberately doesn't wire anything.

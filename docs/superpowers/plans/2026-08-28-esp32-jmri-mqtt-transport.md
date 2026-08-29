@@ -33,7 +33,15 @@ classes (`TopicScheme`, `PayloadCodec`) underpin both sides. This plan does
   `esp32dev`, both with full libstdc++. Do not use `FixedString32` or
   fixed-capacity containers here; that type exists specifically to work
   around the Mega's AVR toolchain having no real STL, which doesn't apply
-  to ESP32-only code.
+  to ESP32-only code. **Correction found during Task 5:** unlike `native`
+  (which sets `build_flags = -std=c++17` explicitly), `esp32dev`'s default
+  toolchain does NOT enable C++17 on its own — `std::optional` fails to
+  compile there until `platformio.ini`'s `[env:esp32dev]` gets its own
+  explicit `build_unflags = -std=gnu++11` / `build_flags = -std=gnu++17`.
+  This was a real gap in this Global Constraints section at authoring time,
+  not just an implementation detail — a future plan touching `lib/McsEsp32`
+  should not assume C++17 is ambient on `esp32dev` without checking
+  `platformio.ini` first.
 - New files go under `lib/McsEsp32/src/{domain,ports,adapters}/`. A file in
   `McsEsp32` depending on a `McsCore` header uses a rooted include
   (`"ports/TurnoutCommandPort.h"`, `"domain/Turnout.h"`), matching the
@@ -1207,9 +1215,21 @@ git commit -m "! F Add WiFiLink and MqttLink ESP32 hardware adapters"
 - [ ] `pio run -e esp32dev` builds cleanly, and the resulting build includes
       compiled object files for `WiFiLink.cpp` and `MqttLink.cpp` (proving
       they were actually build-checked, not just present on disk).
-- [ ] Seven commits on `main` (or a feature branch, per whatever the
-      executor chooses): Task 1's two (`. r` move, `^ B` cap), then one `! F`
-      each for Tasks 2-5.
+- [ ] Six commits on `main` (or a feature branch, per whatever the executor
+      chooses) in the ideal case: Task 1's two (`. r` move, `^ B` cap), then
+      one `! F` each for Tasks 2-5. In practice, execution also produced: a
+      docs-only commit correcting a same-library-include mistake in this
+      plan's own Task 4/5 code blocks (caught by Task 3's review before
+      Tasks 4/5 were dispatched, so they didn't repeat it), a `^ B` fix for
+      that same mistake in the already-committed Task 3 code, and a `^ B`
+      fix reverting an unauthorized scope-creep rewrite Task 5's implementer
+      bundled into already-approved `PayloadCodec` code (replaced with the
+      correct minimal fix: `esp32dev` needs explicit `-std=gnu++17` in
+      `platformio.ini`, which this plan's Global Constraints section didn't
+      anticipate — a real gap in the plan, not just the implementation) —
+      nine commits total. **Correction:** the original text here said
+      "Seven," which didn't even match this document's own six-commit
+      enumeration above; both numbers were wrong at authoring time.
 - [ ] Nothing in this plan touches `src/esp32/main.cpp`, wires the new
       adapters into `TurnoutStation`/`TurnoutControl`, or implements node
       presence/collision detection or wireless captive-portal commissioning
