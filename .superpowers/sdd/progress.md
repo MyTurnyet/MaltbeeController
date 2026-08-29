@@ -65,5 +65,15 @@ esp32dev` clean SUCCESS (RAM 6.4%/Flash 17.8%, unchanged from Task 5's
 baseline), `pio run -e megaatmega2560` clean SUCCESS (RAM 9.9%/Flash 2.7%,
 unchanged baseline).
 
-Next: scoped re-review of this fix bundle, then
-superpowers:finishing-a-development-branch.
+Re-review (commits fb004b1..4acf399, sonnet): Approved, zero Critical/
+Important/Minor findings. Reviewer independently traced
+SerialCommissioningAdapter::poll()'s buffer state machine by hand to
+confirm the replacement test genuinely discriminates (not just trusting
+the fix report), cross-checked every CLAUDE.md claim against the actual
+lib/McsEsp32/src/ tree (file lists, #ifdef ARDUINO shim count, test suite
+count all verified exact), confirmed setSocketTimeout is a real PubSubClient
+API correctly guarded inside #ifdef ARDUINO, and confirmed
+NodeConfig::kChannelCount + 1 (=13) preserves the intended out-of-range
+test semantics.
+
+## PLAN COMPLETE — all 5 tasks + final review + fix-and-re-review done, all 3 environments (native/megaatmega2560/esp32dev) verified green.
