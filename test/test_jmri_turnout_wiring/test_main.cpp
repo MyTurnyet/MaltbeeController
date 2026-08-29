@@ -110,4 +110,5 @@ TEST_CASE("the real driver's confirmation on the dedicated state topic updates t
     REQUIRE(turnout.position() == TurnoutPosition::Thrown);
     REQUIRE(thrownIndicator.isOn());
     REQUIRE_FALSE(closedIndicator.isOn());
+    REQUIRE(commandPort.sentCommands.empty());
 }

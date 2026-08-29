@@ -26,3 +26,8 @@ TEST_CASE("stateTopicFor differs from topicFor for the same name")
 {
     REQUIRE(TopicScheme::stateTopicFor("LT1") != TopicScheme::topicFor("LT1"));
 }
+
+TEST_CASE("stateTopicFor handles an empty name")
+{
+    REQUIRE(TopicScheme::stateTopicFor("") == "track/turnout//state");
+}
