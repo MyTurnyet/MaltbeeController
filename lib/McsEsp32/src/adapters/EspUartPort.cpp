@@ -1,4 +1,4 @@
-#ifdef ESP32
+#ifdef ARDUINO
 
 #include "EspUartPort.h"
 

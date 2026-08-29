@@ -1,5 +1,3 @@
-#if !defined(__AVR__)
-
 #include "CommandLineParser.h"
 
 #include <sstream>
@@ -163,5 +161,3 @@ ParsedCommand CommandLineParser::parse(const std::string& line)
 
     return invalid("unknown command: " + verb);
 }
-
-#endif
