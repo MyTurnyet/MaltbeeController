@@ -315,8 +315,8 @@ EOF
   `TopicScheme` (all from Task 1 and 2b, unchanged by this task);
   `TurnoutControl`, `Button`, `Indicator`, `Turnout`, `TurnoutIndicator`
   (existing, `lib/McsCore/src/{application,domain}/`); `FakeClock`,
-  `FakeDigitalInput`, `FakeDigitalOutput`, `FakeMqttTransport` (existing,
-  `test/support/`).
+  `FakeDigitalInput`, `FakeDigitalOutput`, `FakeMqttTransport`,
+  `FakeTurnoutCommandPort` (existing, `test/support/`).
 - Produces: nothing new — this is a proof, not a new component. No later
   task depends on this file.
 
@@ -340,6 +340,7 @@ Create `test/test_jmri_turnout_wiring/test_main.cpp`:
 #include "support/FakeDigitalInput.h"
 #include "support/FakeDigitalOutput.h"
 #include "support/FakeMqttTransport.h"
+#include "support/FakeTurnoutCommandPort.h"
 
 namespace
 {
@@ -421,9 +422,8 @@ TEST_CASE("the real driver's confirmation on the dedicated state topic updates t
     TurnoutIndicator turnoutIndicator(thrownIndicator, closedIndicator);
 
     Turnout turnout(CHANNEL, "LT1", TurnoutPosition::Closed, false, false);
-    FakeMqttTransport unusedCommandTransport;
-    JmriTurnoutCommandAdapter commandAdapter(unusedCommandTransport, names);
-    TurnoutControl control(throwButton, closeButton, turnout, turnoutIndicator, commandAdapter);
+    FakeTurnoutCommandPort commandPort;
+    TurnoutControl control(throwButton, closeButton, turnout, turnoutIndicator, commandPort);
 
     transport.deliver("track/turnout/LT1/state", "THROWN");
 
