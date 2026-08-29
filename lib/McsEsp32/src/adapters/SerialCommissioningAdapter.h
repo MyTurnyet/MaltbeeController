@@ -2,7 +2,7 @@
 
 #include <string>
 
-#include "../domain/CommissioningSession.h"
+#include "../application/CommissioningSession.h"
 #include "../ports/UartPort.h"
 
 class SerialCommissioningAdapter

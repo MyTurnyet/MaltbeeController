@@ -1,6 +1,6 @@
 #include <catch2/catch_test_macros.hpp>
 
-#include "domain/CommissioningSession.h"
+#include "application/CommissioningSession.h"
 #include "support/FakeConfigStore.h"
 
 TEST_CASE("id command updates the draft and confirms")

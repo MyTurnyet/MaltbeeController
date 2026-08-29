@@ -3,8 +3,8 @@
 #include <string>
 #include <vector>
 
-#include "NodeConfig.h"
-#include "ParsedCommand.h"
+#include "../domain/NodeConfig.h"
+#include "../domain/ParsedCommand.h"
 #include "../ports/ConfigStore.h"
 
 class CommissioningSession
