@@ -96,6 +96,32 @@ Two alternatives were considered and rejected:
   hard guarantee, making correctness harder to reason about and to test than
   a structurally-separate topic.
 
+## Scope of what this spec resolves
+
+The 2026-08-28 amendment ("topic self-echo risk for sub-project #6") flagged
+two consequences of sharing one topic for commands and feedback:
+(a) self-confirmation and (b) retained-slot contention. This spec resolves
+(a) only — splitting command and state topics means the panel's own
+outgoing command can no longer be misread as confirmation of its own LED.
+
+Consequence (b), retained-slot contention, is **not** resolved by this spec
+and remains a known, open, separate risk. JMRI is configured in MONITORING
+mode (per the sibling's setup docs), which means JMRI's own "known state"
+for a turnout is just whatever's currently on the shared command topic —
+so the panel's own unconfirmed command still becomes JMRI's displayed
+state, even though it no longer becomes this panel's own displayed state.
+That's the same optimistic-confirmation problem the "never optimistic" rule
+exists to prevent, just relocated from the panel's LED to JMRI's UI rather
+than fixed. Separately, `JmriTurnoutCommandAdapter` still publishes with
+`retained = true` to the shared command topic — a retained *command* (as
+opposed to retained *state*) gets replayed to any new subscriber and after
+a broker restart, which could re-actuate a solenoid unexpectedly.
+
+Neither sub-issue is introduced by this branch, and neither is fixed here.
+Both are explicitly deferred to sub-project #7 (composition root), which
+must decide whether to accept this risk for v1 or change `retained` on the
+command publish.
+
 ## Changes in this repo (`MaltbeeController`)
 
 - `TopicScheme` (`lib/McsEsp32/src/domain/TopicScheme.h`) gains a second
@@ -122,19 +148,52 @@ Two alternatives were considered and rejected:
 
 ## Cross-project dependency (tracked here, not implemented here)
 
-`../MaltbeeTurnoutController`'s `MqttPositionReporter`
-(`lib/McsCore/src/adapters/MqttPositionReporter.h`) needs to publish state to
-**both** the existing shared topic (`TopicScheme::topicFor(id)`, unchanged —
-this is what JMRI's own MONITORING-mode view keeps consuming) **and** a new
-state topic matching this scheme (for this panel's benefit). This is a small,
-additive change confined to that one class in that repo, but it's a separate
-project with its own release cadence — sub-project #6's implementation plan
-in this repo will record it as an external dependency to raise with that
-project, not something this repo's plan implements directly. Until that
-change lands there, `JmriFeedbackSource` will simply receive no feedback
-messages (a turnout's LED stays in "unconfirmed" blink mode indefinitely) —
-a safe, already-designed-for degraded state, not a crash or incorrect
-confirmation.
+Feedback working end-to-end on real hardware needs more than the sibling
+project publishing to a new topic — a whole-branch review that checked the
+sibling repo directly (`../MaltbeeTurnoutController`) found the full
+precondition list is longer than originally scoped here. All of the
+following must hold before this panel actually receives real feedback:
+
+- **The sibling's `MqttPositionReporter` must add a `/state` publish.**
+  `../MaltbeeTurnoutController`'s `MqttPositionReporter`
+  (`lib/McsCore/src/adapters/MqttPositionReporter.h`) needs to publish state
+  to **both** the existing shared topic (`TopicScheme::topicFor(id)`,
+  unchanged — this is what JMRI's own MONITORING-mode view keeps consuming)
+  **and** a new state topic matching this scheme (for this panel's benefit).
+  This is a small, additive change confined to that one class in that repo,
+  but it's a separate project with its own release cadence — sub-project
+  #6's implementation plan in this repo will record it as an external
+  dependency to raise with that project, not something this repo's plan
+  implements directly.
+- **Name-vs-id keying must line up.** The sibling's `TopicScheme`
+  (`../MaltbeeTurnoutController/lib/McsCore/src/domain/TopicScheme.h`) builds
+  topics from a numeric `TurnoutId` (e.g. `track/turnout/101`), while this
+  project's `TopicScheme` builds them from a free-form JMRI name (e.g.
+  `track/turnout/LT1`). Even after the sibling adds a `/state` publish, this
+  panel's subscription only matches if whoever commissions it enters the
+  driver's numeric ids as this panel's `NodeConfig.channelJmriNames` — which
+  `NodeConfig` permits (it's just a free-form string) but nothing currently
+  documents as a requirement. This needs to be settled — either as a
+  commissioning instruction or a naming-scheme change — before #7.
+- **The documented `/trains` prefix must be reconciled.** The real layout's
+  JMRI is documented
+  (`../MaltbeeTurnoutController/internal_documents/mqtt-broker-jmri-setup.md`)
+  as prepending `/trains/` to topics (e.g. `/trains/track/turnout/101`),
+  while both this project's and the sibling's `TopicScheme` emit unprefixed
+  `track/turnout/...`. This predates this branch (inherited from slice 2b)
+  but means the claim that this panel publishes/subscribes where JMRI
+  already listens is unverified against the documented broker topology —
+  it needs to be checked against the real broker config, not assumed.
+- **No composition root exists yet.** `src/esp32/main.cpp` has no
+  `MqttLink`/`JmriFeedbackSource`/`JmriTurnoutCommandAdapter` references at
+  all — wiring those in is sub-project #7's job, not done here — so nothing
+  on real hardware exercises either topic yet regardless of the other three
+  points above.
+
+Until all of these are resolved, `JmriFeedbackSource` will simply receive no
+feedback messages (a turnout's LED stays in "unconfirmed" blink mode
+indefinitely) — a safe, already-designed-for degraded state, not a crash or
+incorrect confirmation.
 
 ## Non-goals
 
