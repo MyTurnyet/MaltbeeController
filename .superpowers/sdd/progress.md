@@ -38,3 +38,13 @@ of test coverage, and to run `pio test -e native` via Bash, not PowerShell
 (a known false-failure issue on this machine, now documented in CLAUDE.md).
 
 ## Tasks
+
+Task 1 (PresenceTopics): complete (commit 98b834b..fc2d692 [! F, 36-line
+diff exceeds the 8-LoC cap so ! is correctly self-capped regardless of
+production code being only 17 lines], review clean — Approved, zero
+findings at any severity. Reviewer confirmed byte-for-byte match to the
+brief's exact header code and exact 3-test-case test file, header-only
+discipline maintained (no stray .cpp), and the pattern mirrors
+TopicScheme.h exactly. Controller independently verified the diff stat
+(36 total lines) and re-ran the focused test: 3/3 test cases, 4
+assertions.
