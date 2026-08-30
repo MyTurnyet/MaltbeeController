@@ -25,7 +25,10 @@ bool NvsSetupModeRequestStore::requestOnNextBoot()
 bool NvsSetupModeRequestStore::consumeRequest()
 {
     Preferences prefs;
-    prefs.begin(kNamespace, false);
+    if (!prefs.begin(kNamespace, false))
+    {
+        return false;
+    }
     const bool pending = prefs.getBool(kKey, false);
     if (pending)
     {
