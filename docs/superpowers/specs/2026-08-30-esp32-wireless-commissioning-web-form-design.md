@@ -350,3 +350,56 @@ actually gets called.
   final review deferred (`docs/superpowers/specs/2026-08-29-esp32-wireless-setup-trigger-design.md`'s
   "Known gap for #2c-b to resolve" section).
 - All of the above are sub-project #2c-b2.
+
+## Known gaps for #2c-b2 to resolve (found by the final whole-branch review)
+
+This branch produces zero runtime effect (nothing here is referenced by
+`src/esp32/main.cpp` yet), so neither of the following manifests until
+#2c-b2 actually turns the AP on. Both are genuine design decisions, not
+implementation defects — every class in this branch does exactly what it
+was specified to do.
+
+1. **The rendered form's own copy contradicts what `submit()` does with a
+   blank channel field.** `SetupFormRenderer`'s "Turnout JMRI Names"
+   section tells the operator *"Leave a channel blank to leave it
+   unconfigured,"* but `WebFormCommissioningAdapter::submit()` `continue`s
+   past a blank channel — meaning a blank field leaves that channel's
+   *existing* stored name untouched, not cleared. There is currently no
+   way to unconfigure a previously-set channel through the web form at
+   all: re-load the form, see the name, blank it, submit — the old name
+   comes right back. Both behaviors are individually reasonable (skip
+   silently, matching the bench-serial `save` command's own "partial
+   commissioning" allowance vs. genuinely clearing a field the operator
+   visibly emptied) — but a form that shows the opposite of what it does
+   is a real usability defect regardless of which behavior #2c-b2 picks.
+   **#2c-b2 must choose one and either change the code (drop the `empty()`
+   guard so blank truly clears — `withChannelName(n, "")` and `validate()`
+   already handle an empty name safely) or change the copy** (e.g. *"Leave
+   a channel blank to keep its current name"*) — not leave the mismatch
+   standing.
+2. **The AP itself is open, and it renders the layout's existing WiFi
+   password back into the page in cleartext.** `CaptivePortalServer::begin()`
+   calls the single-argument `WiFi.softAP(apName)`, which creates an
+   unauthenticated access point — anyone within radio range during the
+   commissioning window can join with no credential at all. Once joined,
+   `GET /` returns a page whose password `<input>`'s `value='...'`
+   attribute is `escapeHtml(values.wifiPassword)` — `type='password'`
+   masks the *rendered* field from a casual glance, not the page source,
+   so the layout's already-configured WiFi password (not just a
+   newly-typed one) is readable by anyone who joins the open AP and views
+   source. The same unauthenticated party can also POST a new
+   configuration and trigger a reboot. This is a materially larger
+   exposure than the 2a spec's already-accepted "a password being typed
+   travels over plaintext HTTP" — it doesn't require the operator to be
+   mid-commissioning at all, just physically nearby with a WiFi device,
+   for as long as the AP stays up. Whether this is acceptable for a home
+   layout's brief, operator-triggered setup window is a legitimate
+   judgment call, but nothing has recorded it as a deliberate decision —
+   right now it's an unexamined default. **#2c-b2 must explicitly decide**
+   between (in roughly ascending cost): accept the exposure as-is,
+   documented; give `begin()` a fixed or MAC-derived WPA2 passphrase
+   (`WiFi.softAP(apName, password)`); or render the password field always
+   empty with "leave blank to keep current" semantics (which, note, is the
+   same skip-vs-clear question as gap 1 above, applied to the password
+   field specifically — resolving them together is likely cheaper than
+   resolving them separately).
