@@ -86,4 +86,19 @@ values for broker host/port/channel names, so escaping is verified by
 code inspection rather than a targeted assertion for those specific
 fields; the unselected-id placeholder option is untested UX, not a spec
 item. Neither fixed. Native 36/36.
-Task 6 (CaptivePortalServer): not started
+Task 6 (CaptivePortalServer): complete (commit d9ad2f4..6c91bdd [^ F],
+review clean — Approved, zero Critical/Important. Reviewer cross-checked
+readForm()'s field names against SetupFormRenderer's actual rendered
+name='...' attributes directly (id/wifi_ssid/wifi_password/broker_host/
+broker_port/t{N}_name, 1-12) and confirmed an exact match - no silent
+field-name mismatch. Confirmed begin() sequencing (softAP -> DNS redirect
+-> HTTP routes -> webServer_.begin()), poll() has zero blocking calls,
+both files #ifdef ARDUINO-guarded, AP name taken as a parameter never
+computed internally, zero encroachment on Tasks 1-5/main.cpp/mega/
+McsLoconet. 2 Minor, both explicitly out-of-scope-by-design for #2c-b2
+(rebootRequested() not yet consulted; no HTTP status differentiation on
+submit failure) - neither fixed, both carried forward as notes.
+esp32dev SUCCESS (39.7s, RAM 16.5%/Flash 77.2%), megaatmega2560 SUCCESS
+unchanged, native 36/36 confirmed independently by the controller.
+
+## All 6 tasks complete — proceeding to final whole-branch review.
