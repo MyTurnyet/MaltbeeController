@@ -2,6 +2,7 @@
 
 #include "adapters/WebFormCommissioningAdapter.h"
 #include "application/CommissioningSession.h"
+#include "domain/NodeConfig.h"
 #include "domain/WebFormSubmission.h"
 #include "support/FakeConfigStore.h"
 
@@ -36,18 +37,23 @@ TEST_CASE("a fully valid submission saves and requests reboot")
     REQUIRE(store.load().channelJmriNames[0] == "LT1");
 }
 
-TEST_CASE("an empty channel name is skipped, not sent as an empty turnout command")
+TEST_CASE("an empty channel name leaves the stored name untouched, rather than clearing it")
 {
     FakeConfigStore store;
+    store.save(NodeConfig::factoryDefault()
+                   .withNodeId(5)
+                   .withWifi("w", "p")
+                   .withBroker("h", 1883)
+                   .withChannelName(2, "LT2"));
     CommissioningSession session(store);
     WebFormCommissioningAdapter adapter(session);
 
-    const WebFormSubmission form = validSubmission();
-    // channelJmriNames[1..11] are empty by default construction
+    WebFormSubmission form = validSubmission();
+    // form.channelJmriNames[1] (channel 2) is blank by default construction
 
     adapter.submit(form);
 
-    REQUIRE(store.load().channelJmriNames[1].empty());
+    REQUIRE(store.load().channelJmriNames[1] == "LT2");
 }
 
 TEST_CASE("a non-numeric node id stops immediately and never reaches save")
