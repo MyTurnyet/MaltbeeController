@@ -24,11 +24,14 @@
 #include "adapters/WebFormCommissioningAdapter.h"
 #include "adapters/WiFiLink.h"
 #include "application/CommissioningSession.h"
+#include "application/MqttPresenceAnnouncer.h"
 #include "domain/BootMode.h"
 #include "domain/BootModeSelector.h"
 #include "domain/LedPairDriver.h"
 #include "domain/MatrixScanner.h"
 #include "domain/NodeConfig.h"
+#include "domain/NodeIdentityGuard.h"
+#include "domain/PresenceTopics.h"
 #include "domain/SetupApName.h"
 #include "ports/TurnoutCommandPort.h"
 
@@ -84,6 +87,8 @@ namespace
 NvsBootstrap nvsBootstrap;
 
 ArduinoClock systemClock;
+
+const MacAddress ownMac = EspDeviceIdentity().mac();
 
 EspUartPort uartPort(UART_BAUD_RATE);
 NvsConfigStore configStore;
@@ -154,10 +159,13 @@ GatedDigitalInput gatedButtons[12] = {
 WiFiLink wifiLink(systemClock, RETRY_INTERVAL_MS);
 
 const std::string mqttClientId = "maltbee-esp32-" + std::to_string(runningConfig.nodeId);
-const std::string mqttWillTopic = "panel/" + std::to_string(runningConfig.nodeId) + "/status";
+const std::string mqttWillTopic = PresenceTopics::statusTopic(runningConfig.nodeId);
 const std::string mqttWillMessage = "offline";
 
 MqttLink mqttLink(systemClock, RETRY_INTERVAL_MS, mqttClientId, mqttWillTopic, mqttWillMessage);
+
+NodeIdentityGuard identityGuard(ownMac.lastFourHexDigits());
+MqttPresenceAnnouncer presenceAnnouncer(mqttLink, runningConfig.nodeId, ownMac.lastFourHexDigits());
 
 JmriTurnoutCommandAdapter turnoutCommandPort(mqttLink, runningConfig.channelJmriNames);
 JmriFeedbackSource feedbackSource(mqttLink, runningConfig.channelJmriNames);
@@ -213,8 +221,7 @@ void setup()
 
     if (bootMode == BootMode::WirelessSetup)
     {
-        EspDeviceIdentity identity;
-        const std::string apName = SetupApName::from(identity.mac());
+        const std::string apName = SetupApName::from(ownMac);
         captivePortalServer.begin(apName, WIRELESS_SETUP_AP_PASSPHRASE);
         uartPort.write("MaltBee panel in wireless setup mode. Connect to " + apName + "\n");
         return;
@@ -224,6 +231,8 @@ void setup()
     {
         wifiLink.begin(runningConfig.wifiSsid, runningConfig.wifiPassword);
         mqttLink.begin(runningConfig.brokerHost, runningConfig.brokerPort);
+        mqttLink.subscribe(PresenceTopics::macTopic(runningConfig.nodeId),
+                            [](const std::string& payload) { identityGuard.onMacObserved(payload); });
     }
 
     uartPort.write(configValid ? "MaltBee panel ready (configured).\n"
@@ -248,8 +257,22 @@ void loop()
     matrixScanner.update();
 
     setupTrigger.update();
-    gatedButtons[0].setSuppressed(setupTrigger.isHolding());
-    gatedButtons[1].setSuppressed(setupTrigger.isHolding());
+
+    const bool collision = identityGuard.collisionDetected();
+    static bool collisionLogged = false;
+    if (collision && !collisionLogged)
+    {
+        uartPort.write("NodeId collision detected: this panel is " + ownMac.lastFourHexDigits() +
+                        ", another panel claiming this node id is " + identityGuard.observedMac() + "\n");
+        collisionLogged = true;
+    }
+
+    gatedButtons[0].setSuppressed(setupTrigger.isHolding() || collision);
+    gatedButtons[1].setSuppressed(setupTrigger.isHolding() || collision);
+    for (int i = 2; i < 12; ++i)
+    {
+        gatedButtons[i].setSuppressed(collision);
+    }
 
     if (setupTrigger.requested())
     {
@@ -275,7 +298,9 @@ void loop()
         }
     }
 
-    if (configValid && mqttLink.connected())
+    presenceAnnouncer.update(mqttLink.connected());
+
+    if (configValid && mqttLink.connected() && !collision)
     {
         TurnoutFeedback feedback{};
         while (feedbackSource.poll(feedback))

@@ -51,10 +51,21 @@ on.
    that isn't its own means another panel is currently claiming the same
    `nodeId`. On detection: suppress all 12 turnout buttons, force every
    LED into the existing blink/unconfirmed state, and log once via
-   serial. Recovery requires the operator to recommission one of the two
-   panels with a different `nodeId` and reboot — matching this project's
-   existing "config changes take effect on reboot" convention throughout;
-   no automatic self-healing without one.
+   serial. For a genuine ongoing collision (two panels both actually
+   commissioned with the same `nodeId`), recovery requires the operator
+   to recommission one of them with a different `nodeId` and reboot —
+   matching this project's existing "config changes take effect on
+   reboot" convention throughout. **Correction, added after the final
+   whole-branch review found this understated:** because the mac topic
+   is retained and never explicitly cleared, a *stale* collision (the
+   other panel has since been decommissioned or renumbered, not actually
+   present anymore) self-heals after exactly one reboot — the surviving
+   panel's own `presenceAnnouncer.update()` overwrites the stale retained
+   claim with its own MAC on that same boot, so the next reboot sees only
+   its own claim and never re-latches. No broker administration is ever
+   required. See "Presence + collision detection" in `CLAUDE.md` for the
+   full reasoning, including why the retained flag cannot be dropped
+   without breaking mutual detection entirely.
 3. **LED indication reuses the existing blink/unconfirmed state** rather
    than building a new, visually distinct pattern. This was explicitly
    flagged as a narrower reading than "a distinct pattern," discussed
