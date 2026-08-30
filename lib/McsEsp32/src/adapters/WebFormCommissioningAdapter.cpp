@@ -19,7 +19,7 @@ std::string WebFormCommissioningAdapter::submit(const WebFormSubmission& form)
     ParsedCommand wifiCommand;
     wifiCommand.kind = CommandKind::Wifi;
     wifiCommand.stringArg1 = form.wifiSsid;
-    wifiCommand.stringArg2 = form.wifiPassword;
+    wifiCommand.stringArg2 = form.wifiPassword.empty() ? session_.draft().wifiPassword : form.wifiPassword;
     response = session_.apply(wifiCommand);
     if (response != "OK\n")
     {
@@ -34,11 +34,6 @@ std::string WebFormCommissioningAdapter::submit(const WebFormSubmission& form)
 
     for (int i = 0; i < NodeConfig::kChannelCount; ++i)
     {
-        if (form.channelJmriNames[i].empty())
-        {
-            continue;
-        }
-
         ParsedCommand turnoutCommand;
         turnoutCommand.kind = CommandKind::TurnoutName;
         turnoutCommand.intArg = i + 1;
@@ -71,7 +66,7 @@ WebFormSubmission WebFormCommissioningAdapter::currentValues() const
     WebFormSubmission form;
     form.nodeId = config.nodeId == 0 ? "" : std::to_string(config.nodeId);
     form.wifiSsid = config.wifiSsid;
-    form.wifiPassword = config.wifiPassword;
+    form.wifiPassword = "";
     form.brokerHost = config.brokerHost;
     form.brokerPort = std::to_string(config.brokerPort);
     form.channelJmriNames = config.channelJmriNames;

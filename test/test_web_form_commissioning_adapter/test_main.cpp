@@ -37,7 +37,7 @@ TEST_CASE("a fully valid submission saves and requests reboot")
     REQUIRE(store.load().channelJmriNames[0] == "LT1");
 }
 
-TEST_CASE("an empty channel name leaves the stored name untouched, rather than clearing it")
+TEST_CASE("a blank channel field clears a previously stored channel name")
 {
     FakeConfigStore store;
     store.save(NodeConfig::factoryDefault()
@@ -53,7 +53,7 @@ TEST_CASE("an empty channel name leaves the stored name untouched, rather than c
 
     adapter.submit(form);
 
-    REQUIRE(store.load().channelJmriNames[1] == "LT2");
+    REQUIRE(store.load().channelJmriNames[1].empty());
 }
 
 TEST_CASE("a non-numeric node id stops immediately and never reaches save")
@@ -130,4 +130,39 @@ TEST_CASE("wifi credentials and turnout names containing spaces round-trip intac
     REQUIRE(store.load().wifiSsid == "My Layout Wifi");
     REQUIRE(store.load().wifiPassword == "a pass with spaces");
     REQUIRE(store.load().channelJmriNames[0] == "Yard Ladder 3");
+}
+
+TEST_CASE("a blank wifi password keeps the previously stored password")
+{
+    FakeConfigStore store;
+    store.save(NodeConfig::factoryDefault()
+                   .withNodeId(5)
+                   .withWifi("MyLayoutWifi", "existing-secret")
+                   .withBroker("h", 1883));
+    CommissioningSession session(store);
+    WebFormCommissioningAdapter adapter(session);
+
+    WebFormSubmission form = validSubmission();
+    form.wifiPassword = "";
+
+    const std::string response = adapter.submit(form);
+
+    REQUIRE(response == "rebooting\n");
+    REQUIRE(store.load().wifiPassword == "existing-secret");
+}
+
+TEST_CASE("currentValues never reflects a stored wifi password")
+{
+    FakeConfigStore store;
+    store.save(NodeConfig::factoryDefault()
+                   .withNodeId(5)
+                   .withWifi("MyLayoutWifi", "existing-secret")
+                   .withBroker("h", 1883));
+    CommissioningSession session(store);
+    WebFormCommissioningAdapter adapter(session);
+
+    const WebFormSubmission values = adapter.currentValues();
+
+    REQUIRE(values.wifiPassword.empty());
+    REQUIRE(values.wifiSsid == "MyLayoutWifi");
 }
