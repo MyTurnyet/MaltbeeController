@@ -104,3 +104,65 @@ before dispatching the reviewer.
 on the most capable available model per the plan's own guidance (highest-
 judgment task: real composition-root restructuring, no native test exists
 for src/, verification is esp32dev build + manual read-through).
+
+Task 6 (src/esp32/main.cpp wiring — BootMode branching, combo trigger,
+gated inputs): complete (commit 6b8abf1..0f0c6cd [! F, no native test
+possible for src/ so ! is correct independent of line count], review
+clean (opus) — Approved, zero Critical/Important. Reviewer independently
+traced all 9 spec-compliance points against the final file rather than
+trusting the implementer's own Step 11 checklist: confirmed the
+WirelessSetup branch in setup()/loop() genuinely returns before any
+network/matrix code can run in the same tick; confirmed ComboSetupModeTrigger
+reads raw matrixButtons[0]/[1] (declared before gatedButtons, so it
+couldn't reference the gated array even by accident) and that
+GatedDigitalInput.isActive() being suppression-dependent would deadlock
+it if wired the other way; checked all 12 stations[] entries individually
+by index and confirmed each reads gatedButtons[i] with zero stray
+matrixButtons references; confirmed requestOnNextBoot()'s bool return
+gates ESP.restart() with a non-spammy failure path (requested() is
+edge-triggered, cleared every tick); confirmed EspDeviceIdentity is
+constructed only as a setup()-local inside the WirelessSetup branch, never
+at global scope; confirmed NvsBootstrap's global-declaration-order
+position still precedes the new consumeRequest() NVS read; confirmed the
+gatedButtons[12] aggregate array matches this file's own established
+copy-list-init pattern; confirmed no code was added attempting to close
+the accepted staggered-press gap. 5 Minor (all recorded for the final
+whole-branch review to triage, none fixed here): (1) the WirelessSetup
+exit-via-reboot path works correctly today but only through an implicit
+coupling — serialCommissioningAdapter.rebootRequested() forwards to the
+SAME shared CommissioningSession that WebFormCommissioningAdapter's own
+`reboot` command sets, so the web form's reboot request is actually
+serviced by the serial adapter's check; WebFormCommissioningAdapter::
+rebootRequested() itself is built but called from nowhere — a future
+refactor that scopes the reboot flag per-adapter or reorders loop() could
+silently strand the panel in AP mode; (2) a spurious turnout-1 toggle is
+possible on the specific NVS-write-failure path if only T1 is still held
+when suppression clears — same family as the already-accepted
+staggered-press gap, reachable only on storage failure; (3) no panel-side
+LED indication of WirelessSetup mode (serial log only) — matches spec
+exactly, a UX note for later, not a defect; (4) reviewer noted the
+design spec's "open gap: password rendered back in cleartext" is actually
+ALREADY closed by this branch's own Tasks 2/3 (currentValues() blanks the
+password) — worth updating in the design spec's gap-tracking language
+during controller doc pass, not a code fix; (5) zero automated test
+coverage for main.cpp is correctly unavoidable (test_build_src=false,
+composition root is the correct architectural seam to leave untested).
+Controller independently re-ran all three builds on this exact commit
+after the implementer's own run: esp32dev SUCCESS (RAM 16.8%/Flash 80.9%,
+a genuine increase — CaptivePortalServer/WebFormCommissioningAdapter/
+ComboSetupModeTrigger/GatedDigitalInput/EspDeviceIdentity are now really
+linked in, pulling in DNSServer/WiFi/WebServer), megaatmega2560 SUCCESS
+(RAM 9.9%/Flash 2.7%, byte-identical, src/esp32/* excluded from this
+env's build_src_filter), native 36/36 PASSED via Bash (implementer
+correctly flagged that running pio test -e native through PowerShell on
+this machine produces false ERRORED results from a MinGW runtime DLL/PATH
+issue in that shell — Bash is required for this project's native test
+runs going forward). Controller also independently read the full final
+main.cpp and confirmed it is byte-for-byte identical to the plan's
+specified target code.
+
+## ALL 6 TASKS COMPLETE — proceeding to the final whole-branch review
+(most capable available model), then superpowers:finishing-a-development-branch.
+ESP32 Flash headroom note for the ledger: 80.9% used (~250KB free on the
+default partition scheme) — worth watching in the remaining milestones
+(routes, persistent config), not an immediate concern.
