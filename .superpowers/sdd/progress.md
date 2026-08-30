@@ -38,7 +38,17 @@ table is a function-local static pointer) - both match the brief's
 verbatim specified code, not implementer deviations, not fixed. Reviewer
 hand-verified the hex nibble math for both test cases (CDEF and the
 zero-pad 0102 case). Native 34/34.
-Task 2 (EspDeviceIdentity): not started
+Task 2 (EspDeviceIdentity): complete (commit 6a4a200..1433476 [^ F],
+review clean — Approved, zero findings at any severity. Uses the mandated
+esp_efuse_mac_get_default() API, both files #ifdef ARDUINO-guarded, no
+native test as expected. Implementer's own pio test -e native run crashed
+with a Windows STATUS_STACK_BUFFER_OVERRUN error (exit 3221225785) in its
+sandbox - same class of transient environment issue seen once before in
+sub-project #2c-a's branch. Implementer diagnosed it themselves (removed
+this task's files, crash persisted) before reporting DONE_WITH_CONCERNS
+rather than fabricating a pass. Controller independently re-ran in this
+worktree: clean 34/34, no crash. esp32dev SUCCESS (37.59s) confirmed by
+the implementer.
 Task 3 (WebFormSubmission): not started
 Task 4 (CommissioningSession::draft() + WebFormCommissioningAdapter): not started
 Task 5 (SetupFormRenderer): not started
