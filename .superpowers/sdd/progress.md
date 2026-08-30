@@ -48,3 +48,18 @@ discipline maintained (no stray .cpp), and the pattern mirrors
 TopicScheme.h exactly. Controller independently verified the diff stat
 (36 total lines) and re-ran the focused test: 3/3 test cases, 4
 assertions.
+
+Task 2 (NodeIdentityGuard): complete (commit ec2a43c..9fe1a8a [! F, 83-line
+diff], review clean — Approved, zero Critical/Important. Reviewer
+independently traced the actual `if (observedMac != ownMac_)
+{ collisionDetected_ = true; }` code (no else branch, no reset path
+anywhere) to confirm the one-way latch, rather than trusting the
+implementer's own empirical swap-test claim, and verified each of the 5
+test cases would genuinely fail against at least one plausible wrong
+implementation (unconditional-suspicion, self-clearing-on-reobservation).
+1 Minor (non-blocking): test 5 is largely redundant with test 2, but was
+specified verbatim by the brief itself so not a deviation. Implementer's
+own self-review honestly flagged test 5 as the weakest case rather than
+overclaiming. Controller independently confirmed the commit's diff size
+(83 lines, correctly capped at !) and re-ran the focused suite: 5/5 test
+cases.
