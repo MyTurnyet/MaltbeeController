@@ -2,6 +2,8 @@
 
 #include <string>
 
+#include <nvs_flash.h>
+
 #include "adapters/ArduinoClock.h"
 #include "adapters/ArduinoDigitalInput.h"
 #include "adapters/ArduinoDigitalOutput.h"
@@ -46,6 +48,29 @@ namespace
     constexpr unsigned long RETRY_INTERVAL_MS = 5000;
     constexpr unsigned long UART_BAUD_RATE = 115200;
 }
+
+namespace
+{
+    struct NvsBootstrap
+    {
+        NvsBootstrap()
+        {
+            // ESP-IDF runs global constructors before app_main(), so Arduino's
+            // initArduino() has not yet called nvs_flash_init() when the globals
+            // below read NVS. Initialize it here (idempotent - initArduino()'s
+            // later call returns ESP_OK) so this boot's config is the one
+            // commissioning actually saved.
+            esp_err_t err = nvs_flash_init();
+            if (err == ESP_ERR_NVS_NO_FREE_PAGES || err == ESP_ERR_NVS_NEW_VERSION_FOUND)
+            {
+                nvs_flash_erase();
+                nvs_flash_init();
+            }
+        }
+    };
+}
+
+NvsBootstrap nvsBootstrap;
 
 ArduinoClock systemClock;
 
@@ -164,6 +189,9 @@ void setup()
         wifiLink.begin(runningConfig.wifiSsid, runningConfig.wifiPassword);
         mqttLink.begin(runningConfig.brokerHost, runningConfig.brokerPort);
     }
+
+    uartPort.write(configValid ? "MaltBee panel ready (configured).\n"
+                                : "MaltBee panel needs commissioning. Type 'show'.\n");
 }
 
 void loop()
@@ -173,13 +201,17 @@ void loop()
     serialCommissioningAdapter.poll();
     if (serialCommissioningAdapter.rebootRequested())
     {
+        Serial.flush();
         ESP.restart();
     }
 
     if (configValid)
     {
         wifiLink.poll();
-        mqttLink.poll();
+        if (wifiLink.connected())
+        {
+            mqttLink.poll();
+        }
     }
 
     if (configValid && mqttLink.connected())
