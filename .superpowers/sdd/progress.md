@@ -49,7 +49,10 @@ this task's files, crash persisted) before reporting DONE_WITH_CONCERNS
 rather than fabricating a pass. Controller independently re-ran in this
 worktree: clean 34/34, no crash. esp32dev SUCCESS (37.59s) confirmed by
 the implementer.
-Task 3 (WebFormSubmission): not started
+Task 3 (WebFormSubmission): complete (commit e035058..0cb22cb [^ F], review
+clean — Approved, zero findings. Byte-for-byte match to the brief's
+specified 16-line struct, no test file (matches ParsedCommand precedent),
+nothing else touched. Native 34/34.
 Task 4 (CommissioningSession::draft() + WebFormCommissioningAdapter): not started
 Task 5 (SetupFormRenderer): not started
 Task 6 (CaptivePortalServer): not started
