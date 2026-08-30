@@ -208,10 +208,14 @@ Because the pair always shows one color or the other, there's no way to show
 
 **Decision (2026-08-30):** commissioning over Wi-Fi (sub-project #2c) opens a
 temporary access point named `MaltBee-Setup-XXXX` (last 4 hex digits of the
-ESP32's MAC address) whenever the panel boots into wireless setup mode —
-either a factory-fresh panel with no valid configuration, or an
-already-commissioned panel where a technician held turnout buttons T1+T2
-together for 3 seconds to request it.
+ESP32's MAC address) whenever the panel boots into wireless setup mode.
+Wireless setup mode is entered by holding turnout buttons T1+T2 together for
+3 seconds — this works the same way whether the panel is a factory-fresh
+board that has never been configured, or an already-commissioned panel a
+technician wants to reconfigure. A factory-fresh panel does **not**
+automatically open the AP on its own; without the T1+T2 hold it boots
+waiting for bench-serial commissioning instead (see "JMRI Communication
+(MQTT)" and the bench-serial commissioning design for that path).
 
 The AP requires a WPA2 passphrase to join: **`maltbee-setup`**. This is
 fixed and shared across every panel (not per-panel or MAC-derived) — write
