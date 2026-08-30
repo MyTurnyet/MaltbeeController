@@ -71,19 +71,21 @@ to ever compile it.
   - `ports/`: LocoNetFeedbackSource, LocoNetSwitchDriver, LocoNetTransport
   - `adapters/`: LocoNetFeedbackDecoder, MrrwaLocoNetTurnoutAdapter (native-tested translation layers, no Arduino dependency); MrrwaLocoNetFeedbackSource, MrrwaLocoNetSwitchDriver (`#ifdef ARDUINO`-guarded send/receive hardware shims); PulsingLocoNetTransport (non-blocking solenoid pulse-timing logic)
 - `lib/McsEsp32/src/` — ESP32-specific code, compiled for `native` (pure-logic pieces only) and `esp32dev`
-  - `domain/`: CommandLineParser, NodeConfig, ParsedCommand, TopicScheme (JMRI/MQTT topic naming), PayloadCodec (turnout position ↔ MQTT payload encoding), MatrixScanner (cycles the 3 row outputs one at a time, caching each column's reading per row for the 3x4 button matrix)
+  - `domain/`: CommandLineParser, NodeConfig, ParsedCommand, TopicScheme (JMRI/MQTT topic naming), PayloadCodec (turnout position ↔ MQTT payload encoding), MatrixScanner (cycles the 3 row outputs one at a time, caching each column's reading per row for the 3x4 button matrix), LedPairDriver (drives a shared-GPIO red/green LED pair: steady color or non-blocking blink between last-displayed color and its opposite)
   - `ports/`: ConfigStore, UartPort, MqttTransport
   - `application/`: CommissioningSession (commissioning command handling, wires a `ConfigStore` port)
-  - `adapters/`: SerialCommissioningAdapter, JmriTurnoutCommandAdapter, JmriFeedbackSource (native-tested translation layers, no Arduino dependency); EspUartPort, NvsConfigStore, WiFiLink, MqttLink (`#ifdef ARDUINO`-guarded hardware shims); MatrixDigitalInput (implements `DigitalInput` for one fixed matrix cell, forwarding to `MatrixScanner`'s cached reading)
+  - `adapters/`: SerialCommissioningAdapter, JmriTurnoutCommandAdapter, JmriFeedbackSource (native-tested translation layers, no Arduino dependency); EspUartPort, NvsConfigStore, WiFiLink, MqttLink (`#ifdef ARDUINO`-guarded hardware shims); MatrixDigitalInput (implements `DigitalInput` for one fixed matrix cell, forwarding to `MatrixScanner`'s cached reading); LedPairOutput (implements `DigitalOutput` for one logical side, green or red, of a shared LED pair, forwarding to `LedPairDriver`)
 - `src/mega/main.cpp` and `src/esp32/main.cpp` — the two composition roots. `src/mega/main.cpp` builds a `TurnoutConfig[4]` table and 4 `TurnoutStation`s from it (range-`for` over `stations[]` in `setup()`/`loop()`, no per-turnout duplication), plus the shared real LocoNet send/receive adapter chain (`MrrwaLocoNetSwitchDriver` → `PulsingLocoNetTransport` → `MrrwaLocoNetTurnoutAdapter` for sending; `MrrwaLocoNetFeedbackSource` → `LocoNetFeedbackDecoder` → broadcast `TurnoutStation::applyFeedback()` for receiving, each station's own `TurnoutControl` self-filtering by address)
-- `test/test_<name>/test_main.cpp` — Catch2 test binaries (25 test suites)
+- `test/test_<name>/test_main.cpp` — Catch2 test binaries (27 test suites)
 - `test/support/` — test doubles (FakeDigitalInput, FakeClock, FakeDigitalOutput, FakeTurnoutCommandPort, FakeLocoNetTransport, FakeLocoNetSwitchDriver)
 
 **Include convention:** within a library, includes stay relative
 (`../ports/X.h`). A file depending on a header from a *different* library it
-needs uses a rooted include (`"ports/X.h"`) instead — currently only 5 such
-includes exist, all in `McsLoconet` referencing `McsCore` headers
-(`domain/Turnout.h`, `ports/Clock.h`, `ports/TurnoutCommandPort.h`).
+needs uses a rooted include (`"ports/X.h"`) instead — 16 such includes exist
+today, split between `McsEsp32` (11, including `LedPairDriver.h`'s
+`ports/Clock.h`/`ports/DigitalOutput.h`) and `McsLoconet` (5), all of them
+referencing `McsCore` headers (`domain/Turnout.h`, `ports/Clock.h`,
+`ports/DigitalInput.h`, `ports/DigitalOutput.h`, `ports/TurnoutCommandPort.h`).
 
 **Trap to watch for:** basenames must stay globally unique across all three
 libraries. All three have parallel `domain/`/`ports/`/`adapters/` subtrees,
@@ -121,6 +123,8 @@ mode is confusing rather than a clean error.
 - ✅ JMRI command/feedback wiring integration (end-to-end self-echo immunity + real-feedback proof)
 - ✅ MatrixScanner (row-cycling scan, per-row column caching, default-false before first scan)
 - ✅ MatrixDigitalInput (forwards to the scanner's cached reading for its own fixed cell)
+- ✅ LedPairDriver (steady green/red, blink between last-displayed color and its opposite, `begin()` re-stamping the timer and re-writing the current color)
+- ✅ LedPairOutput (forwards one logical side's `set()` to the shared `LedPairDriver`)
 
 **Completed milestones:** 1-11 (foundation, ports, Button, Indicator, Turnout domain model, TurnoutIndicator, TurnoutControl, hardware integration programming, LocoNet output, LocoNet feedback, multiple turnouts). `pio run -e megaatmega2560` compiles successfully (RAM 9.9%, Flash 2.7% with 4 stations). Milestones 9-11 are complete on the programming side only — physical wiring and on-hardware verification (button-to-LED and LocoNet send/receive against a real DR5000/DR4018, across all 4 stations) are still outstanding — see the "Milestone 8 hardware" note below.
 

@@ -416,7 +416,7 @@ void LedPairDriver::update()
 - [ ] **Step 5: Run tests to verify they pass**
 
 Run: `pio test -e native -f test_led_pair_driver`
-Expected: PASS, all 10 test cases green.
+Expected: PASS, all 12 test cases green.
 
 - [ ] **Step 6: Run the full native suite to confirm no regressions**
 
