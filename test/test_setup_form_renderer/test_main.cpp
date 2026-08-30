@@ -25,16 +25,33 @@ TEST_CASE("escapeHtml leaves ordinary characters untouched")
     REQUIRE(SetupFormRenderer::escapeHtml("MyLayoutWifi123") == "MyLayoutWifi123");
 }
 
-TEST_CASE("render embeds the escaped wifi ssid and password values")
+TEST_CASE("render embeds the escaped wifi ssid value")
 {
     WebFormSubmission form = emptyValues();
     form.wifiSsid = "My\"Wifi";
-    form.wifiPassword = "pass&word";
 
     const std::string html = SetupFormRenderer::render(form);
 
     REQUIRE(html.find("My&quot;Wifi") != std::string::npos);
-    REQUIRE(html.find("pass&amp;word") != std::string::npos);
+}
+
+TEST_CASE("render never embeds a wifi password, even when one is set")
+{
+    WebFormSubmission form = emptyValues();
+    form.wifiPassword = "pass&word";
+
+    const std::string html = SetupFormRenderer::render(form);
+
+    REQUIRE(html.find("name='wifi_password' type='password' value=''") != std::string::npos);
+    REQUIRE(html.find("pass&word") == std::string::npos);
+    REQUIRE(html.find("pass&amp;word") == std::string::npos);
+}
+
+TEST_CASE("render includes a hint that a blank password keeps the current one")
+{
+    const std::string html = SetupFormRenderer::render(emptyValues());
+
+    REQUIRE(html.find("Leave blank to keep the current password.") != std::string::npos);
 }
 
 TEST_CASE("render embeds the broker host and port values")
