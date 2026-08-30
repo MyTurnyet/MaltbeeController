@@ -7,10 +7,11 @@ class FakeSetupModeRequestStore final : public SetupModeRequestStore
 public:
     int requestOnNextBootCallCount = 0;
 
-    void requestOnNextBoot() override
+    bool requestOnNextBoot() override
     {
         requested_ = true;
         requestOnNextBootCallCount++;
+        return true;
     }
 
     bool consumeRequest() override

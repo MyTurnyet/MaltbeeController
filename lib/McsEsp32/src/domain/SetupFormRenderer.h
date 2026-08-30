@@ -49,8 +49,8 @@ public:
         html += "<form method='POST' action='/submit'>";
         html += "<label>Node ID</label><select name='id'>" + renderIdOptions(values.nodeId) + "</select>";
         html += "<label>WiFi SSID</label><input name='wifi_ssid' value='" + escapeHtml(values.wifiSsid) + "'>";
-        html += "<label>WiFi Password</label><input name='wifi_password' type='password' value='"
-            + escapeHtml(values.wifiPassword) + "'>";
+        html += "<label>WiFi Password</label><input name='wifi_password' type='password' value=''>";
+        html += "<p class='hint'>Leave blank to keep the current password.</p>";
         html += "<label>Broker Host</label><input name='broker_host' value='" + escapeHtml(values.brokerHost) + "'>";
         html += "<label>Broker Port</label><input name='broker_port' type='number' value='"
             + escapeHtml(values.brokerPort) + "'>";
@@ -107,5 +107,6 @@ private:
         "button:hover{background:#1d4ed8;}"
         "details{margin-top:20px;}"
         "summary{cursor:pointer;font-size:0.85rem;font-weight:600;color:#374151;}"
-        ".warning{color:#b45309;font-size:0.8rem;margin:8px 0 0;}";
+        ".warning{color:#b45309;font-size:0.8rem;margin:8px 0 0;}"
+        ".hint{color:#6b7280;font-size:0.8rem;margin:4px 0 0;}";
 };

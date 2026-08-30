@@ -8,9 +8,9 @@ CaptivePortalServer::CaptivePortalServer(WebFormCommissioningAdapter& adapter) :
 {
 }
 
-void CaptivePortalServer::begin(const std::string& apName)
+void CaptivePortalServer::begin(const std::string& apName, const std::string& passphrase)
 {
-    WiFi.softAP(apName.c_str());
+    WiFi.softAP(apName.c_str(), passphrase.c_str());
 
     IPAddress apIp = WiFi.softAPIP();
     dnsServer_.start(53, "*", apIp);

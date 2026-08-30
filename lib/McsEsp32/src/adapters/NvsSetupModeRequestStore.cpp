@@ -10,18 +10,25 @@ namespace
     constexpr const char* kKey = "wsetup";
 }
 
-void NvsSetupModeRequestStore::requestOnNextBoot()
+bool NvsSetupModeRequestStore::requestOnNextBoot()
 {
     Preferences prefs;
-    prefs.begin(kNamespace, false);
-    prefs.putBool(kKey, true);
+    if (!prefs.begin(kNamespace, false))
+    {
+        return false;
+    }
+    const bool ok = prefs.putBool(kKey, true) != 0;
     prefs.end();
+    return ok;
 }
 
 bool NvsSetupModeRequestStore::consumeRequest()
 {
     Preferences prefs;
-    prefs.begin(kNamespace, false);
+    if (!prefs.begin(kNamespace, false))
+    {
+        return false;
+    }
     const bool pending = prefs.getBool(kKey, false);
     if (pending)
     {
