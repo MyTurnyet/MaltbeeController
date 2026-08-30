@@ -226,3 +226,35 @@ All five pieces are native-testable except `NvsSetupModeRequestStore`
   unmodified. `GatedDigitalInput` sits *between* a `MatrixDigitalInput` and
   the `Button` a `ToggleTurnoutStation` owns, without either of those
   classes needing to know it exists.
+
+## Known gap for #2c-b to resolve (found by the final whole-branch review)
+
+Decision 3 above frames `GatedDigitalInput` as preventing the T1/T2 combo
+from "also fir[ing] two ordinary `Button.wasPressed()` edges" — but that
+guarantee is weaker than stated once the two classes are actually composed
+in #2c-b. `ComboSetupModeTrigger::isHolding()` only becomes true at the
+*later* of the two presses (by design — see Decision 2's `update()`
+description). A human's two-finger press routinely staggers by more than
+`Button`'s 30 ms debounce window, so the *earlier*-pressed button's own
+`wasPressed()` edge can fire — and `ToggleTurnoutControl` can send a live
+toggle command to JMRI for that turnout — before `isHolding()` ever becomes
+true and suppression begins. Suppression, once it engages, correctly covers
+the second button and the rest of the hold, but not that first edge.
+
+This is not a defect in any of the four classes this spec covers — each
+implements its own stated contract exactly. It's a gap in this spec's own
+reasoning that only surfaces once the pieces are wired together, which
+`#2c-b` is where that wiring happens. `#2c-b` must explicitly decide one of:
+
+- **Accept one spurious toggle** on whichever of T1/T2 is pressed first,
+  self-correcting (the operator presses that turnout's button again). Matches
+  this spec's original "accept two spurious commands" alternative from
+  Decision 3, just narrowed from two commands to (at most) one.
+- **Command-on-release instead of command-on-press** for T1/T2 specifically
+  — changes normal operation for those two turnouts, more invasive.
+- **A short hold-off** before T1/T2's command is actually sent (a few tens
+  of ms), cancelled if the combo engages in that window — closes the gap
+  fully but adds latency and complexity to the one part of this panel
+  that's supposed to feel instantaneous.
+
+Not resolved here; `#2c-b`'s own design must pick one and record why.

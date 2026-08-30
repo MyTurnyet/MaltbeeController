@@ -57,8 +57,8 @@ preprocessor guard. PlatformIO compiles every `.cpp` file in a library that's
 `megaatmega2560`, `esp32dev`) compiles a given file is controlled entirely by
 which library it lives in — `platformio.ini`'s per-environment `lib_deps`/
 `lib_ignore` — not by `#ifdef`. The one guard idiom that remains is
-`#ifdef ARDUINO`, on the 11 files that are genuine hardware shims (4 in
-`McsCore`, 2 in `McsLoconet`, 5 in `McsEsp32`); every other file needs no
+`#ifdef ARDUINO`, on the 12 files that are genuine hardware shims (4 in
+`McsCore`, 2 in `McsLoconet`, 6 in `McsEsp32`); every other file needs no
 guard at all because it's structurally impossible for the wrong environment
 to ever compile it.
 
@@ -71,27 +71,42 @@ to ever compile it.
   - `ports/`: LocoNetFeedbackSource, LocoNetSwitchDriver, LocoNetTransport
   - `adapters/`: LocoNetFeedbackDecoder, MrrwaLocoNetTurnoutAdapter (native-tested translation layers, no Arduino dependency); MrrwaLocoNetFeedbackSource, MrrwaLocoNetSwitchDriver (`#ifdef ARDUINO`-guarded send/receive hardware shims); PulsingLocoNetTransport (non-blocking solenoid pulse-timing logic)
 - `lib/McsEsp32/src/` — ESP32-specific code, compiled for `native` (pure-logic pieces only) and `esp32dev`
-  - `domain/`: CommandLineParser, NodeConfig, ParsedCommand, TopicScheme (JMRI/MQTT topic naming), PayloadCodec (turnout position ↔ MQTT payload encoding), MatrixScanner (cycles the 3 row outputs one at a time, caching each column's reading per row for the 3x4 button matrix), LedPairDriver (drives a shared-GPIO red/green LED pair: steady color or non-blocking blink between last-displayed color and its opposite)
-  - `ports/`: ConfigStore, UartPort, MqttTransport
+  - `domain/`: CommandLineParser, NodeConfig, ParsedCommand, TopicScheme (JMRI/MQTT topic naming), PayloadCodec (turnout position ↔ MQTT payload encoding), MatrixScanner (cycles the 3 row outputs one at a time, caching each column's reading per row for the 3x4 button matrix), LedPairDriver (drives a shared-GPIO red/green LED pair: steady color or non-blocking blink between last-displayed color and its opposite), BootMode (enum: Normal/NeedsCommissioning/WirelessSetup — transient boot-time state, not part of persisted `NodeConfig`), BootModeSelector (picks `BootMode` from `NodeConfig::validate()` plus a pending wireless-setup request, request always wins)
+  - `ports/`: ConfigStore, UartPort, MqttTransport, SetupModeRequestStore (a one-shot "enter wireless setup on next boot" flag, separate from `ConfigStore` since it's boot-intent, not configuration)
   - `application/`: CommissioningSession (commissioning command handling, wires a `ConfigStore` port)
-  - `adapters/`: SerialCommissioningAdapter, JmriTurnoutCommandAdapter, JmriFeedbackSource (native-tested translation layers, no Arduino dependency); EspUartPort, NvsConfigStore, WiFiLink, MqttLink (`#ifdef ARDUINO`-guarded hardware shims); MatrixDigitalInput (implements `DigitalInput` for one fixed matrix cell, forwarding to `MatrixScanner`'s cached reading); LedPairOutput (implements `DigitalOutput` for one logical side, green or red, of a shared LED pair, forwarding to `LedPairDriver`); LedPairStation (`#ifdef ARDUINO`-guarded, config-driven per-turnout composition helper — owns one turnout's real LED-pair GPIO plus its `LedPairDriver`/two `LedPairOutput`s, mirroring `TurnoutStation`); ToggleTurnoutStation (portable, no `#ifdef ARDUINO` guard — config-driven per-turnout composition helper for the ESP32's single-button panel, owning one turnout's `Button`/`Turnout`/`TurnoutIndicator`/`ToggleTurnoutControl` stack behind ports only, mirroring `TurnoutStation`/`LedPairStation` but without any raw-GPIO construction of its own)
+  - `adapters/`: SerialCommissioningAdapter, JmriTurnoutCommandAdapter, JmriFeedbackSource (native-tested translation layers, no Arduino dependency); EspUartPort, NvsConfigStore, WiFiLink, MqttLink, NvsSetupModeRequestStore (`#ifdef ARDUINO`-guarded hardware shims; `NvsSetupModeRequestStore` persists its flag in its own NVS namespace `"mcs-boot"`, distinct from `NvsConfigStore`'s `"mcsnode"`); MatrixDigitalInput (implements `DigitalInput` for one fixed matrix cell, forwarding to `MatrixScanner`'s cached reading); LedPairOutput (implements `DigitalOutput` for one logical side, green or red, of a shared LED pair, forwarding to `LedPairDriver`); LedPairStation (`#ifdef ARDUINO`-guarded, config-driven per-turnout composition helper — owns one turnout's real LED-pair GPIO plus its `LedPairDriver`/two `LedPairOutput`s, mirroring `TurnoutStation`); ToggleTurnoutStation (portable, no `#ifdef ARDUINO` guard — config-driven per-turnout composition helper for the ESP32's single-button panel, owning one turnout's `Button`/`Turnout`/`TurnoutIndicator`/`ToggleTurnoutControl` stack behind ports only, mirroring `TurnoutStation`/`LedPairStation` but without any raw-GPIO construction of its own); GatedDigitalInput (implements `DigitalInput` by wrapping another and forcing `isActive()` false while `setSuppressed(true)`, otherwise forwarding — general-purpose, no knowledge of its caller); ComboSetupModeTrigger (detects two `DigitalInput`s held simultaneously for a minimum duration then either releasing, edge-triggered like `Button::wasPressed()`; not yet wired to real hardware — see "Not yet wired" below)
 - `src/mega/main.cpp` and `src/esp32/main.cpp` — the two composition roots. `src/mega/main.cpp` builds a `TurnoutConfig[4]` table and 4 `TurnoutStation`s from it (range-`for` over `stations[]` in `setup()`/`loop()`, no per-turnout duplication), plus the shared real LocoNet send/receive adapter chain (`MrrwaLocoNetSwitchDriver` → `PulsingLocoNetTransport` → `MrrwaLocoNetTurnoutAdapter` for sending; `MrrwaLocoNetFeedbackSource` → `LocoNetFeedbackDecoder` → broadcast `TurnoutStation::applyFeedback()` for receiving, each station's own `TurnoutControl` self-filtering by address). `src/esp32/main.cpp` builds a `TurnoutPanelConfig[12]` table and 12 `ToggleTurnoutStation`s from it, plus a shared `MatrixScanner` (3 row/4 column GPIOs) feeding 12 `MatrixDigitalInput`s, 12 `LedPairStation`s (one real LED-pair GPIO each), the shared JMRI/MQTT command+feedback adapters (`JmriTurnoutCommandAdapter`/`JmriFeedbackSource` over a `WiFiLink`+`MqttLink` pair), and bench-serial commissioning (`EspUartPort` → `SerialCommissioningAdapter` → `CommissioningSession` → `NvsConfigStore`). Boot explicitly gates Wi-Fi/MQTT connection attempts on `NodeConfig::validate().empty()`; `loop()` reverts every station's LED to blink/unconfirmed via `clearIndicator()` whenever the config is invalid or MQTT is disconnected. An `NvsBootstrap` global (the very first global constructed in the file) calls `nvs_flash_init()` before anything else touches NVS — ESP-IDF runs C++ global constructors before `app_main()`/`initArduino()`, so without this, `NvsConfigStore::load()` in a later global's constructor would silently see an uninitialized NVS partition and always return factory-default config.
-- `test/test_<name>/test_main.cpp` — Catch2 test binaries (29 test suites)
-- `test/support/` — test doubles (FakeDigitalInput, FakeClock, FakeDigitalOutput, FakeTurnoutCommandPort, FakeLocoNetTransport, FakeLocoNetSwitchDriver)
+- `test/test_<name>/test_main.cpp` — Catch2 test binaries (32 test suites)
+- `test/support/` — test doubles (FakeDigitalInput, FakeClock, FakeDigitalOutput, FakeTurnoutCommandPort, FakeLocoNetTransport, FakeLocoNetSwitchDriver, FakeSetupModeRequestStore)
+
+### Not yet wired: BootMode/setup-mode trigger classes (sub-project #2c-a)
+
+`BootMode`, `BootModeSelector`, `SetupModeRequestStore`/`NvsSetupModeRequestStore`,
+`GatedDigitalInput`, and `ComboSetupModeTrigger` are built and native-tested
+but not yet referenced by `src/esp32/main.cpp` — wiring them in (choosing
+the boot mode at startup, constructing `ComboSetupModeTrigger` against the
+real T1/T2 `MatrixDigitalInput`s, wrapping those two stations' inputs in
+`GatedDigitalInput`) is sub-project #2c-b. See
+`docs/superpowers/specs/2026-08-29-esp32-wireless-setup-trigger-design.md`'s
+"Known gap for #2c-b to resolve" section for an unresolved design question
+about suppression timing that #2c-b must explicitly decide.
 
 **Include convention:** within a library, includes stay relative
 (`../ports/X.h`). A file depending on a header from a *different* library it
-needs uses a rooted include (`"ports/X.h"`) instead — 19 such includes exist
-today, split between `McsEsp32` (14, including `LedPairDriver.h`'s
-`ports/Clock.h`/`ports/DigitalOutput.h` and `LedPairStation.h`'s
-`adapters/ArduinoDigitalOutput.h`/`ports/Clock.h`/`ports/DigitalOutput.h`) and
-`McsLoconet` (5), all of them referencing `McsCore` headers
-(`adapters/ArduinoDigitalOutput.h`, `domain/Turnout.h`, `ports/Clock.h`,
-`ports/DigitalInput.h`, `ports/DigitalOutput.h`, `ports/TurnoutCommandPort.h`).
-`LedPairStation.h`'s `adapters/ArduinoDigitalOutput.h` include is the first
-rooted include of an *adapter* header (every prior one was `domain/` or
-`ports/`) — still safe under the basename-uniqueness rule below, since no
-other library has a file named `ArduinoDigitalOutput.h` under `adapters/`.
+needs uses a rooted include (`"ports/X.h"`) instead — 34 such includes exist
+today (reconciled via a full `grep` recount as of sub-project #2c-a; the
+previous "19" figure had drifted uncorrected across sub-projects #7a and
+#7b, which each added rooted-including files — `ToggleTurnoutControl.h`,
+`ToggleTurnoutStation.h` — without this paragraph's tally being updated),
+split between `McsEsp32` (29) and `McsLoconet` (5), all of them referencing
+`McsCore` headers: `adapters/ArduinoDigitalOutput.h`, `domain/Turnout.h`,
+`domain/Button.h`, `domain/Indicator.h`, `domain/TurnoutIndicator.h`,
+`ports/Clock.h`, `ports/DigitalInput.h`, `ports/DigitalOutput.h`,
+`ports/TurnoutCommandPort.h`. `LedPairStation.h`'s
+`adapters/ArduinoDigitalOutput.h` include remains the only rooted include of
+an *adapter* header (every other one is `domain/` or `ports/`) — still safe
+under the basename-uniqueness rule below, since no other library has a file
+named `ArduinoDigitalOutput.h` under `adapters/`.
 
 **Trap to watch for:** basenames must stay globally unique across all three
 libraries. All three have parallel `domain/`/`ports/`/`adapters/` subtrees,
