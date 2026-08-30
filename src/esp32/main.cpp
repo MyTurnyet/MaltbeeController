@@ -7,20 +7,29 @@
 #include "adapters/ArduinoClock.h"
 #include "adapters/ArduinoDigitalInput.h"
 #include "adapters/ArduinoDigitalOutput.h"
+#include "adapters/CaptivePortalServer.h"
+#include "adapters/ComboSetupModeTrigger.h"
+#include "adapters/EspDeviceIdentity.h"
 #include "adapters/EspUartPort.h"
+#include "adapters/GatedDigitalInput.h"
 #include "adapters/JmriFeedbackSource.h"
 #include "adapters/JmriTurnoutCommandAdapter.h"
 #include "adapters/LedPairStation.h"
 #include "adapters/MatrixDigitalInput.h"
 #include "adapters/MqttLink.h"
 #include "adapters/NvsConfigStore.h"
+#include "adapters/NvsSetupModeRequestStore.h"
 #include "adapters/SerialCommissioningAdapter.h"
 #include "adapters/ToggleTurnoutStation.h"
+#include "adapters/WebFormCommissioningAdapter.h"
 #include "adapters/WiFiLink.h"
 #include "application/CommissioningSession.h"
+#include "domain/BootMode.h"
+#include "domain/BootModeSelector.h"
 #include "domain/LedPairDriver.h"
 #include "domain/MatrixScanner.h"
 #include "domain/NodeConfig.h"
+#include "domain/SetupApName.h"
 #include "ports/TurnoutCommandPort.h"
 
 namespace
@@ -47,6 +56,8 @@ namespace
     constexpr LedPairColor DEFAULT_LED_COLOR = LedPairColor::Red;
     constexpr unsigned long RETRY_INTERVAL_MS = 5000;
     constexpr unsigned long UART_BAUD_RATE = 115200;
+    constexpr unsigned long SETUP_TRIGGER_HOLD_MS = 3000;
+    constexpr const char* WIRELESS_SETUP_AP_PASSPHRASE = "maltbee-setup";
 }
 
 namespace
@@ -78,8 +89,13 @@ EspUartPort uartPort(UART_BAUD_RATE);
 NvsConfigStore configStore;
 CommissioningSession commissioningSession(configStore);
 SerialCommissioningAdapter serialCommissioningAdapter(uartPort, commissioningSession);
+WebFormCommissioningAdapter webFormAdapter(commissioningSession);
+CaptivePortalServer captivePortalServer(webFormAdapter);
 
+NvsSetupModeRequestStore setupModeRequestStore;
 NodeConfig runningConfig = configStore.load();
+const bool wirelessSetupRequested = setupModeRequestStore.consumeRequest();
+const BootMode bootMode = BootModeSelector::select(runningConfig, wirelessSetupRequested);
 const bool configValid = runningConfig.validate().empty();
 
 ArduinoDigitalOutput matrixRow0(MATRIX_ROW_PINS[0], true);
@@ -124,6 +140,17 @@ MatrixDigitalInput matrixButtons[12] = {
     MatrixDigitalInput(matrixScanner, TURNOUT_CONFIGS[11].matrixRow, TURNOUT_CONFIGS[11].matrixColumn),
 };
 
+ComboSetupModeTrigger setupTrigger(matrixButtons[0], matrixButtons[1], systemClock, SETUP_TRIGGER_HOLD_MS);
+
+GatedDigitalInput gatedButtons[12] = {
+    GatedDigitalInput(matrixButtons[0]),  GatedDigitalInput(matrixButtons[1]),
+    GatedDigitalInput(matrixButtons[2]),  GatedDigitalInput(matrixButtons[3]),
+    GatedDigitalInput(matrixButtons[4]),  GatedDigitalInput(matrixButtons[5]),
+    GatedDigitalInput(matrixButtons[6]),  GatedDigitalInput(matrixButtons[7]),
+    GatedDigitalInput(matrixButtons[8]),  GatedDigitalInput(matrixButtons[9]),
+    GatedDigitalInput(matrixButtons[10]), GatedDigitalInput(matrixButtons[11]),
+};
+
 WiFiLink wifiLink(systemClock, RETRY_INTERVAL_MS);
 
 const std::string mqttClientId = "maltbee-esp32-" + std::to_string(runningConfig.nodeId);
@@ -136,29 +163,29 @@ JmriTurnoutCommandAdapter turnoutCommandPort(mqttLink, runningConfig.channelJmri
 JmriFeedbackSource feedbackSource(mqttLink, runningConfig.channelJmriNames);
 
 ToggleTurnoutStation stations[12] = {
-    ToggleTurnoutStation(TURNOUT_CONFIGS[0].address, TURNOUT_CONFIGS[0].name, matrixButtons[0],
+    ToggleTurnoutStation(TURNOUT_CONFIGS[0].address, TURNOUT_CONFIGS[0].name, gatedButtons[0],
                           ledStations[0].green(), ledStations[0].red(), systemClock, turnoutCommandPort),
-    ToggleTurnoutStation(TURNOUT_CONFIGS[1].address, TURNOUT_CONFIGS[1].name, matrixButtons[1],
+    ToggleTurnoutStation(TURNOUT_CONFIGS[1].address, TURNOUT_CONFIGS[1].name, gatedButtons[1],
                           ledStations[1].green(), ledStations[1].red(), systemClock, turnoutCommandPort),
-    ToggleTurnoutStation(TURNOUT_CONFIGS[2].address, TURNOUT_CONFIGS[2].name, matrixButtons[2],
+    ToggleTurnoutStation(TURNOUT_CONFIGS[2].address, TURNOUT_CONFIGS[2].name, gatedButtons[2],
                           ledStations[2].green(), ledStations[2].red(), systemClock, turnoutCommandPort),
-    ToggleTurnoutStation(TURNOUT_CONFIGS[3].address, TURNOUT_CONFIGS[3].name, matrixButtons[3],
+    ToggleTurnoutStation(TURNOUT_CONFIGS[3].address, TURNOUT_CONFIGS[3].name, gatedButtons[3],
                           ledStations[3].green(), ledStations[3].red(), systemClock, turnoutCommandPort),
-    ToggleTurnoutStation(TURNOUT_CONFIGS[4].address, TURNOUT_CONFIGS[4].name, matrixButtons[4],
+    ToggleTurnoutStation(TURNOUT_CONFIGS[4].address, TURNOUT_CONFIGS[4].name, gatedButtons[4],
                           ledStations[4].green(), ledStations[4].red(), systemClock, turnoutCommandPort),
-    ToggleTurnoutStation(TURNOUT_CONFIGS[5].address, TURNOUT_CONFIGS[5].name, matrixButtons[5],
+    ToggleTurnoutStation(TURNOUT_CONFIGS[5].address, TURNOUT_CONFIGS[5].name, gatedButtons[5],
                           ledStations[5].green(), ledStations[5].red(), systemClock, turnoutCommandPort),
-    ToggleTurnoutStation(TURNOUT_CONFIGS[6].address, TURNOUT_CONFIGS[6].name, matrixButtons[6],
+    ToggleTurnoutStation(TURNOUT_CONFIGS[6].address, TURNOUT_CONFIGS[6].name, gatedButtons[6],
                           ledStations[6].green(), ledStations[6].red(), systemClock, turnoutCommandPort),
-    ToggleTurnoutStation(TURNOUT_CONFIGS[7].address, TURNOUT_CONFIGS[7].name, matrixButtons[7],
+    ToggleTurnoutStation(TURNOUT_CONFIGS[7].address, TURNOUT_CONFIGS[7].name, gatedButtons[7],
                           ledStations[7].green(), ledStations[7].red(), systemClock, turnoutCommandPort),
-    ToggleTurnoutStation(TURNOUT_CONFIGS[8].address, TURNOUT_CONFIGS[8].name, matrixButtons[8],
+    ToggleTurnoutStation(TURNOUT_CONFIGS[8].address, TURNOUT_CONFIGS[8].name, gatedButtons[8],
                           ledStations[8].green(), ledStations[8].red(), systemClock, turnoutCommandPort),
-    ToggleTurnoutStation(TURNOUT_CONFIGS[9].address, TURNOUT_CONFIGS[9].name, matrixButtons[9],
+    ToggleTurnoutStation(TURNOUT_CONFIGS[9].address, TURNOUT_CONFIGS[9].name, gatedButtons[9],
                           ledStations[9].green(), ledStations[9].red(), systemClock, turnoutCommandPort),
-    ToggleTurnoutStation(TURNOUT_CONFIGS[10].address, TURNOUT_CONFIGS[10].name, matrixButtons[10],
+    ToggleTurnoutStation(TURNOUT_CONFIGS[10].address, TURNOUT_CONFIGS[10].name, gatedButtons[10],
                           ledStations[10].green(), ledStations[10].red(), systemClock, turnoutCommandPort),
-    ToggleTurnoutStation(TURNOUT_CONFIGS[11].address, TURNOUT_CONFIGS[11].name, matrixButtons[11],
+    ToggleTurnoutStation(TURNOUT_CONFIGS[11].address, TURNOUT_CONFIGS[11].name, gatedButtons[11],
                           ledStations[11].green(), ledStations[11].red(), systemClock, turnoutCommandPort),
 };
 
@@ -184,6 +211,15 @@ void setup()
         station.begin();
     }
 
+    if (bootMode == BootMode::WirelessSetup)
+    {
+        EspDeviceIdentity identity;
+        const std::string apName = SetupApName::from(identity.mac());
+        captivePortalServer.begin(apName, WIRELESS_SETUP_AP_PASSPHRASE);
+        uartPort.write("MaltBee panel in wireless setup mode. Connect to " + apName + "\n");
+        return;
+    }
+
     if (configValid)
     {
         wifiLink.begin(runningConfig.wifiSsid, runningConfig.wifiPassword);
@@ -196,13 +232,38 @@ void setup()
 
 void loop()
 {
-    matrixScanner.update();
-
     serialCommissioningAdapter.poll();
     if (serialCommissioningAdapter.rebootRequested())
     {
         Serial.flush();
         ESP.restart();
+    }
+
+    if (bootMode == BootMode::WirelessSetup)
+    {
+        captivePortalServer.poll();
+        return;
+    }
+
+    matrixScanner.update();
+
+    setupTrigger.update();
+    gatedButtons[0].setSuppressed(setupTrigger.isHolding());
+    gatedButtons[1].setSuppressed(setupTrigger.isHolding());
+
+    if (setupTrigger.requested())
+    {
+        const bool stored = setupModeRequestStore.requestOnNextBoot();
+        if (stored)
+        {
+            uartPort.write("Entering wireless setup...\n");
+            Serial.flush();
+            ESP.restart();
+        }
+        else
+        {
+            uartPort.write("Failed to persist wireless setup request; staying in normal mode.\n");
+        }
     }
 
     if (configValid)
