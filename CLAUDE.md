@@ -57,8 +57,8 @@ preprocessor guard. PlatformIO compiles every `.cpp` file in a library that's
 `megaatmega2560`, `esp32dev`) compiles a given file is controlled entirely by
 which library it lives in — `platformio.ini`'s per-environment `lib_deps`/
 `lib_ignore` — not by `#ifdef`. The one guard idiom that remains is
-`#ifdef ARDUINO`, on the 10 files that are genuine hardware shims (4 in
-`McsCore`, 2 in `McsLoconet`, 4 in `McsEsp32`); every other file needs no
+`#ifdef ARDUINO`, on the 11 files that are genuine hardware shims (4 in
+`McsCore`, 2 in `McsLoconet`, 5 in `McsEsp32`); every other file needs no
 guard at all because it's structurally impossible for the wrong environment
 to ever compile it.
 
@@ -74,7 +74,7 @@ to ever compile it.
   - `domain/`: CommandLineParser, NodeConfig, ParsedCommand, TopicScheme (JMRI/MQTT topic naming), PayloadCodec (turnout position ↔ MQTT payload encoding), MatrixScanner (cycles the 3 row outputs one at a time, caching each column's reading per row for the 3x4 button matrix), LedPairDriver (drives a shared-GPIO red/green LED pair: steady color or non-blocking blink between last-displayed color and its opposite)
   - `ports/`: ConfigStore, UartPort, MqttTransport
   - `application/`: CommissioningSession (commissioning command handling, wires a `ConfigStore` port)
-  - `adapters/`: SerialCommissioningAdapter, JmriTurnoutCommandAdapter, JmriFeedbackSource (native-tested translation layers, no Arduino dependency); EspUartPort, NvsConfigStore, WiFiLink, MqttLink (`#ifdef ARDUINO`-guarded hardware shims); MatrixDigitalInput (implements `DigitalInput` for one fixed matrix cell, forwarding to `MatrixScanner`'s cached reading); LedPairOutput (implements `DigitalOutput` for one logical side, green or red, of a shared LED pair, forwarding to `LedPairDriver`)
+  - `adapters/`: SerialCommissioningAdapter, JmriTurnoutCommandAdapter, JmriFeedbackSource (native-tested translation layers, no Arduino dependency); EspUartPort, NvsConfigStore, WiFiLink, MqttLink (`#ifdef ARDUINO`-guarded hardware shims); MatrixDigitalInput (implements `DigitalInput` for one fixed matrix cell, forwarding to `MatrixScanner`'s cached reading); LedPairOutput (implements `DigitalOutput` for one logical side, green or red, of a shared LED pair, forwarding to `LedPairDriver`); LedPairStation (`#ifdef ARDUINO`-guarded, config-driven per-turnout composition helper — owns one turnout's real LED-pair GPIO plus its `LedPairDriver`/two `LedPairOutput`s, mirroring `TurnoutStation`)
 - `src/mega/main.cpp` and `src/esp32/main.cpp` — the two composition roots. `src/mega/main.cpp` builds a `TurnoutConfig[4]` table and 4 `TurnoutStation`s from it (range-`for` over `stations[]` in `setup()`/`loop()`, no per-turnout duplication), plus the shared real LocoNet send/receive adapter chain (`MrrwaLocoNetSwitchDriver` → `PulsingLocoNetTransport` → `MrrwaLocoNetTurnoutAdapter` for sending; `MrrwaLocoNetFeedbackSource` → `LocoNetFeedbackDecoder` → broadcast `TurnoutStation::applyFeedback()` for receiving, each station's own `TurnoutControl` self-filtering by address)
 - `test/test_<name>/test_main.cpp` — Catch2 test binaries (27 test suites)
 - `test/support/` — test doubles (FakeDigitalInput, FakeClock, FakeDigitalOutput, FakeTurnoutCommandPort, FakeLocoNetTransport, FakeLocoNetSwitchDriver)
