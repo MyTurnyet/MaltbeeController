@@ -46,7 +46,12 @@ way, not fixed. Reviewer independently confirmed NVS namespace/key
 read-and-clear semantics, and that no other files (NvsConfigStore,
 main.cpp, Task 1 files) were touched. esp32dev SUCCESS (RAM 16.5%,
 Flash 77.2%), native 30/30 (no new suite, as expected).
-Task 3 (GatedDigitalInput): implemented (commit 39d3500 [^ F]), pending review.
+Task 3 (GatedDigitalInput): complete (commit 5c49b93..39d3500 [^ F], review
+clean — Approved, zero findings at any severity. Reviewer confirmed no
+#ifdef ARDUINO guard, no Task 1/2/main.cpp contamination, correct
+suppression-overrides-forwarding semantics, and that all 3 tests exercise
+real behavior against FakeDigitalInput rather than tautologies. Native
+31/31 confirmed independently by the controller.
 Task 4 (ComboSetupModeTrigger): not started
 
 ## Incident: a stray `git stash` wiped this file's uncommitted edits mid-branch
