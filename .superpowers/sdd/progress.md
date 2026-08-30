@@ -1,12 +1,12 @@
 # Subagent-Driven Development Progress
 
-Plan: docs/superpowers/plans/2026-08-29-esp32-toggle-turnout-control.md
+Plan: docs/superpowers/plans/2026-08-29-esp32-composition-root.md
 
 Started: 2026-08-29
 
-Prior plan (sub-project #5, ESP32 hardware adapters for #3/#4) is complete
-and merged to main; this ledger starts fresh for sub-project #7a (ESP32
-single-button toggle turnout control).
+Prior plan (sub-project #7a, ESP32 single-button toggle turnout control) is
+complete and merged to main; this ledger starts fresh for sub-project #7b
+(ESP32 composition root).
 
 NOTE: this file is git-tracked and lives on a branch lineage with old,
 unrelated prior-plan ledger content checked into history. A plain
@@ -14,58 +14,83 @@ unrelated prior-plan ledger content checked into history. A plain
 that stale content. Do not run `git checkout` on this file for any reason;
 every dispatched subagent in this branch is told so explicitly.
 
-Baseline: worktree created from origin/main at 0621cd2 (includes the
-design spec and this plan file). `pio test -e native` confirmed clean at
-baseline: all 27 suites PASSED, no failures.
+Baseline: worktree created from origin/main at 5e711d8 (includes the design
+spec and this plan file). `pio test -e native` confirmed clean at baseline:
+all 28 suites PASSED, no failures.
 
 ## Tasks
 
-Task 1: complete (commit 0621cd2..554c38d [^ F], review clean — Approved,
-zero Critical/Important findings. Implementation is a byte-for-byte match
-of the brief's code (constructor, update(), applyFeedback()). The
-implementer's own self-review caught a genuine bug in the brief's literal
-test code for "Repeated presses...": releasing the button with a single
-update() call (no clock advance) never lets the release debounce, so the
-second press's wasPressed() never re-fires and the original assertion
-(sentCommands.size()==2) would fail. Implementer added the missing
-release-debounce cycle. Controller independently hand-traced Button's
-debounce state machine against both versions and confirmed the bug and
-fix are both real; task reviewer independently re-traced the same logic
-from scratch (not trusting either the implementer's or controller's
-claim) and reached the identical conclusion. 1 Minor, non-blocking,
-plan-mandated (brief specifies this exact code): applyFeedback() is a
-byte-for-byte duplicate of TurnoutControl::applyFeedback(), a deliberate
-design decision from the spec (avoids touching hardware-verified
-TurnoutControl), flagged only as a future extraction candidate once a
-third caller of the same pattern appears.
+Task 1 (ToggleTurnoutStation): complete (commits 5e711d8..a2177f3 [^ F], review
+clean — Approved, zero Critical/Important. 1 trivial Minor: implementer's
+report had inaccurate self-reported line counts, not a code defect. Reviewer
+independently verified constructor signature, member init order vs.
+declaration order (no -Wreorder risk), and each collaborator's argument
+order against the brief's documented signatures.)
+Task 2 (JmriTurnoutCommandAdapter retained fix): complete (commits
+a2177f3..20dea41 [^ B], review clean — Approved, zero findings at any
+severity. Reviewer confirmed diff is exactly the two specified one-line
+edits, test_jmri_turnout_wiring untouched, TDD RED->GREEN evidence genuine.)
+Task 3 (src/esp32/main.cpp composition root): complete (commits
+20dea41..425bbaf [! F], review clean — Approved, zero findings at any
+severity. One pre-approved deviation from the plan's literal code: the
+brief's global `ArduinoClock clock;` does not compile on esp32dev (collides
+with the ESP32 core's libc `clock_t clock(void)` from <time.h> — same class
+of collision hit in sub-project #5's throwaway wiring, renamed there to
+`clockAdapter`; not an issue on megaatmega2560, where avr-libc has no such
+symbol). Implementer renamed the global to `systemClock` throughout (26
+call sites). Reviewer independently grepped the whole file for `[Cc]lock`,
+confirmed the rename is total/consistent with zero leftover bare `clock`
+references and zero argument-order/wiring changes as a side effect, and
+independently traced global initialization order end-to-end confirming no
+forward references. esp32dev SUCCESS (RAM 16.5%, Flash 77.1%),
+megaatmega2560 SUCCESS unchanged, native 29/29 suites pass.
 
-Controller independently verified before final review: native 28/28
-PASSED (27 existing + this new suite), esp32dev SUCCESS (RAM 6.4%/Flash
-17.8%, unchanged from sub-project #5's build since ToggleTurnoutControl
-isn't referenced by src/esp32/main.cpp yet — dead-stripped, as expected
-for code sub-project #7b will wire in), megaatmega2560 SUCCESS (unchanged).
+## All 3 tasks complete — proceeding to final whole-branch review.
 
-## Only task complete — proceeding to final whole-branch review.
+## Final whole-branch review (opus): "Ready to merge: With fixes"
+Reviewer independently traced electrical polarity against docs/button-wiring.md
+and docs/led-wiring.md entry-by-entry (all 12 LED GPIOs, both matrix GPIO
+arrays), traced the feedback-drain loop for starvation risk, traced global
+init order for forward references, and re-verified the clock->systemClock
+rename from scratch. 1 Critical: global constructors (CommissioningSession,
+runningConfig) read NVS before Arduino-ESP32's initArduino()/nvs_flash_init()
+ever runs (global ctors run before app_main() on this toolchain), so
+commissioned config would never take effect on a real boot -- invisible to
+both pio run -e esp32dev and pio test -e native. 1 Important: mqttLink.poll()
+ran even before WiFi connected, blocking loop() (including the bench-serial
+commissioning console) on a synchronous connect attempt. 4 Minor: ESP.restart()
+could cut off the commissioning reply (no Serial.flush()); queued MQTT
+feedback could apply stale after a reconnect (deferred -- would touch
+JmriFeedbackSource); LedPairDriver writes GPIO before pinMode() during
+static init (informational, pre-existing from #4); CLAUDE.md doc drift
+(test count, missing ToggleTurnoutStation mention).
 
-## Final whole-branch review (sonnet): "Ready to merge: Yes"
-Zero Critical, zero Important. Reviewer independently re-traced the
-debounce-fix claim a third time from scratch (matching controller's and
-task reviewer's own independent traces) and confirmed it's a correct,
-minimally-scoped test-only fix, not a spec violation. Confirmed via
-platformio.ini inspection (not re-trusted claims) why esp32dev/mega
-builds are unaffected: McsEsp32 is lib_deps for both native and esp32dev,
-but src/esp32/main.cpp's build_src_filter never references
-ToggleTurnoutControl yet (dead-stripped), and McsEsp32 is lib_ignore'd
-entirely for megaatmega2560. 2 Minor, both forward-looking notes for
-sub-project #7b rather than blockers for this branch: (1) applyFeedback()
-duplication with TurnoutControl is spec-mandated and reasoned soundly,
-but a future fix to one won't automatically propagate to the other —
-recommended a cross-reference comment (optional, not required); (2) the
-pre-existing lack of isLocked()/isDisabled() checks (parity with
-TurnoutControl) becomes more user-visible on a single-button panel where
-#7b should explicitly re-decide whether to close this gap, not silently
-inherit it.
+Controller independently verified the Critical finding before dispatching a
+fix: read the installed framework-arduinoespressif32 package directly
+(cores/esp32/esp32-hal-misc.c confirms nvs_flash_init() lives inside
+initArduino(); cores/esp32/main.cpp confirms app_main() calls initArduino()
+then spawns the task that calls setup()) -- consistent with standard
+ESP-IDF startup (global ctors before app_main()). Confirmed real, not a
+false positive.
 
-## PLAN COMPLETE — the one task + final review both clean.
-All 3 environments (native 28/28, esp32dev, megaatmega2560) confirmed
-green as of commit 554c38d. No fix pass needed — nothing to fix.
+## Fix pass (commit bdc3b22 [! B]): fixed Critical + Important + 2 of 4
+Minor (Serial.flush(), boot banner). Explicitly deferred (not fixed):
+stale-feedback-on-reconnect (would require modifying already-tested
+JmriFeedbackSource from an earlier sub-project) and the LedPairDriver
+pre-pinMode() write (informational only, no action requested). Re-review
+(sonnet, focused fix-verification): Approved, zero findings -- confirmed
+NvsBootstrap is the first global declared (before systemClock/uartPort/
+configStore/commissioningSession/runningConfig), #include <nvs_flash.h>
+present, mqttLink.poll() correctly nested inside wifiLink.connected(),
+Serial.flush() correctly placed, boot banner reports configValid state
+correctly, zero incidental changes, JmriFeedbackSource/LedPairDriver/
+CLAUDE.md untouched by the fix commit (controller handled CLAUDE.md and
+the design spec's pre-deployment checklist directly, separately from
+the fix subagent). esp32dev SUCCESS (RAM 16.5%, Flash 77.2%),
+megaatmega2560 SUCCESS unchanged, native 29/29.
+
+## PLAN COMPLETE (with one review-driven fix pass) -- all builds/tests green.
+Final state: commits 5e711d8..bdc3b22 (a2177f3 Task1, 20dea41 Task2,
+425bbaf Task3, bdc3b22 fix), plus controller doc commits for CLAUDE.md and
+the design spec's pre-deployment checklist. Proceeding to
+finishing-a-development-branch.
