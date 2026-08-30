@@ -28,6 +28,8 @@ pio test -e native -f test_indicator
 
 There is no `native` build target for `src/` (`test_build_src = false` in `platformio.ini`) — native test binaries only compile `test/` plus whatever `lib/` code they include, not `main.cpp`.
 
+On Windows, run `pio test -e native` via a Bash/Git Bash shell, not PowerShell — PowerShell in this environment has produced false `ERRORED`/crash results (a MinGW runtime DLL/PATH mismatch, not a real test failure) on the same commits that pass cleanly through Bash.
+
 ## Architecture
 
 This is a hexagonal-architecture embedded project. The critical rule: **domain and application code must compile and run under the `native` PlatformIO environment without `Arduino.h`**. Hardware-specific code is isolated behind ports (interfaces) and only implemented in adapters.
