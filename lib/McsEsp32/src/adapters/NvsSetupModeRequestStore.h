@@ -7,7 +7,7 @@
 class NvsSetupModeRequestStore final : public SetupModeRequestStore
 {
 public:
-    void requestOnNextBoot() override;
+    bool requestOnNextBoot() override;
     bool consumeRequest() override;
 };
 
