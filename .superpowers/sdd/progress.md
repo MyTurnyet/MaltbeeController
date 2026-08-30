@@ -72,5 +72,18 @@ asserting the full value round-trips intact through store.load() (commit
 Controller independently re-ran: 7/7 test cases (19 assertions) on the
 focused suite, 35 suites collected on the full run, diff confirmed
 byte-for-byte identical to the specified test code.
-Task 5 (SetupFormRenderer): not started
+Task 5 (SetupFormRenderer): complete (commit 6c4462b..97f5431 [^ F],
+review clean — Approved, zero Critical/Important. Reviewer verified every
+embedded field (wifiSsid, wifiPassword, brokerHost, brokerPort, all 12
+channel names) passes through escapeHtml() before concatenation - no
+missed field, confirmed by tracing every call site. Id dropdown boundary
+(1-99 inclusive, not 0/100) confirmed against NodeConfig::kMinNodeId/
+kMaxNodeId directly. 2 Minor, explicitly non-blocking per the reviewer's
+own assessment (same escapeHtml() code path for every field, so which
+specific field a test happens to use HTML-metacharacters for doesn't
+change the actual risk profile): 2 of 7 tests use metacharacter-free
+values for broker host/port/channel names, so escaping is verified by
+code inspection rather than a targeted assertion for those specific
+fields; the unselected-id placeholder option is untested UX, not a spec
+item. Neither fixed. Native 36/36.
 Task 6 (CaptivePortalServer): not started
