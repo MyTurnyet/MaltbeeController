@@ -166,3 +166,96 @@ specified target code.
 ESP32 Flash headroom note for the ledger: 80.9% used (~250KB free on the
 default partition scheme) — worth watching in the remaining milestones
 (routes, persistent config), not an immediate concern.
+
+## Final whole-branch review (opus): "Ready to merge: With fixes"
+Reviewer independently re-ran pio test -e native (36/36), pio run -e
+esp32dev (SUCCESS, RAM 16.8%/Flash 80.9%, confirming genuine linkage of
+the new classes), pio run -e megaatmega2560 (SUCCESS unchanged), and a
+repo-wide (not diff-scoped) grep for requestOnNextBoot/EspDeviceIdentity
+to confirm no stray caller anywhere still assumes the old void signature
+or constructs EspDeviceIdentity outside main.cpp's WirelessSetup branch.
+Traced the full cross-task blank-password loop end-to-end (currentValues()
+-> render() -> submit() across Tasks 2/3/6 together, not just each task's
+own unit tests) including verifying ParsedCommand::stringArg2 is a
+std::string by value so CommissioningSession::apply()'s draft_ reassignment
+can't leave a dangling reference. Confirmed all 4 design-spec Decisions
+landed and the two #2c-b1 gaps are genuinely closed end-to-end (not just
+per-task). Zero Critical.
+
+3 Important (all resolved before merge):
+1. docs/ESP32_Turnout_Panel_Implementation.md's new AP section claimed a
+   factory-fresh panel auto-opens the AP; BootModeSelector only enters
+   WirelessSetup on a pending request regardless of config validity, so
+   this was false and would have misled a field technician. Fixed by the
+   controller directly (commit 2da9b4d), doc-only.
+2. CLAUDE.md's "Not yet wired" section and the #2c-b1 spec's "Known gaps"
+   section were stale, describing this same branch's own completed work
+   as still-pending. Fixed by the controller directly (commit 2da9b4d,
+   same commit as #1): CLAUDE.md's main.cpp bullet rewritten to describe
+   the actual BootMode/combo-trigger/captive-portal wiring, the "Not yet
+   wired" section retired and replaced with a resolution note, and the
+   #2c-b1 spec's gap section annotated "Resolved in #2c-b2" with a
+   one-line explanation of each fix, left otherwise intact for historical
+   record. Rooted-include count reconfirmed unchanged at 34 before editing.
+3. NvsSetupModeRequestStore::consumeRequest() left unhardened while its
+   sibling requestOnNextBoot() (Task 1) was hardened — if the CLEARING
+   prefs.putBool() write fails, the flag stays true in NVS forever,
+   permanently locking the panel into BootMode::WirelessSetup on every
+   subsequent boot (WirelessSetup always wins over config validity).
+   Fixed via one dispatched fix subagent (commit 7d72fd8 [! B]): added the
+   same prefs.begin() failure check requestOnNextBoot() already has.
+   Deliberately did NOT attempt to harden the clearing putBool() call
+   itself (would need a retry loop or a logging dependency this class
+   doesn't have, for a residual risk requiring a rare repeated NVS-write
+   failure) — reviewer explicitly offered this narrower scope as
+   acceptable. Controller independently re-ran: esp32dev SUCCESS
+   (unchanged RAM/Flash), native 36/36.
+
+8 Minor findings recorded, none fixed (per reviewer's own triage,
+matching this project's established "record Minor, don't block on it"
+pattern): (4) implicit WirelessSetup-exit coupling — the web form's
+reboot request is actually serviced by serialCommissioningAdapter's check
+forwarding to the same shared CommissioningSession, and
+WebFormCommissioningAdapter::rebootRequested() is built but never called;
+correct today, recommend a clarifying comment at main.cpp:235-236 in a
+future pass rather than wiring the unused method (wiring it would create
+two blocks reading one flag). (5) a spurious turnout-1 toggle is possible
+on the specific NVS-clear-failure path if only T1 is still held when
+suppression clears — same family as the already-accepted staggered-press
+gap. (6) no panel-side LED indication of WirelessSetup mode — LEDs freeze
+at a steady color (loop() returns before ledStation.update()) rather than
+blinking, which happens to be visually distinguishable from the
+disconnected/blink state but by accident, not design; worth one sentence
+in a future doc pass. (7) the design spec's passphrase rationale
+("same model as consumer routers") is inaccurate since routers use a
+per-panel secret, not a shared one — the decision itself still stands
+since the material leak (cleartext password) is closed independently, but
+the reasoning as written overstates precedent; MacAddress/EspDeviceIdentity
+already exist so a per-panel passphrase would be nearly free later. (8)
+SetupFormRenderer's "leave blank to leave it unconfigured" copy is now
+correct but could read more clearly as "leave blank to clear its name".
+(9) changing WiFi SSID while leaving password blank silently keeps the
+old password — covered by the hint text, worth a line in the field doc
+later. (10) WebServer/DNSServer are now constructed at global scope in
+every boot mode, the same "global constructor timing" territory that bit
+this project twice before (NVS in #7b, clock/clock_t in #5) — build is
+clean, both constructors should be inert, but only on-hardware bring-up
+(sub-project #8) can settle it; added to that milestone's checklist
+mentally, not a code change here. (11) zero automated main.cpp coverage
+is correctly unavoidable (test_build_src=false).
+
+Recommendation also noted: promote the "run pio test -e native via Bash,
+not PowerShell, on this machine" process note from this ledger into
+CLAUDE.md's Commands section before it's lost — ledgers don't survive
+into the next branch. Deferred to the controller's next available point
+in this closing sequence (see below) rather than treated as a merge
+blocker.
+
+## PLAN COMPLETE (3 Important final-review findings fixed: 2 doc-only by
+the controller, 1 code hardening via one dispatched fix subagent; 8 Minor
+recorded, none fixed) — all builds/tests green.
+Final state: commits 571d185..7d72fd8 (5432236 Task1, 8669a92->7fe21ae
+Task2+ACN-amend, 5111d4d->c6169e8 Task3+ACN-amend, af3fe40 Task4, 6817f4a
+Task5, 0f0c6cd Task6, 2da9b4d final-review doc fix, 7d72fd8 final-review
+code fix), plus seven ledger-recording commits. Proceeding to
+finishing-a-development-branch.
