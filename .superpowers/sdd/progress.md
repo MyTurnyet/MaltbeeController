@@ -53,6 +53,24 @@ Task 3 (WebFormSubmission): complete (commit e035058..0cb22cb [^ F], review
 clean — Approved, zero findings. Byte-for-byte match to the brief's
 specified 16-line struct, no test file (matches ParsedCommand precedent),
 nothing else touched. Native 34/34.
-Task 4 (CommissioningSession::draft() + WebFormCommissioningAdapter): not started
+Task 4 (CommissioningSession::draft() + WebFormCommissioningAdapter):
+complete (commit 833e6fe..0b0b146 [^ F], review clean apart from 1
+Important finding -- traced submit()'s full 6-step sequence against the
+exact response-string checks, confirmed the CommandLineParser bypass for
+wifi/turnout-name (and normal routing for id/broker/save/reboot) is
+implemented correctly and draft() is genuinely read-only, but found every
+test used single-word values for the fields that flow through the
+bypass -- so a regression back to routing wifi/turnout through the
+tokenizer (the exact bug this task's design prevents) would pass all 6
+existing tests undetected. Same class of plan-level test-coverage gap as
+sub-project #2c-a's staggered-press and mid-hold-restamp findings.
+Controller independently confirmed via grep before dispatching a fix: zero
+space-containing values anywhere in the test file. Fixed by adding one
+test case with space-containing wifi ssid/password/turnout-name values,
+asserting the full value round-trips intact through store.load() (commit
+0b0b146..c7febe4 [^ d], test-only, zero production code change).
+Controller independently re-ran: 7/7 test cases (19 assertions) on the
+focused suite, 35 suites collected on the full run, diff confirmed
+byte-for-byte identical to the specified test code.
 Task 5 (SetupFormRenderer): not started
 Task 6 (CaptivePortalServer): not started
