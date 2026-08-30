@@ -134,3 +134,85 @@ main.cpp and confirmed byte-for-byte match to the plan's specified code.
 ## ALL 4 TASKS COMPLETE — proceeding to the final whole-branch review
 (most capable available model), which will also weigh Task 4's escalated
 Important finding (stale retained mac / nodeId-reassignment lockout).
+
+## Final whole-branch review (opus): "Ready to merge: With fixes"
+Reviewer independently re-ran pio test -e native (39/39), pio run -e
+esp32dev (SUCCESS, RAM 16.8%/Flash 81.1%, matching the ledger's claimed
+figures exactly), confirmed CLAUDE.md's rooted-include count (34) is
+still accurate (no new rooted cross-library includes introduced), and
+traced Decisions 2/3/4 end-to-end against the assembled code rather than
+trusting per-task claims. Zero Critical.
+
+Corrected Task 4's own escalated finding rather than just repeating it:
+independently traced that the "stale retained mac permanently bricks a
+nodeId, no reboot recovery" framing was WRONG — presenceAnnouncer.update()
+runs unconditionally, so a panel that latches a false collision from a
+stale retained value still overwrites that stale claim with its own MAC
+in the same session, meaning the false positive costs exactly one boot
+and self-heals on the next reboot with no operator intervention. Also
+rejected the task reviewer's implied mitigation (publish the mac
+non-retained) as actively harmful: traced that MQTT's broker-enforced
+duplicate-clientId disconnect means two colliding panels are NEVER
+connected simultaneously, so retained=true is the only mechanism that
+lets each panel see the other's claim at all — dropping it would silently
+destroy detection entirely, not just weaken it. Full ping-pong trace
+confirmed mutual detection genuinely works (both panels eventually latch,
+not just one).
+
+3 Important, all resolved before merge:
+1. The corrected escalated finding above, resolved via documentation
+   (not a code change, since the reviewer's own trace showed no code
+   change was warranted or safe) plus one small diagnostic improvement:
+   controller added NodeIdentityGuard::observedMac() (new accessor, 1 new
+   test case) and updated the collision log line to include both the
+   panel's own MAC and the observed foreign MAC, via one dispatched fix
+   subagent (commit 9b258db [! B]). Controller independently re-ran:
+   focused suite 6/6, full native 39/39, esp32dev + megaatmega2560 both
+   SUCCESS.
+2. CLAUDE.md was stale against this branch's own work (test count 36 vs
+   actual 39, missing PresenceTopics/NodeIdentityGuard/MqttPresenceAnnouncer
+   from the domain/application bullets, main.cpp bullet silent on
+   presence/collision) — the same class of finding the immediately-prior
+   branch's final review raised as Important. Fixed by the controller
+   directly (commit adb2dc5): updated all four locations plus added a new
+   "Presence + collision detection" section documenting the corrected
+   recovery reasoning and explicitly recording why retained=true cannot
+   be dropped, so a future maintainer doesn't "simplify" it away.
+3. No operator-facing documentation existed for the new collision-lockout
+   failure mode, which looks identical to "MQTT is down" at a glance (all
+   LEDs blinking, all buttons dead). Fixed by the controller directly
+   (commit adb2dc5, same commit as #2): new "Multi-Panel Presence and
+   Node ID Collisions" section in docs/ESP32_Turnout_Panel_Implementation.md
+   covering what a lockout looks like, how to tell it apart from a network
+   outage (serial log line, now self-diagnosing per fix #1), that serial
+   commissioning and the T1+T2 combo both still work as recovery paths,
+   and the one-reboot self-heal behavior for a stale (not genuine)
+   collision. Also corrected the design spec's own recovery language
+   (docs/superpowers/specs/2026-08-30-esp32-presence-collision-detection-design.md,
+   same commit) to match the corrected understanding.
+
+6 Minor findings recorded, none fixed (per reviewer's own triage): (4)
+one-tick lag on `collision` confirmed inconsequential, no action; (5)
+ComboSetupModeTrigger's ungated-input dependency is now one of only two
+collision-lockout escape hatches (the other being serial) — worth a
+comment, not done this branch, low-cost future polish; (6) loop() is at
+~88 lines, judged acceptable for a composition root, with the suppression
+composition block flagged as the one piece dense enough to eventually
+extract into a testable domain type (e.g. a `ButtonSuppressionPolicy`) —
+explicitly suggested as a #2d-b brainstorm candidate, not blocking; (7)
+mqttLink.connected() on a never-begun PubSubClient confirmed safe by
+inspection, informational; (8) MqttLink::publish()'s ignored return value
+is pre-existing, not introduced this branch, noted for hardware bring-up;
+(9) MacAddress::lastFourHexDigits() gives a ~1/65536 false-negative
+collision probability, acceptable and now implicitly documented via the
+new CLAUDE.md section; (10) test_node_identity_guard case 5's redundancy
+with case 2 already noted at task level, no action, specified verbatim by
+the plan.
+
+## PLAN COMPLETE (3 Important final-review findings fixed: 2 doc-only by
+the controller, 1 code diagnostic-improvement via one dispatched fix
+subagent; 6 Minor recorded, none fixed) — all builds/tests green.
+Final state: commits 83e6e64..9b258db (fc2d692 Task1, 9fe1a8a Task2,
+710a105 Task3, 0b10f62 Task4, adb2dc5 final-review doc fix, 9b258db
+final-review code fix), plus five ledger-recording commits. Proceeding to
+finishing-a-development-branch.
