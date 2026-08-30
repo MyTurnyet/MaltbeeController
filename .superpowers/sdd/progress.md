@@ -31,7 +31,13 @@ Task dependency order: Task 1 (MacAddress/SetupApName) and Task 2
 
 ## Tasks
 
-Task 1 (MacAddress + SetupApName): not started
+Task 1 (MacAddress + SetupApName): complete (commit 2da9c64..dd1b39c
+[^ F], review clean — Approved, zero Critical/Important. 2 cosmetic Minor
+notes (constructor takes std::array by value not const&, hex-digit lookup
+table is a function-local static pointer) - both match the brief's
+verbatim specified code, not implementer deviations, not fixed. Reviewer
+hand-verified the hex nibble math for both test cases (CDEF and the
+zero-pad 0102 case). Native 34/34.
 Task 2 (EspDeviceIdentity): not started
 Task 3 (WebFormSubmission): not started
 Task 4 (CommissioningSession::draft() + WebFormCommissioningAdapter): not started
