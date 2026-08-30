@@ -64,3 +64,19 @@ chose to amend. Commit `8669a92` amended to `7fe21ae` (message only, `! B`
 in place of `^ B` — diff content unchanged, 2 files/39 insertions/9
 deletions both before and after). Controller independently re-ran the
 focused suite: 9/9 test cases, 23 assertions.
+
+Task 3 (SetupFormRenderer never renders the stored password): complete
+(commit c6edaa7..c6169e8 [! F, correctly self-capped at ! since the
+30-line diff exceeds the 8-LoC ceiling for F/B], review clean — Approved,
+zero findings at any severity. Reviewer confirmed the password `<input>`
+hardcodes `value=''` with no variable reference, the original combined
+ssid+password test was genuinely split (not duplicated), the new
+never-renders-password test asserts against both the raw and
+HTML-escaped password appearing anywhere in the output (not just the
+`value=''` attribute), and `.hint`'s CSS is visually distinct from
+`.warning`. Implementer's first commit used `!F` (missing the space ACN
+requires between symbol and letter) — controller amended the message only
+(same category of fix the user approved for Task 2, applied directly
+without re-asking) to `! F`, diff content unchanged (24 insertions/6
+deletions both before and after). Controller independently re-ran the
+focused suite: 9/9 test cases, 24 assertions.
