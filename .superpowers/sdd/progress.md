@@ -85,3 +85,52 @@ on the most capable available model per the plan's own guidance (highest-
 judgment task: real composition-root restructuring, no native test exists
 for src/, verification is esp32dev build + the plan's own 7-item
 manual-read-through checklist).
+
+Task 4 (src/esp32/main.cpp wiring — presence announcement, collision
+detection): complete (commit f6837e1..0b10f62 [! F, no native test
+possible for src/], review clean (opus) — Approved, zero Critical.
+Reviewer independently traced all 9 spec-compliance points against the
+actual file and source (not the report), including verifying at the
+source level (not just trusting the brief) that MqttLink::connect()
+really does replay subscribed handlers on every reconnect and that
+esp_efuse_mac_get_default() really has no NVS/WiFi-driver dependency.
+Confirmed the subscribe-before-announce ordering (subscribe() in setup(),
+first publish only possible in loop()) makes mutual collision detection
+correct rather than racy in a simultaneous-boot scenario, and that
+presenceAnnouncer.update() being unconditional (not gated on !collision)
+is load-bearing, not just safe — a collided node must keep re-publishing
+its mac on reconnect for the OTHER node in the pair to ever observe the
+mismatch. 1 Important (plan-level design gap, NOT a Task 4 wiring defect
+per the reviewer's own explicit framing, task still Approved): the
+retained panel/<id>/mac message is never cleared, so reassigning a nodeId
+to a replacement panel (normal fleet management, not just operator error)
+makes the new panel latch a permanent false collision that not even a
+reboot clears (a fresh boot re-subscribes and immediately re-receives the
+same stale retained value) — recovery requires manually clearing the
+retained topic on the broker, undocumented anywhere in this project.
+Escalated to the final whole-branch review / user decision rather than
+fixed unilaterally, since multiple legitimate resolutions exist with real
+tradeoffs (non-retained announce vs. an explicit clear-on-decommission
+mechanism vs. accept-and-document). 4 Minor, recorded: (2) the "one-tick
+lag" is real and one step more precise than the implementer's own report
+described (one station.update() can run un-suppressed after collision is
+internally known, before this tick's suppression write) — inconsequential
+per the reviewer's own assessment, worth stating precisely rather than
+vaguely in project notes; (3) ComboSetupModeTrigger's use of the UNGATED
+matrixButtons[0]/[1] is now load-bearing (it's one of only two escape
+hatches from a collision lockout, the other being serial commissioning) —
+a future refactor "tidying" it onto gatedButtons could silently remove
+wireless recovery with no test to catch it, worth a one-line comment;
+(4) loop() is at ~88 lines and near, but not over, the line for needing
+decomposition — the suppression composition block is the one part dense
+enough to consider extracting into a named function, not blocking; (5)
+a cosmetic indentation quirk, consistent with existing file style, ignore.
+Controller independently re-ran all three builds/tests on this exact
+commit: esp32dev SUCCESS (RAM 16.8%/Flash 81.1%, small genuine increase
+from 80.9% baseline), megaatmega2560 SUCCESS unchanged, native 39/39
+PASSED via Bash. Controller also independently read the full final
+main.cpp and confirmed byte-for-byte match to the plan's specified code.
+
+## ALL 4 TASKS COMPLETE — proceeding to the final whole-branch review
+(most capable available model), which will also weigh Task 4's escalated
+Important finding (stale retained mac / nodeId-reassignment lockout).
