@@ -169,3 +169,29 @@ TEST_CASE("the hold timer starts from the later of two staggered presses, not th
 
     REQUIRE(trigger.requested());
 }
+
+TEST_CASE("the hold survives intermediate update ticks without restarting the timer")
+{
+    FakeDigitalInput buttonA;
+    FakeDigitalInput buttonB;
+    FakeClock clock;
+    ComboSetupModeTrigger trigger(buttonA, buttonB, clock, MIN_HOLD_MS);
+
+    buttonA.active = true;
+    buttonB.active = true;
+    trigger.update();
+
+    for (int i = 0; i < 10; ++i)
+    {
+        clock.advanceBy(MIN_HOLD_MS / 10);
+        trigger.update();
+        REQUIRE(trigger.isHolding());
+        REQUIRE_FALSE(trigger.requested());
+    }
+
+    buttonA.active = false;
+    buttonB.active = false;
+    trigger.update();
+
+    REQUIRE(trigger.requested());
+}
