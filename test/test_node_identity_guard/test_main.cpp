@@ -47,3 +47,12 @@ TEST_CASE("observing the own mac multiple times in a row never trips a false pos
 
     REQUIRE_FALSE(guard.collisionDetected());
 }
+
+TEST_CASE("observedMac reports the foreign mac that caused the collision")
+{
+    NodeIdentityGuard guard("AAAA");
+
+    guard.onMacObserved("BBBB");
+
+    REQUIRE(guard.observedMac() == "BBBB");
+}

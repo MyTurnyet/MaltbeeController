@@ -262,7 +262,8 @@ void loop()
     static bool collisionLogged = false;
     if (collision && !collisionLogged)
     {
-        uartPort.write("NodeId collision detected: another panel is claiming this node id.\n");
+        uartPort.write("NodeId collision detected: this panel is " + ownMac.lastFourHexDigits() +
+                        ", another panel claiming this node id is " + identityGuard.observedMac() + "\n");
         collisionLogged = true;
     }
 
