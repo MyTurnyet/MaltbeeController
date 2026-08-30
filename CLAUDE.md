@@ -81,11 +81,17 @@ to ever compile it.
 
 **Include convention:** within a library, includes stay relative
 (`../ports/X.h`). A file depending on a header from a *different* library it
-needs uses a rooted include (`"ports/X.h"`) instead — 16 such includes exist
-today, split between `McsEsp32` (11, including `LedPairDriver.h`'s
-`ports/Clock.h`/`ports/DigitalOutput.h`) and `McsLoconet` (5), all of them
-referencing `McsCore` headers (`domain/Turnout.h`, `ports/Clock.h`,
+needs uses a rooted include (`"ports/X.h"`) instead — 19 such includes exist
+today, split between `McsEsp32` (14, including `LedPairDriver.h`'s
+`ports/Clock.h`/`ports/DigitalOutput.h` and `LedPairStation.h`'s
+`adapters/ArduinoDigitalOutput.h`/`ports/Clock.h`/`ports/DigitalOutput.h`) and
+`McsLoconet` (5), all of them referencing `McsCore` headers
+(`adapters/ArduinoDigitalOutput.h`, `domain/Turnout.h`, `ports/Clock.h`,
 `ports/DigitalInput.h`, `ports/DigitalOutput.h`, `ports/TurnoutCommandPort.h`).
+`LedPairStation.h`'s `adapters/ArduinoDigitalOutput.h` include is the first
+rooted include of an *adapter* header (every prior one was `domain/` or
+`ports/`) — still safe under the basename-uniqueness rule below, since no
+other library has a file named `ArduinoDigitalOutput.h` under `adapters/`.
 
 **Trap to watch for:** basenames must stay globally unique across all three
 libraries. All three have parallel `domain/`/`ports/`/`adapters/` subtrees,
