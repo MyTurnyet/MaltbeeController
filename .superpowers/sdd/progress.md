@@ -1,12 +1,12 @@
 # Subagent-Driven Development Progress
 
-Plan: docs/superpowers/plans/2026-08-29-esp32-composition-root.md
+Plan: docs/superpowers/plans/2026-08-29-esp32-wireless-setup-trigger.md
 
 Started: 2026-08-29
 
-Prior plan (sub-project #7a, ESP32 single-button toggle turnout control) is
-complete and merged to main; this ledger starts fresh for sub-project #7b
-(ESP32 composition root).
+Prior plan (sub-project #7b, ESP32 composition root) is complete and merged
+to main; this ledger starts fresh for sub-project #2c-a (ESP32 wireless
+setup boot mode & trigger).
 
 NOTE: this file is git-tracked and lives on a branch lineage with old,
 unrelated prior-plan ledger content checked into history. A plain
@@ -14,83 +14,54 @@ unrelated prior-plan ledger content checked into history. A plain
 that stale content. Do not run `git checkout` on this file for any reason;
 every dispatched subagent in this branch is told so explicitly.
 
-Baseline: worktree created from origin/main at 5e711d8 (includes the design
+Baseline: worktree created from origin/main at 242964d (includes the design
 spec and this plan file). `pio test -e native` confirmed clean at baseline:
-all 28 suites PASSED, no failures.
+all 29 suites PASSED, no failures (one pre-existing, unrelated compiler
+warning in test_button about an ignored [[nodiscard]] return value).
+
+All four tasks in this plan are mutually independent (none depends on
+another's output) - ordered for reviewability, not dependency. Dispatched
+sequentially (never parallel implementers, per skill red flags), each run
+asynchronously/backgrounded rather than polled.
 
 ## Tasks
 
-Task 1 (ToggleTurnoutStation): complete (commits 5e711d8..a2177f3 [^ F], review
-clean — Approved, zero Critical/Important. 1 trivial Minor: implementer's
-report had inaccurate self-reported line counts, not a code defect. Reviewer
-independently verified constructor signature, member init order vs.
-declaration order (no -Wreorder risk), and each collaborator's argument
-order against the brief's documented signatures.)
-Task 2 (JmriTurnoutCommandAdapter retained fix): complete (commits
-a2177f3..20dea41 [^ B], review clean — Approved, zero findings at any
-severity. Reviewer confirmed diff is exactly the two specified one-line
-edits, test_jmri_turnout_wiring untouched, TDD RED->GREEN evidence genuine.)
-Task 3 (src/esp32/main.cpp composition root): complete (commits
-20dea41..425bbaf [! F], review clean — Approved, zero findings at any
-severity. One pre-approved deviation from the plan's literal code: the
-brief's global `ArduinoClock clock;` does not compile on esp32dev (collides
-with the ESP32 core's libc `clock_t clock(void)` from <time.h> — same class
-of collision hit in sub-project #5's throwaway wiring, renamed there to
-`clockAdapter`; not an issue on megaatmega2560, where avr-libc has no such
-symbol). Implementer renamed the global to `systemClock` throughout (26
-call sites). Reviewer independently grepped the whole file for `[Cc]lock`,
-confirmed the rename is total/consistent with zero leftover bare `clock`
-references and zero argument-order/wiring changes as a side effect, and
-independently traced global initialization order end-to-end confirming no
-forward references. esp32dev SUCCESS (RAM 16.5%, Flash 77.1%),
-megaatmega2560 SUCCESS unchanged, native 29/29 suites pass.
+Task 1 (BootMode + BootModeSelector): complete (commits 242964d..6c0a867
+[^ F], review clean — Approved, zero Critical/Important/Minor code
+findings (one Minor note was purely informational, about NodeConfig's
+pre-existing std::vector usage, not a defect of this diff). Reviewer
+confirmed exact precedence order and that all 4 test cases specifically
+exercise the request-wins-regardless-of-validity priority rule. 30/30
+native suites pass (test_custom_runner.py is a Python helper matching the
+test_ glob, not a 31st suite — resolved a report-accuracy slip from the
+implementer, not a real discrepancy).
+Task 2 (SetupModeRequestStore port + NvsSetupModeRequestStore + FakeSetupModeRequestStore):
+complete (commits 6c0a867..5c49b93 [^ F], review clean — Approved, zero
+Critical/Important. 1 Minor, informational only: this plan's brief guarded
+NvsSetupModeRequestStore.h itself with #ifdef ARDUINO, stricter than
+NvsConfigStore.h's actual existing convention (which leaves the header
+unguarded, only guards the .cpp) - harmless, functionally correct either
+way, not fixed. Reviewer independently confirmed NVS namespace/key
+("mcs-boot"/"wsetup", distinct from NvsConfigStore's "mcsnode"),
+read-and-clear semantics, and that no other files (NvsConfigStore,
+main.cpp, Task 1 files) were touched. esp32dev SUCCESS (RAM 16.5%,
+Flash 77.2%), native 30/30 (no new suite, as expected).
+Task 3 (GatedDigitalInput): implemented (commit 39d3500 [^ F]), pending review.
+Task 4 (ComboSetupModeTrigger): not started
 
-## All 3 tasks complete — proceeding to final whole-branch review.
-
-## Final whole-branch review (opus): "Ready to merge: With fixes"
-Reviewer independently traced electrical polarity against docs/button-wiring.md
-and docs/led-wiring.md entry-by-entry (all 12 LED GPIOs, both matrix GPIO
-arrays), traced the feedback-drain loop for starvation risk, traced global
-init order for forward references, and re-verified the clock->systemClock
-rename from scratch. 1 Critical: global constructors (CommissioningSession,
-runningConfig) read NVS before Arduino-ESP32's initArduino()/nvs_flash_init()
-ever runs (global ctors run before app_main() on this toolchain), so
-commissioned config would never take effect on a real boot -- invisible to
-both pio run -e esp32dev and pio test -e native. 1 Important: mqttLink.poll()
-ran even before WiFi connected, blocking loop() (including the bench-serial
-commissioning console) on a synchronous connect attempt. 4 Minor: ESP.restart()
-could cut off the commissioning reply (no Serial.flush()); queued MQTT
-feedback could apply stale after a reconnect (deferred -- would touch
-JmriFeedbackSource); LedPairDriver writes GPIO before pinMode() during
-static init (informational, pre-existing from #4); CLAUDE.md doc drift
-(test count, missing ToggleTurnoutStation mention).
-
-Controller independently verified the Critical finding before dispatching a
-fix: read the installed framework-arduinoespressif32 package directly
-(cores/esp32/esp32-hal-misc.c confirms nvs_flash_init() lives inside
-initArduino(); cores/esp32/main.cpp confirms app_main() calls initArduino()
-then spawns the task that calls setup()) -- consistent with standard
-ESP-IDF startup (global ctors before app_main()). Confirmed real, not a
-false positive.
-
-## Fix pass (commit bdc3b22 [! B]): fixed Critical + Important + 2 of 4
-Minor (Serial.flush(), boot banner). Explicitly deferred (not fixed):
-stale-feedback-on-reconnect (would require modifying already-tested
-JmriFeedbackSource from an earlier sub-project) and the LedPairDriver
-pre-pinMode() write (informational only, no action requested). Re-review
-(sonnet, focused fix-verification): Approved, zero findings -- confirmed
-NvsBootstrap is the first global declared (before systemClock/uartPort/
-configStore/commissioningSession/runningConfig), #include <nvs_flash.h>
-present, mqttLink.poll() correctly nested inside wifiLink.connected(),
-Serial.flush() correctly placed, boot banner reports configValid state
-correctly, zero incidental changes, JmriFeedbackSource/LedPairDriver/
-CLAUDE.md untouched by the fix commit (controller handled CLAUDE.md and
-the design spec's pre-deployment checklist directly, separately from
-the fix subagent). esp32dev SUCCESS (RAM 16.5%, Flash 77.2%),
-megaatmega2560 SUCCESS unchanged, native 29/29.
-
-## PLAN COMPLETE (with one review-driven fix pass) -- all builds/tests green.
-Final state: commits 5e711d8..bdc3b22 (a2177f3 Task1, 20dea41 Task2,
-425bbaf Task3, bdc3b22 fix), plus controller doc commits for CLAUDE.md and
-the design spec's pre-deployment checklist. Proceeding to
-finishing-a-development-branch.
+## Incident: a stray `git stash` wiped this file's uncommitted edits mid-branch
+Between Task 2's commit and Task 3's completion notification, something
+(likely a git operation inside the Task 3 implementer subagent's session,
+not identified further) ran a bare `git stash` in this worktree, which
+captured this file's then-uncommitted Task 1/2 updates and reset the
+working tree to HEAD's stale, inherited #7b ledger content — exactly the
+failure mode this file's own top-of-file warning describes, just via
+`stash` instead of `checkout`. Recovered via the shared stash stack
+(`git stash list --format='%H %gs'` to get a stable SHA, `git stash apply
+<sha>` — never bare `pop`, since the stack is shared across worktrees/
+sessions and a second, unrelated entry from `worktree-lib-target-split`
+was sitting in the same stack). Content verified intact before continuing;
+stash entry left in place (not dropped) until this file is committed, to
+keep a recovery path if this happens again before the commit lands.
+Lesson for future dispatches: commit this file's updates immediately after
+each task's review, don't batch them across multiple tasks uncommitted.
