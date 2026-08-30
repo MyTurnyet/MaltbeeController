@@ -80,3 +80,14 @@ requires between symbol and letter) — controller amended the message only
 without re-asking) to `! F`, diff content unchanged (24 insertions/6
 deletions both before and after). Controller independently re-ran the
 focused suite: 9/9 test cases, 24 assertions.
+
+Task 4 (CaptivePortalServer::begin() WPA2 passphrase parameter): complete
+(commit 983d861..af3fe40 [^ F, 6-line diff within the 8-LoC cap], review
+clean — Approved, zero findings at any severity. Reviewer confirmed the
+header declaration and .cpp implementation's parameter list match exactly,
+`WiFi.softAP()` is called with exactly two `.c_str()` arguments, and no
+scope creep beyond the one signature/call-site change. No native test
+(matches this class's established build-check-only convention). Controller
+independently re-ran `pio run -e esp32dev`: SUCCESS, RAM 16.5%/Flash 77.2%
+(unchanged from before this task, since nothing calls this method until
+Task 6).
