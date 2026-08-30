@@ -63,3 +63,25 @@ own self-review honestly flagged test 5 as the weakest case rather than
 overclaiming. Controller independently confirmed the commit's diff size
 (83 lines, correctly capped at !) and re-ran the focused suite: 5/5 test
 cases.
+
+Task 3 (MqttPresenceAnnouncer): complete (commit 42f77ba..710a105 [! F,
+92-line diff], review clean — Approved, zero Critical/Important. Reviewer
+traced all 4 edge-detection scenarios against the real committed code
+(false-first, true-first-publishes, true-while-connected-no-republish,
+false-then-true-reannounces) and confirmed topics/payloads/retained flags
+match PresenceTopics.h and MqttTransport.h exactly (checked against the
+real headers in the worktree, not just the brief's assumed text).
+Confirmed test/support/FakeMqttTransport.h genuinely untouched via a
+direct diff check. 2 Minor (both non-actionable/informational, not fixed):
+the two sequential publish() calls can't be observed out of order given
+MqttTransport's synchronous contract; nodeId_ is stored but only used to
+rebuild topic strings, a theoretical micro-optimization not worth pursuing
+for a connect-edge-only call. Controller independently re-ran the focused
+suite: 4/4 test cases, 12 assertions; also confirmed via `git diff` that
+FakeMqttTransport.h has zero changes in this commit.
+
+## Tasks 1-3 complete — proceeding to Task 4 (main.cpp wiring), dispatched
+on the most capable available model per the plan's own guidance (highest-
+judgment task: real composition-root restructuring, no native test exists
+for src/, verification is esp32dev build + the plan's own 7-item
+manual-read-through checklist).
