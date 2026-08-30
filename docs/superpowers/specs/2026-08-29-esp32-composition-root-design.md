@@ -301,3 +301,32 @@ in this repo:
 Until resolved, `JmriFeedbackSource` simply receives no messages and every
 station's LED stays in blink/unconfirmed mode indefinitely — a safe,
 already-designed-for degraded state, not a crash or incorrect confirmation.
+
+4. **NVS initialization ordering** (found by the final whole-branch review,
+   fixed in this branch): global C++ constructors run before
+   `app_main()`/`initArduino()` on the Arduino-ESP32 toolchain, so any global
+   that reads NVS (here, `NodeConfig runningConfig = configStore.load();`
+   and `CommissioningSession`'s constructor) would silently see an
+   uninitialized NVS partition and always fall back to factory-default
+   config — meaning saved commissioning data would never take effect on a
+   real boot. Fixed by adding an `NvsBootstrap` global, declared first in
+   `src/esp32/main.cpp`, that calls `nvs_flash_init()` before any other
+   global's constructor runs. This is invisible to both `pio run -e
+   esp32dev` and the native suite — **explicitly verify on real hardware
+   during sub-project #8's bring-up**: commission a node over bench serial
+   (`wifi`/`broker`/`turnout ... name`/`save`/`reboot`), then confirm `show`
+   after the reboot reports the values that were actually saved, not
+   factory defaults.
+5. **Blocking MQTT connect symptom** (found by the final whole-branch
+   review): `MqttLink::connect()`'s underlying `PubSubClient::connect()` is
+   synchronous, so an unreachable *broker* (WiFi connected, broker down or
+   wrong host/port) still blocks `loop()` for the length of the connect
+   timeout on every retry — including freezing the bench-serial
+   commissioning console an operator would be using to fix that exact
+   config. This branch mitigates the more common case (skip the MQTT
+   connect attempt entirely while WiFi isn't connected yet), but a
+   genuinely unreachable broker with WiFi up is still a known, unfixed
+   blocking window. If sub-project #8's bring-up ever shows the commissioning
+   console going unresponsive for several seconds at a time, check the
+   broker host/port before suspecting matrix-scanning or serial-adapter
+   bugs.
