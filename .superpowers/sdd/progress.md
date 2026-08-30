@@ -91,3 +91,16 @@ scope creep beyond the one signature/call-site change. No native test
 independently re-ran `pio run -e esp32dev`: SUCCESS, RAM 16.5%/Flash 77.2%
 (unchanged from before this task, since nothing calls this method until
 Task 6).
+
+Task 5 (document the AP passphrase): complete (commit b47273d..6817f4a
+[. d], review clean — Approved, zero findings. Documentation-only, 21
+insertions/0 deletions in docs/ESP32_Turnout_Panel_Implementation.md.
+Controller independently confirmed byte-for-byte match to the plan's
+exact specified text and insertion point (immediately after `## Power`'s
+closing `---`, before `## JMRI Communication (MQTT)`) via `git show HEAD`
+before dispatching the reviewer.
+
+## Tasks 1-5 complete — proceeding to Task 6 (main.cpp wiring), dispatched
+on the most capable available model per the plan's own guidance (highest-
+judgment task: real composition-root restructuring, no native test exists
+for src/, verification is esp32dev build + manual read-through).
