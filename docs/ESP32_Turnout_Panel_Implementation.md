@@ -229,6 +229,43 @@ submission clears that turnout's assigned name.
 
 ---
 
+## Multi-Panel Presence and Node ID Collisions
+
+**Decision (2026-08-30):** every panel publishes two MQTT topics on
+connect — `panel/<nodeId>/status` (`"online"`/`"offline"`) and
+`panel/<nodeId>/mac` (the panel's own MAC, last 4 hex digits) — so a
+technician with any MQTT client can see which panels are up and which
+physical panel currently claims a given node ID.
+
+**If two panels are ever accidentally commissioned with the same node
+ID**, each one detects the other by watching its own `mac` topic: seeing
+a MAC that isn't its own means a second panel claims this ID. When that
+happens, **the panel goes visibly unresponsive** — all 12 turnout buttons
+stop working and every LED falls back to the same blinking
+"unconfirmed/disconnected" state already used when MQTT is down. This
+looks identical to a lost network connection at a glance; check the
+serial log (`pio device monitor`) for `"NodeId collision detected"` to
+tell the two apart.
+
+**Two things still work during a collision lockout, so you are never
+stuck:**
+- **Bench-serial commissioning** over USB — recommission the panel with
+  a different node ID via `id <n>` / `save` / `reboot`.
+- **The T1+T2 wireless-setup combo** (hold both buttons 3 seconds) — still
+  opens the wireless setup AP even during a lockout, since it reads the
+  same underlying buttons before the lockout's suppression is applied.
+
+**If you decommission a panel or reassign its node ID to a different
+physical board**, the new panel's *first* boot may briefly show a false
+collision — the old panel's MAC is still sitting in the retained
+`panel/<nodeId>/mac` topic from before. This clears itself automatically:
+the new panel's own presence announcement overwrites the stale claim on
+that same boot, so a second boot (or the automatic reconnect that follows
+a dropped WiFi/MQTT session) comes up clean. No broker administration or
+manual topic-clearing is ever required.
+
+---
+
 ## JMRI Communication (MQTT)
 
 **Decision (2026-07-21):** the ESP32 talks to JMRI over MQTT, both to send
