@@ -86,3 +86,82 @@ stash entry left in place (not dropped) until this file is committed, to
 keep a recovery path if this happens again before the commit lands.
 Lesson for future dispatches: commit this file's updates immediately after
 each task's review, don't batch them across multiple tasks uncommitted.
+(Applied for the remainder of this branch: every ledger update from here
+on was committed in the same message as the finding it records.)
+
+## All 4 tasks complete — proceeded to final whole-branch review.
+
+## Final whole-branch review (opus): "Ready to merge: With fixes"
+Reviewer independently ran pio test -e native (32/32) and pio run -e
+esp32dev (SUCCESS, RAM 16.5%/Flash 77.2% - byte-identical to pre-branch,
+confirming zero runtime footprint since nothing references these classes
+yet), confirmed zero hardware-verified files (Button/MatrixScanner/
+MatrixDigitalInput/ToggleTurnoutControl/ToggleTurnoutStation) touched,
+confirmed the two seams #2c-b will need (SetupModeRequestStore::
+consumeRequest() -> BootModeSelector::select()'s bool param; GatedDigitalInput
+slotting into ToggleTurnoutStation's DigitalInput& button param unmodified)
+actually compose, confirmed unsigned-long millis() wraparound arithmetic is
+correct, confirmed NVS namespaces ("mcsnode" vs "mcs-boot") are genuinely
+disjoint. Zero Critical.
+
+1 Important: a FOURTH test-coverage gap of the same shape as the
+already-fixed staggered-press one - none of the (then-)7 test cases called
+update() more than once while a hold was already in progress, so the
+`&& !holding_` re-stamp guard (ComboSetupModeTrigger.cpp:14) was completely
+unexercised. Reviewer traced that removing it would still pass all 7
+existing tests while silently disabling the entire feature on real
+hardware (loop() runs at kHz, so holdStartMs_ would re-stamp every tick
+and heldFor would never accumulate). Controller independently confirmed
+both halves of this claim before dispatching a fix: read the actual
+guard condition, and grepped every trigger.update() call site in the test
+file to confirm none repeats mid-hold. Fixed by adding one test case
+(commit 46002a7..528518b [^ d], test-only, zero production code change) -
+this fix subagent's own run also hit the Windows STATUS_STACK_BUFFER_OVERRUN
+environment crash seen once before in this branch, but reported it
+honestly rather than fabricating a pass; controller independently
+re-ran the exact commit cleanly (8/8 test cases, 37 assertions).
+
+1 Important, not fixed in code (a spec/design gap, not an implementation
+defect): GatedDigitalInput's suppression only engages once
+ComboSetupModeTrigger::isHolding() goes true, which by design only happens
+at the LATER of the two combo presses - so if a human's two-finger press
+staggers by more than Button's 30ms debounce (routine), the EARLIER-pressed
+button's own wasPressed() edge fires (and sends a live toggle command to
+JMRI) before suppression ever engages. Every one of the four classes
+implements its own stated contract correctly; this is a gap in how the
+spec described their composition, only visible once you look at all four
+together - exactly what a whole-branch review is for. Recorded in the
+design spec's new "Known gap for #2c-b to resolve" section rather than
+fixed here, since resolving it (accept one spurious command / command-on-
+release / a short hold-off) is a real design decision #2c-b must make
+explicitly, not something to bake into this branch silently.
+
+4 Minor: (1) NvsSetupModeRequestStore.h guarded stricter than
+NvsConfigStore.h's own convention - already known from Task 2's review,
+not re-litigated. (2) requestOnNextBoot()'s void return silently swallows
+an NVS begin() failure - flagged as worth reconsidering before #2c-b
+becomes the first consumer, not changed here (would ripple the port
+signature and the fake). (3) ComboSetupModeTrigger sits in adapters/ but
+is arguably pure domain logic by this project's own LedPairDriver
+precedent - spec's choice, not an implementer deviation, not moved
+(reviewer's own judgment: would churn an include for no functional gain).
+(4) FakeSetupModeRequestStore.h isn't yet referenced by any test binary -
+reviewer closed this themselves by compiling it standalone and confirming
+it's correct; informational only.
+
+Controller handled CLAUDE.md and the design spec's new gap section
+directly (commit 38e7487), separately from any fix subagent, mirroring
+the established pattern from #7b. While updating CLAUDE.md, discovered
+and fixed a THIRD, independent doc-drift issue: the "Include convention"
+paragraph's rooted-include count (19) had been stale since sub-project
+#7a (never updated for ToggleTurnoutControl.h's or ToggleTurnoutStation.h's
+own rooted includes) - reconciled via a fresh grep recount to the true
+current value (34).
+
+## PLAN COMPLETE (with two review-driven test-coverage fixes, zero
+production code changes) — all builds/tests green.
+Final state: commits 242964d..38e7487 (6c0a867 Task1, 5c49b93 Task2,
+39d3500 Task3, 430451d Task4, 46002a7 fix1, 528518b fix2), plus controller
+doc commits for CLAUDE.md and the design spec's gap section, plus three
+ledger-recording commits (60a469d, 9966429, 808aaa3). Proceeding to
+finishing-a-development-branch.
