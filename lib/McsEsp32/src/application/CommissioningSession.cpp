@@ -87,3 +87,8 @@ bool CommissioningSession::rebootRequested() const
 {
     return rebootRequested_;
 }
+
+const NodeConfig& CommissioningSession::draft() const
+{
+    return draft_;
+}

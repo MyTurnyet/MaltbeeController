@@ -203,3 +203,18 @@ TEST_CASE("a fresh session loads the store's existing config as its draft")
 
     REQUIRE(response.find("id: 7") != std::string::npos);
 }
+
+TEST_CASE("draft reflects the current in-progress config, including after a mutation")
+{
+    FakeConfigStore store;
+    CommissioningSession session(store);
+
+    REQUIRE(session.draft().nodeId == 0);
+
+    ParsedCommand idCommand;
+    idCommand.kind = CommandKind::Id;
+    idCommand.intArg = 5;
+    session.apply(idCommand);
+
+    REQUIRE(session.draft().nodeId == 5);
+}

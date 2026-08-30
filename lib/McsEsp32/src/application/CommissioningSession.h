@@ -15,6 +15,7 @@ public:
     std::string apply(const ParsedCommand& command);
 
     [[nodiscard]] bool rebootRequested() const;
+    [[nodiscard]] const NodeConfig& draft() const;
 
 private:
     [[nodiscard]] std::string formatShow() const;
