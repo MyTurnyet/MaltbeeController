@@ -106,3 +106,22 @@ TEST_CASE("currentValues reports an unset node id as an empty string")
 
     REQUIRE(values.nodeId.empty());
 }
+
+TEST_CASE("wifi credentials and turnout names containing spaces round-trip intact")
+{
+    FakeConfigStore store;
+    CommissioningSession session(store);
+    WebFormCommissioningAdapter adapter(session);
+
+    WebFormSubmission form = validSubmission();
+    form.wifiSsid = "My Layout Wifi";
+    form.wifiPassword = "a pass with spaces";
+    form.channelJmriNames[0] = "Yard Ladder 3";
+
+    const std::string response = adapter.submit(form);
+
+    REQUIRE(response == "rebooting\n");
+    REQUIRE(store.load().wifiSsid == "My Layout Wifi");
+    REQUIRE(store.load().wifiPassword == "a pass with spaces");
+    REQUIRE(store.load().channelJmriNames[0] == "Yard Ladder 3");
+}
