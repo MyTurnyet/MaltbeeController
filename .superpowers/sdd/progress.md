@@ -102,3 +102,78 @@ esp32dev SUCCESS (39.7s, RAM 16.5%/Flash 77.2%), megaatmega2560 SUCCESS
 unchanged, native 36/36 confirmed independently by the controller.
 
 ## All 6 tasks complete — proceeding to final whole-branch review.
+
+## Final whole-branch review (opus): "Ready to merge: With fixes"
+Reviewer independently re-ran pio test -e native (36/36), pio run -e
+esp32dev (SUCCESS, unchanged footprint - confirming zero runtime effect
+since nothing references these classes yet), pio run -e megaatmega2560
+(SUCCESS unchanged), traced the full currentValues()<->render() round-trip
+including the nodeId==0 special case, verified all 17 form field names
+match exactly between SetupFormRenderer and CaptivePortalServer::readForm()
+(not just a sample), verified draft() composes safely with apply()'s
+draft_ reassignment (no dangling reference), and checked malformed/missing
+POST field handling degrades safely (WebServer::arg() returns "" for an
+absent key, which CommandLineParser correctly rejects as an invalid token
+count rather than crashing or silently misparsing). Zero Critical.
+
+1 Important (blocking, code fix): a FIFTH instance of this branch's/
+project's standing test-coverage-gap pattern - "an empty channel name is
+skipped" test's only assertion (channelJmriNames[1].empty()) was true
+before submit() even ran, since FakeConfigStore starts from
+factoryDefault() where every channel is already empty. Could not
+distinguish the skip-guard working from the guard being deleted entirely.
+Controller independently confirmed by reading the test file directly.
+Fixed by replacing the test: pre-seed channel 2 with a real name, submit
+a form with that channel blank, assert the name is untouched rather than
+cleared (commit c11870e..93cd452 [^ B], test-only, zero production code
+change - the implementation was already correct). Controller independently
+re-ran: 7/7 test cases (19 assertions), 36 suites full run, diff confirmed
+byte-for-byte identical to the specified replacement test.
+
+2 Important (spec-level, not code defects, explicitly deferred to #2c-b2
+since this branch has zero runtime effect): (1) the rendered form's own
+copy ("leave a channel blank to unconfigure it") contradicts what
+submit() actually does (leaves the existing name untouched) - no way to
+clear a channel through the form at all currently; (2) CaptivePortalServer
+opens an unauthenticated WiFi AP that renders the layout's EXISTING wifi
+password back into the page in cleartext to anyone who joins - a larger
+exposure than the 2a spec's already-accepted "a password being typed
+travels over plaintext HTTP". Both recorded in the design spec's new
+"Known gaps for #2c-b2 to resolve" section rather than fixed here, since
+#2c-b2 is where the AP actually gets turned on and either decision
+requires composition-root-level choices (a WPA2 passphrase, or a
+skip-vs-clear semantics change affecting both fields together).
+
+~10 Minor findings, all explicitly non-blocking: brokerHost inconsistently
+NOT bypassing CommandLineParser (asymmetric with the wifi/turnout
+rationale, low impact since hostnames rarely contain spaces); id dropdown
+placeholder only shown for empty selectedId, not out-of-range; the
+"t{N}_name" field-name construction duplicated independently in
+SetupFormRenderer and CaptivePortalServer (silent-drift risk, portal side
+is #ifdef ARDUINO-guarded so a mismatch wouldn't be caught by native
+tests); missing <meta charset='utf-8'>; WiFi.softAP()'s bool return
+discarded; handleSubmit() never re-renders the form after an error
+(recoverable via re-navigating to /); a spec-to-plan test substitution
+(non-numeric-id instead of out-of-range-channel, defensible since the
+adapter's loop can only ever emit valid channel numbers). None fixed -
+recorded for #2c-b2 or future polish.
+
+Process note the reviewer flagged: this is the FIFTH instance of the same
+test-coverage-gap shape across this project's last two sub-projects
+(#2c-a: staggered-press, mid-hold-restamp; this branch: wifi/turnout
+bypass round-trip, this empty-channel test). Standing lens going forward,
+per the reviewer's suggested plan-writing checklist question: "what would
+this assertion look like if the guard/bypass being tested were deleted?"
+
+Controller handled CLAUDE.md and the design spec's new gap section
+directly (commit 3a4775b), separately from any fix subagent, mirroring
+the established pattern from #7b and #2c-a. Verified via grep that this
+branch introduced zero new rooted cross-library includes (count stays at
+34, unchanged) - no CLAUDE.md drift to reconcile this time.
+
+## PLAN COMPLETE (with one review-driven test-coverage fix, zero
+production code changes) — all builds/tests green.
+Final state: commits c2ffae2..93cd452 (dd1b39c Task1, 1433476 Task2,
+0cb22cb Task3, 0b0b146+c7febe4 Task4+fix, 97f5431 Task5, 6c91bdd Task6,
+93cd452 final-review fix), plus controller doc commit 3a4775b, plus seven
+ledger-recording commits. Proceeding to finishing-a-development-branch.
