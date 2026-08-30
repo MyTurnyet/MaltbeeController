@@ -8,6 +8,12 @@ LedPairDriver::LedPairDriver(DigitalOutput& gpio, Clock& clock, const unsigned l
     writeColor(lastDisplayedColor_);
 }
 
+void LedPairDriver::begin()
+{
+    lastToggleTime_ = clock_.nowMilliseconds();
+    writeColor(currentColorToShow());
+}
+
 void LedPairDriver::setGreen(const bool active)
 {
     greenRequested_ = active;
@@ -80,6 +86,22 @@ void LedPairDriver::writeColor(const LedPairColor color)
     gpio_.set(color == LedPairColor::Green);
 }
 
+LedPairColor LedPairDriver::currentColorToShow() const
+{
+    if (currentMode_ == Mode::Green)
+    {
+        return LedPairColor::Green;
+    }
+    if (currentMode_ == Mode::Red)
+    {
+        return LedPairColor::Red;
+    }
+
+    const LedPairColor opposite =
+        lastDisplayedColor_ == LedPairColor::Green ? LedPairColor::Red : LedPairColor::Green;
+    return blinkShowingLastColor_ ? lastDisplayedColor_ : opposite;
+}
+
 void LedPairDriver::update()
 {
     if (currentMode_ != Mode::Blink)
@@ -87,13 +109,14 @@ void LedPairDriver::update()
         return;
     }
 
-    if (clock_.nowMilliseconds() - lastToggleTime_ < blinkIntervalMs_)
+    const unsigned long now = clock_.nowMilliseconds();
+    if (now - lastToggleTime_ < blinkIntervalMs_)
     {
         return;
     }
 
     blinkShowingLastColor_ = !blinkShowingLastColor_;
-    lastToggleTime_ = clock_.nowMilliseconds();
+    lastToggleTime_ = now;
 
     const LedPairColor opposite =
         lastDisplayedColor_ == LedPairColor::Green ? LedPairColor::Red : LedPairColor::Green;

@@ -9,11 +9,18 @@ enum class LedPairColor
     Red
 };
 
+// Drives a shared-GPIO red/green LED pair: one GPIO level encodes both
+// colors, so there is no true "off". `update()` must be called on every
+// loop iteration for blinking to work. Exactly two `LedPairOutput`s (one
+// green, one red) are expected to share a single `LedPairDriver` instance.
+// Green corresponds to the GPIO driven HIGH.
 class LedPairDriver
 {
 public:
     LedPairDriver(DigitalOutput& gpio, Clock& clock, unsigned long blinkIntervalMs,
                   LedPairColor defaultColor);
+
+    void begin();
 
     void setGreen(bool active);
     void setRed(bool active);
@@ -33,6 +40,7 @@ private:
 
     void applyState();
     void writeColor(LedPairColor color);
+    [[nodiscard]] LedPairColor currentColorToShow() const;
 
     DigitalOutput& gpio_;
     Clock& clock_;

@@ -39,11 +39,13 @@ TEST_CASE("before anything has been requested, the GPIO already shows the config
     LedPairDriver greenDefaultDriver(greenDefaultGpio, clock, BLINK_INTERVAL_MS, LedPairColor::Green);
 
     REQUIRE(greenDefaultGpio.isSet());
+    REQUIRE(greenDefaultGpio.setCallCount() == 1);
 
     FakeDigitalOutput redDefaultGpio;
     LedPairDriver redDefaultDriver(redDefaultGpio, clock, BLINK_INTERVAL_MS, LedPairColor::Red);
 
     REQUIRE_FALSE(redDefaultGpio.isSet());
+    REQUIRE(redDefaultGpio.setCallCount() == 1);
 }
 
 TEST_CASE("requesting both off enters blink and immediately shows the last-displayed color, from green")
@@ -157,4 +159,30 @@ TEST_CASE("isGreenRequested and isRedRequested reflect the last request for each
 
     REQUIRE(driver.isRedRequested());
     REQUIRE_FALSE(driver.isGreenRequested());
+}
+
+TEST_CASE("begin() re-writes the current color and re-stamps the blink timer, for use after the GPIO's own begin()")
+{
+    FakeDigitalOutput gpio;
+    FakeClock clock;
+    LedPairDriver driver(gpio, clock, BLINK_INTERVAL_MS, LedPairColor::Green);
+
+    // Simulate a real ArduinoDigitalOutput::begin() happening after
+    // construction, which on real hardware would clobber the GPIO level
+    // and leave the driver's internal timer referring to a clock time
+    // before setup() ran.
+    gpio.set(false);
+    clock.advanceBy(50);
+
+    driver.begin();
+
+    REQUIRE(gpio.isSet());
+
+    clock.advanceBy(BLINK_INTERVAL_MS - 1);
+    driver.update();
+    REQUIRE(gpio.isSet());
+
+    clock.advanceBy(1);
+    driver.update();
+    REQUIRE_FALSE(gpio.isSet());
 }
