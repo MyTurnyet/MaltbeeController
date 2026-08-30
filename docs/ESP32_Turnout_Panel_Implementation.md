@@ -204,6 +204,27 @@ Because the pair always shows one color or the other, there's no way to show
 
 ---
 
+## Wireless Setup Access Point
+
+**Decision (2026-08-30):** commissioning over Wi-Fi (sub-project #2c) opens a
+temporary access point named `MaltBee-Setup-XXXX` (last 4 hex digits of the
+ESP32's MAC address) whenever the panel boots into wireless setup mode —
+either a factory-fresh panel with no valid configuration, or an
+already-commissioned panel where a technician held turnout buttons T1+T2
+together for 3 seconds to request it.
+
+The AP requires a WPA2 passphrase to join: **`maltbee-setup`**. This is
+fixed and shared across every panel (not per-panel or MAC-derived) — write
+it down for field commissioning, since a technician without it cannot join
+the AP to reach the setup web form.
+
+The panel's own current WiFi password is never displayed by the setup
+form — a blank password field on submission keeps the existing password
+unchanged. Turnout JMRI name fields work the opposite way: a blank field on
+submission clears that turnout's assigned name.
+
+---
+
 ## JMRI Communication (MQTT)
 
 **Decision (2026-07-21):** the ESP32 talks to JMRI over MQTT, both to send
