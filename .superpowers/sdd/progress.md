@@ -52,7 +52,23 @@ clean — Approved, zero findings at any severity. Reviewer confirmed no
 suppression-overrides-forwarding semantics, and that all 3 tests exercise
 real behavior against FakeDigitalInput rather than tautologies. Native
 31/31 confirmed independently by the controller.
-Task 4 (ComboSetupModeTrigger): not started
+Task 4 (ComboSetupModeTrigger): complete (commit 9966429..430451d [^ F],
+review clean apart from 1 Important finding — the implementation was
+verified correct via the reviewer's own independent hand-trace of the
+edge-triggering state machine (including a staggered-press scenario), but
+none of the plan's own six specified test cases actually distinguished
+"timer anchored to the later press" from "timer anchored to the first
+press" — every given test pressed both buttons in the same tick. This was
+a gap in the plan's test list, not an implementer deviation. Fixed by
+adding one test case pinning down staggered-press timing (commit 430451d..
+46002a7 [^ d], test-only, zero production code change). Fix subagent's own
+test run crashed with a Windows STATUS_STACK_BUFFER_OVERRUN error across
+all 32 suites in its execution environment; controller independently
+re-ran the exact same commit in this worktree and got a clean 7/7 test
+cases (16 assertions) on the focused suite and 32/32 on the full suite,
+confirming the crash was specific to the fix subagent's own sandbox, not
+a real regression. Diff independently confirmed byte-for-byte identical
+to the specified test code, zero production files touched.
 
 ## Incident: a stray `git stash` wiped this file's uncommitted edits mid-branch
 Between Task 2's commit and Task 3's completion notification, something
