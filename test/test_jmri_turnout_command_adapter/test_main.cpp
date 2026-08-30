@@ -25,7 +25,7 @@ TEST_CASE("send publishes the expected topic, payload, and retained flag")
     REQUIRE(transport.published.size() == 1);
     REQUIRE(transport.published[0].topic == "track/turnout/LT1");
     REQUIRE(transport.published[0].payload == "CLOSED");
-    REQUIRE(transport.published[0].retained);
+    REQUIRE_FALSE(transport.published[0].retained);
 }
 
 TEST_CASE("send encodes Thrown correctly")

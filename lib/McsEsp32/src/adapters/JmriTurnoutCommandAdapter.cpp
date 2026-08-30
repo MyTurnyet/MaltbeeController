@@ -22,5 +22,5 @@ void JmriTurnoutCommandAdapter::send(const int address, const TurnoutPosition po
         return;
     }
 
-    transport_.publish(TopicScheme::topicFor(jmriName), PayloadCodec::encode(position), true);
+    transport_.publish(TopicScheme::topicFor(jmriName), PayloadCodec::encode(position), false);
 }
