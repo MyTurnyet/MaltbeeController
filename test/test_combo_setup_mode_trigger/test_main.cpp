@@ -129,3 +129,43 @@ TEST_CASE("a fresh press-hold-release cycle after a full release can trigger aga
 
     REQUIRE(trigger.requested());
 }
+
+TEST_CASE("the hold timer starts from the later of two staggered presses, not the first one alone")
+{
+    FakeDigitalInput buttonA;
+    FakeDigitalInput buttonB;
+    FakeClock clock;
+    ComboSetupModeTrigger trigger(buttonA, buttonB, clock, MIN_HOLD_MS);
+
+    buttonA.active = true;
+    trigger.update();
+
+    clock.advanceBy(1000);
+    buttonB.active = true;
+    trigger.update();
+
+    REQUIRE(trigger.isHolding());
+
+    // Only MIN_HOLD_MS - 1 has elapsed since buttonB joined (the later
+    // press), even though buttonA has been active for MIN_HOLD_MS + 999ms
+    // in total - the timer must anchor to when BOTH became active, not
+    // to buttonA's earlier individual press.
+    clock.advanceBy(MIN_HOLD_MS - 1);
+    buttonA.active = false;
+    buttonB.active = false;
+    trigger.update();
+
+    REQUIRE_FALSE(trigger.requested());
+
+    // Re-press both and hold for the full duration measured from the
+    // later press this time, to confirm the class still fires correctly.
+    buttonA.active = true;
+    buttonB.active = true;
+    trigger.update();
+    clock.advanceBy(MIN_HOLD_MS);
+    buttonA.active = false;
+    buttonB.active = false;
+    trigger.update();
+
+    REQUIRE(trigger.requested());
+}
