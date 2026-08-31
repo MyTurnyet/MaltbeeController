@@ -186,3 +186,107 @@ TEST_CASE("begin() re-writes the current color and re-stamps the blink timer, fo
     driver.update();
     REQUIRE_FALSE(gpio.isSet());
 }
+
+TEST_CASE("setIdentifying(true) immediately shows green regardless of current mode")
+{
+    FakeDigitalOutput gpio;
+    FakeClock clock;
+    LedPairDriver driver(gpio, clock, BLINK_INTERVAL_MS, LedPairColor::Red);
+
+    driver.setRed(true);
+    REQUIRE_FALSE(gpio.isSet());
+
+    driver.setIdentifying(true);
+
+    REQUIRE(gpio.isSet());
+}
+
+TEST_CASE("update() toggles the identify flash at its own fixed interval, independent of the blink interval")
+{
+    FakeDigitalOutput gpio;
+    FakeClock clock;
+    LedPairDriver driver(gpio, clock, BLINK_INTERVAL_MS, LedPairColor::Red);
+
+    driver.setIdentifying(true);
+    REQUIRE(gpio.isSet());
+
+    clock.advanceBy(149);
+    driver.update();
+    REQUIRE(gpio.isSet());
+
+    clock.advanceBy(1);
+    driver.update();
+    REQUIRE_FALSE(gpio.isSet());
+
+    clock.advanceBy(150);
+    driver.update();
+    REQUIRE(gpio.isSet());
+}
+
+TEST_CASE("setIdentifying(true) called again while already active does not reset the toggle timer")
+{
+    FakeDigitalOutput gpio;
+    FakeClock clock;
+    LedPairDriver driver(gpio, clock, BLINK_INTERVAL_MS, LedPairColor::Red);
+
+    driver.setIdentifying(true);
+
+    clock.advanceBy(149);
+    driver.setIdentifying(true);
+    driver.update();
+    REQUIRE(gpio.isSet());
+
+    clock.advanceBy(1);
+    driver.update();
+    REQUIRE_FALSE(gpio.isSet());
+}
+
+TEST_CASE("setIdentifying(false) reverts to a steady color the normal mode would show")
+{
+    FakeDigitalOutput gpio;
+    FakeClock clock;
+    LedPairDriver driver(gpio, clock, BLINK_INTERVAL_MS, LedPairColor::Red);
+
+    driver.setRed(true);
+    REQUIRE_FALSE(gpio.isSet());
+
+    driver.setIdentifying(true);
+    REQUIRE(gpio.isSet());
+
+    driver.setIdentifying(false);
+
+    REQUIRE_FALSE(gpio.isSet());
+}
+
+TEST_CASE("setIdentifying(false) reverts to blink mode's current color if that is what was active before")
+{
+    FakeDigitalOutput gpio;
+    FakeClock clock;
+    LedPairDriver driver(gpio, clock, BLINK_INTERVAL_MS, LedPairColor::Green);
+
+    driver.setIdentifying(true);
+    driver.setIdentifying(false);
+
+    REQUIRE(gpio.isSet());
+
+    clock.advanceBy(BLINK_INTERVAL_MS);
+    driver.update();
+    REQUIRE_FALSE(gpio.isSet());
+}
+
+TEST_CASE("update() does not run normal blink logic while identifying")
+{
+    FakeDigitalOutput gpio;
+    FakeClock clock;
+    LedPairDriver driver(gpio, clock, BLINK_INTERVAL_MS, LedPairColor::Green);
+
+    driver.setIdentifying(true);
+    clock.advanceBy(BLINK_INTERVAL_MS);
+    driver.update();
+
+    // BLINK_INTERVAL_MS (100) has elapsed, which would have flipped the
+    // GPIO under the old blink logic — but the identify interval (150)
+    // has not, so the short-circuit must leave it exactly as identify
+    // set it (still green), proving the old blink path did not also run.
+    REQUIRE(gpio.isSet());
+}

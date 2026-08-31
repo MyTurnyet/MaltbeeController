@@ -36,6 +36,25 @@ bool LedPairDriver::isRedRequested() const
     return redRequested_;
 }
 
+void LedPairDriver::setIdentifying(const bool active)
+{
+    if (active == identifying_)
+    {
+        return;
+    }
+    identifying_ = active;
+    if (identifying_)
+    {
+        identifyShowingGreen_ = true;
+        identifyLastToggleMs_ = clock_.nowMilliseconds();
+        writeColor(LedPairColor::Green);
+    }
+    else
+    {
+        writeColor(currentColorToShow());
+    }
+}
+
 void LedPairDriver::applyState()
 {
     Mode nextMode;
@@ -104,6 +123,18 @@ LedPairColor LedPairDriver::currentColorToShow() const
 
 void LedPairDriver::update()
 {
+    if (identifying_)
+    {
+        const unsigned long now = clock_.nowMilliseconds();
+        if (now - identifyLastToggleMs_ >= kIdentifyIntervalMs)
+        {
+            identifyShowingGreen_ = !identifyShowingGreen_;
+            identifyLastToggleMs_ = now;
+            writeColor(identifyShowingGreen_ ? LedPairColor::Green : LedPairColor::Red);
+        }
+        return;
+    }
+
     if (currentMode_ != Mode::Blink)
     {
         return;

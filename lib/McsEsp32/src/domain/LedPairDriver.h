@@ -28,6 +28,8 @@ public:
     [[nodiscard]] bool isGreenRequested() const;
     [[nodiscard]] bool isRedRequested() const;
 
+    void setIdentifying(bool active);
+
     void update();
 
 private:
@@ -53,4 +55,9 @@ private:
     Mode currentMode_ = Mode::Blink;
     bool blinkShowingLastColor_ = true;
     unsigned long lastToggleTime_ = 0;
+
+    bool identifying_ = false;
+    bool identifyShowingGreen_ = true;
+    unsigned long identifyLastToggleMs_ = 0;
+    static constexpr unsigned long kIdentifyIntervalMs = 150;
 };
