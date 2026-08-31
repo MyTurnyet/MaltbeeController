@@ -53,3 +53,16 @@ zero-dependency pure domain class (only `ports/Clock.h`) and
 millis()-rollover-safe unsigned subtraction idiom, consistent with the
 rest of this project's timing code. Controller independently re-ran the
 focused suite: 5/5 test cases.
+
+Task 2 (PresenceTopics::identifyTopic()): complete (commit a8d796b..cd0f9fc,
+review clean — Approved, zero findings. Implementer's original commit was
+misclassified `. F` — violating two ACN rules at once (11-line diff
+exceeds the 8-LoC F/B cap; `.` is reserved for provable/tool-verified
+refactors and is never valid for F/B behavior changes regardless of size).
+Controller caught this independently (checked the actual diff stat before
+trusting the classification) and amended the message only to `! F`, diff
+content unchanged (2 files/11 insertions both before and after). Reviewer
+confirmed the 3 pre-existing test cases are byte-for-byte unchanged and
+the new method exactly mirrors statusTopic()/macTopic()'s pattern.
+Controller independently re-ran the focused suite: 4/4 test cases, 6
+assertions.
