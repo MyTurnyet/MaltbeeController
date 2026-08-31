@@ -22,6 +22,11 @@ void LedPairStation::update()
     driver_.update();
 }
 
+void LedPairStation::setIdentifying(const bool active)
+{
+    driver_.setIdentifying(active);
+}
+
 DigitalOutput& LedPairStation::green()
 {
     return green_;

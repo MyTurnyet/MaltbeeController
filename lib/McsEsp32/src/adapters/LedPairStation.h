@@ -19,6 +19,7 @@ public:
 
     void begin();
     void update();
+    void setIdentifying(bool active);
 
     DigitalOutput& green();
     DigitalOutput& red();
