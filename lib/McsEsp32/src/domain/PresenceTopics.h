@@ -14,4 +14,9 @@ public:
     {
         return "panel/" + std::to_string(nodeId) + "/mac";
     }
+
+    static std::string identifyTopic(int nodeId)
+    {
+        return "panel/" + std::to_string(nodeId) + "/identify";
+    }
 };

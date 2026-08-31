@@ -17,3 +17,9 @@ TEST_CASE("both topics use the node id's decimal string form for a multi-digit i
     REQUIRE(PresenceTopics::statusTopic(42) == "panel/42/status");
     REQUIRE(PresenceTopics::macTopic(42) == "panel/42/mac");
 }
+
+TEST_CASE("identifyTopic builds the panel identify topic for a given node id")
+{
+    REQUIRE(PresenceTopics::identifyTopic(5) == "panel/5/identify");
+    REQUIRE(PresenceTopics::identifyTopic(42) == "panel/42/identify");
+}
