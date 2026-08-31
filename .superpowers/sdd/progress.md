@@ -103,3 +103,48 @@ re-ran pio run -e esp32dev: SUCCESS.
 
 ## Tasks 1-4 complete — proceeding to Task 5 (main.cpp wiring), dispatched
 on the most capable available model per the plan's own guidance.
+
+Task 5 (src/esp32/main.cpp wiring — identify-blink MQTT trigger): complete
+(commit 4b05def..1fcb8d4 [! F, 11-line diff, zero deletions], review
+clean (opus) — Approved, zero Critical/Important. Reviewer independently
+verified all 7 spec-compliance points against the actual file rather than
+trusting the implementer's own checklist, including reading the merged
+Task 3/4 source directly to confirm LedPairDriver::setIdentifying()'s
+idempotency guard is real (early-returns before touching any state) and
+that MqttLink genuinely supports a second independent subscription
+(vector of topic/handler pairs, dispatch by topic match, both replayed on
+reconnect) rather than trusting the plan's claim. Confirmed zero
+suppression logic exists anywhere for identify (the only setSuppressed()
+calls in the file are #2d-a's pre-existing, unchanged three), the
+setIdentifying() loop is a genuinely separate for-loop preceding
+ledStation.update() (not merged), and IDENTIFY_DURATION_MS/identifyTimer
+sit in the correct constant block/declaration order. Traced the
+interaction between identify and the pre-existing feedback/clearIndicator
+path in detail: confirmed applyState()'s existing early-return (no mode
+change = no GPIO write) means there's no per-tick thrash from the
+every-tick clearIndicator() else-branch, and the one genuine interaction
+(a real mode change mid-identify briefly paints over the flash) stays
+within the already-accepted 150ms glitch budget in all cases including
+button-driven changes (corrected on the next identify tick either way).
+3 Minor, recorded, none fixed: (1) the loop-ordering constraints in
+loop() are load-bearing but exist only in the plan doc, not a code
+comment — a future "tidy-up" merging the two ledStation loops would
+compile and pass all tests while silently breaking same-tick activation;
+(2) a retained publish on the identify topic would re-trigger identify on
+every MQTT reconnect (publisher-side behavior, not a wiring defect, worth
+noting wherever the topic is documented for JMRI/tooling); (3) one report
+line-number citation off by 2 (self-corrected against the real diff by
+the reviewer, substantive claim still held). Reviewer's readability
+judgment: loop() at 96 lines/6 concerns is not yet over the line for
+needing decomposition, but is the last addition that gets that verdict
+for free — flagged the three unstated ordering constraints (poll before
+suppression, poll before setIdentifying, setIdentifying before update) as
+the real accretion risk, not raw line count. Controller independently
+re-ran all three builds/tests on this exact commit: esp32dev SUCCESS
+(RAM 16.9%/Flash 81.2%, small genuine increase), megaatmega2560 SUCCESS
+unchanged, native 40/40 PASSED via Bash. Controller also independently
+read the full final main.cpp and confirmed byte-for-byte match to the
+plan's specified target code.
+
+## ALL 5 TASKS COMPLETE — proceeding to the final whole-branch review
+(most capable available model), then superpowers:finishing-a-development-branch.
