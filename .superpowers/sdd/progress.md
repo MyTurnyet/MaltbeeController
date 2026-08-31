@@ -36,3 +36,20 @@ Task 5 (main.cpp wiring) depends on Tasks 1-4 all being complete and must
 run last.
 
 ## Tasks
+
+Task 1 (IdentifyModeTimer): complete (commit 994a5f6..4262f6b [! F, 97-line
+diff], review clean — Approved, zero findings at any severity. Implementer's
+first pass stalled mid-task waiting on its own background `pio test`
+run without reporting back — controller resumed it with an explicit
+prompt to check the result and continue to commit/report; worth
+recognizing as the same class of interruption as the earlier /arlo-commits
+stalls, just from a different cause. Reviewer hand-traced the exact
+arithmetic for the "second trigger extends the window" test against both
+the real implementation (correctly true) and the plausible wrong one
+named in the brief — an unconditional-vs-guarded stamp — confirming it
+genuinely fails against the wrong one (false), not vacuous. Also
+independently traced all 4 other cases' arithmetic. Confirmed
+zero-dependency pure domain class (only `ports/Clock.h`) and
+millis()-rollover-safe unsigned subtraction idiom, consistent with the
+rest of this project's timing code. Controller independently re-ran the
+focused suite: 5/5 test cases.
