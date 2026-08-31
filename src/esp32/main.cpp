@@ -27,6 +27,7 @@
 #include "application/MqttPresenceAnnouncer.h"
 #include "domain/BootMode.h"
 #include "domain/BootModeSelector.h"
+#include "domain/IdentifyModeTimer.h"
 #include "domain/LedPairDriver.h"
 #include "domain/MatrixScanner.h"
 #include "domain/NodeConfig.h"
@@ -61,6 +62,7 @@ namespace
     constexpr unsigned long UART_BAUD_RATE = 115200;
     constexpr unsigned long SETUP_TRIGGER_HOLD_MS = 3000;
     constexpr const char* WIRELESS_SETUP_AP_PASSPHRASE = "maltbee-setup";
+    constexpr unsigned long IDENTIFY_DURATION_MS = 10000;
 }
 
 namespace
@@ -166,6 +168,7 @@ MqttLink mqttLink(systemClock, RETRY_INTERVAL_MS, mqttClientId, mqttWillTopic, m
 
 NodeIdentityGuard identityGuard(ownMac.lastFourHexDigits());
 MqttPresenceAnnouncer presenceAnnouncer(mqttLink, runningConfig.nodeId, ownMac.lastFourHexDigits());
+IdentifyModeTimer identifyTimer(systemClock, IDENTIFY_DURATION_MS);
 
 JmriTurnoutCommandAdapter turnoutCommandPort(mqttLink, runningConfig.channelJmriNames);
 JmriFeedbackSource feedbackSource(mqttLink, runningConfig.channelJmriNames);
@@ -233,6 +236,8 @@ void setup()
         mqttLink.begin(runningConfig.brokerHost, runningConfig.brokerPort);
         mqttLink.subscribe(PresenceTopics::macTopic(runningConfig.nodeId),
                             [](const std::string& payload) { identityGuard.onMacObserved(payload); });
+        mqttLink.subscribe(PresenceTopics::identifyTopic(runningConfig.nodeId),
+                            [](const std::string&) { identifyTimer.trigger(); });
     }
 
     uartPort.write(configValid ? "MaltBee panel ready (configured).\n"
@@ -317,6 +322,12 @@ void loop()
         {
             station.clearIndicator();
         }
+    }
+
+    const bool identifying = identifyTimer.isActive();
+    for (auto& ledStation : ledStations)
+    {
+        ledStation.setIdentifying(identifying);
     }
 
     for (auto& ledStation : ledStations)
