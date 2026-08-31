@@ -324,6 +324,11 @@ void loop()
         }
     }
 
+    // Must run before the ledStation.update() loop below (and after
+    // mqttLink.poll(), which is where a fresh trigger() lands) so a new
+    // identify activation takes visible effect the same tick it arrives.
+    // Merging the two loops would compile and pass every test while
+    // silently reintroducing a one-tick activation lag.
     const bool identifying = identifyTimer.isActive();
     for (auto& ledStation : ledStations)
     {

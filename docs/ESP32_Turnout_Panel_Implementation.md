@@ -266,6 +266,35 @@ manual topic-clearing is ever required.
 
 ---
 
+## Identifying a Physical Panel (identify-blink)
+
+**Decision (2026-08-30):** publish any message to `panel/<nodeId>/identify`
+to make that one physical panel's LEDs flash so you can find it among
+several deployed panels — useful when verifying commissioning worked,
+debugging via JMRI/MQTT tooling, or telling apart two panels mid-collision
+(see above; identify keeps working even during a collision lockout, since
+that's exactly the situation where you need to tell two panels apart).
+
+- **The payload is ignored** — any message triggers it, including an empty
+  one.
+- **All 12 LED pairs flash green/red together** for **10 seconds**, then
+  stop automatically and return to normal. There is no "stop" command;
+  publishing again before the 10 seconds are up just extends the window.
+- **Publish this topic non-retained.** A retained message re-triggers a
+  fresh 10-second flash every time the panel reconnects to the broker —
+  annoying at best, and it will keep happening indefinitely since the
+  panel has no way to know the retained message is stale.
+- **MQTT only** — there is no bench-serial equivalent. If you already have
+  a serial cable plugged into the right panel, you already know which one
+  it is.
+- **Turnout buttons and feedback are unaffected.** Identify is a pure
+  visual overlay; it never blocks or delays normal panel operation.
+
+Example: `mosquitto_pub -t panel/5/identify -n` (the `-n` flag sends an
+empty, non-retained message).
+
+---
+
 ## JMRI Communication (MQTT)
 
 **Decision (2026-07-21):** the ESP32 talks to JMRI over MQTT, both to send
