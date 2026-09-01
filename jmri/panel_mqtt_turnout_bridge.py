@@ -23,19 +23,20 @@ import jmri
 import java
 
 # --- Configuration: which real JMRI turnouts this bridge covers ---
-# NOTE: the previous version of this list was a dict with keys 13, 14,
-# and 15 each used twice -- in Python a repeated dict key silently
-# keeps only the LAST value, so "LT16", "LT18", and "LT19" were being
-# dropped without any error. Converting to a plain list sidesteps that
-# whole class of bug (there's no key to collide on), but the three
-# turnouts below are commented out until you confirm they should be
-# included -- see the note at the end of this file.
-TURNOUT_SYSTEM_NAMES = [
-    "LT1", "LT2", "LT3", "LT4", "LT5", "LT6", "LT7",
-    "LT9", "LT10", "LT11", "LT13", "LT14",
-    # "LT16", "LT18", "LT19",   # <-- were silently dropped before; confirm and uncomment
-    "LT20", "LT21", "LT22", "LT23", "LT24",
-]
+# --- Configuration: which real JMRI turnouts this bridge covers ---
+# Discovered dynamically from every registered LocoNet turnout (system
+# name starts with "LT") -- add turnouts in JMRI as usual and they're
+# picked up automatically next restart, no list to maintain here.
+#
+# IMPORTANT: this only sees turnouts that exist by the time this script
+# runs. If your turnouts come from a loaded panel file, make sure that
+# panel file is ABOVE this script in Preferences -> Start Up, so it
+# loads first.
+def loconetTurnoutSystemNames():
+    return [t.getSystemName() for t in turnouts.getNamedBeanSet()
+            if t.getSystemName().startswith("LT")]
+
+TURNOUT_SYSTEM_NAMES = loconetTurnoutSystemNames()
 
 CMD_TOPIC_PATTERN = "track/turnout/+"          # subscribed once, wildcard
 STATE_TOPIC = "track/turnout/%s/state"         # published per-turnout, retained
