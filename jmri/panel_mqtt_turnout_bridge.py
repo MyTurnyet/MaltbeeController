@@ -50,7 +50,10 @@ class PanelCommandListener(jmri.jmrix.mqtt.MqttEventListener):
         if systemName is None or state is None:
             print("Ignoring MQTT turnout command:", topic, message)
             return
-        turnouts.provideTurnout(systemName).commandedState = state
+        turnout = turnouts.provideTurnout(systemName)
+        turnout.commandedState = state
+        turnout.knownState = state  # forces the KnownState change that
+                                     # TurnoutStateBroadcaster listens for
 
     def _systemNameFrom(self, topic):
         parts = topic.split("/")
