@@ -42,3 +42,19 @@ half-open RSSI bands including boundary values, and confirmed
 dedupeAndSort's drop-empty-ssid and keep-strongest-rssi behavior matches
 both the brief and the plan's global constraint. 41/41 native suite (40
 existing + 1 new, 8 cases/17 assertions).
+
+Task 2 (SetupFormRenderer dropdown): complete (commit 2755da5..97e0915
+[! F], review clean — Approved, zero Critical/Important. Plan's brief had
+a harmless arithmetic slip ("10 existing + 4 new = 14" when the file
+actually had 9 pre-existing cases, so 13 total) — implementer correctly
+flagged it rather than forcing the wrong number, reviewer independently
+confirmed via the diff's hunk structure (zero removed lines in either
+hunk) that this is proof, not just a visual read, that every pre-existing
+case survived byte-for-byte unmodified. Confirmed the default `= {}`
+argument, the dropdown's `<select>` has no `name=` (never itself
+submitted), its `onchange` correctly targets `wifi_ssid` by
+`getElementsByName`, and `escapeHtml` is applied to both the option value
+and label. 1 Minor recorded, not fixed (intentional per the brief/tests,
+not an oversight): `renderNetworkOptions`'s placeholder is unconditional,
+asymmetric with `renderIdOptions`'s conditional one. 41/41 native suite
+unchanged (13 cases/33 assertions in the existing suite, no new binary).
