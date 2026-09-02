@@ -260,7 +260,11 @@ the panel (the BOOT-button hold that opens it) is the only gate.
 Wireless setup mode has no timeout, so an abandoned mid-commissioning
 panel stays open to anyone in range until someone completes the form or
 power-cycles the board; don't leave a panel in setup mode unattended any
-longer than necessary.
+longer than necessary. Because the AP itself has no encryption, avoid
+changing a panel's WiFi password over the setup form while in an
+untrusted RF environment — the new password is sent in cleartext over
+the open AP during that submission (stored credentials are never read
+back out, only ever written).
 
 The panel's own current WiFi password is never displayed by the setup
 form — a blank password field on submission keeps the existing password

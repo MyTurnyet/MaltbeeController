@@ -353,7 +353,7 @@ actually gets called.
 
 ## Known gaps for #2c-b2 to resolve (found by the final whole-branch review)
 
-**Resolved in #2c-b2** (see `docs/superpowers/specs/2026-08-30-esp32-wireless-setup-composition-wiring-design.md`): gap 1 was fixed by dropping `submit()`'s blank-channel skip guard, so a blank field now genuinely clears the channel. Gap 2 was closed at two independent layers — `CaptivePortalServer::begin()` now requires a WPA2 passphrase, and `WebFormCommissioningAdapter`/`SetupFormRenderer` both independently stop the real stored password from ever reaching the rendered page (neither layer depends on the other being correct). Left as-is below for historical record of what the gap was and why it mattered.
+**Resolved in #2c-b2** (see `docs/superpowers/specs/2026-08-30-esp32-wireless-setup-composition-wiring-design.md`): gap 1 was fixed by dropping `submit()`'s blank-channel skip guard, so a blank field now genuinely clears the channel. Gap 2 was closed at two independent layers — `CaptivePortalServer::begin()` now requires a WPA2 passphrase, and `WebFormCommissioningAdapter`/`SetupFormRenderer` both independently stop the real stored password from ever reaching the rendered page (neither layer depends on the other being correct). **Update (sub-project #2c-d):** the WPA2 passphrase layer was later removed by design — the AP is now open, relying solely on physical BOOT-button access as the gate; the second layer (stored password never rendered back into the form) is unaffected and still holds. Left as-is below for historical record of what the gap was and why it mattered.
 
 This branch produces zero runtime effect (nothing here is referenced by
 `src/esp32/main.cpp` yet), so neither of the following manifests until
