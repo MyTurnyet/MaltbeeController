@@ -1,6 +1,7 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include "domain/SetupFormRenderer.h"
+#include "domain/WifiScanFormatter.h"
 
 namespace
 {
@@ -100,4 +101,45 @@ TEST_CASE("render includes a labeled input for each of the 12 turnout channels")
     REQUIRE(html.find("Turnout 12 JMRI Name") != std::string::npos);
     REQUIRE(html.find("name='t12_name'") != std::string::npos);
     REQUIRE(html.find("value='LT12'") != std::string::npos);
+}
+
+TEST_CASE("render's network dropdown includes an option for each scanned network")
+{
+    const std::vector<ScannedNetwork> networks = {{"MyLayoutWifi", -45}, {"NeighborNet", -68}};
+
+    const std::string html = SetupFormRenderer::render(emptyValues(), networks);
+
+    REQUIRE(html.find("<option value='MyLayoutWifi'>") != std::string::npos);
+    REQUIRE(html.find(WifiScanFormatter::withSignalBars("MyLayoutWifi", -45)) != std::string::npos);
+    REQUIRE(html.find("<option value='NeighborNet'>") != std::string::npos);
+    REQUIRE(html.find(WifiScanFormatter::withSignalBars("NeighborNet", -68)) != std::string::npos);
+}
+
+TEST_CASE("render's network dropdown shows only the placeholder when no networks were scanned")
+{
+    const std::string html = SetupFormRenderer::render(emptyValues());
+
+    REQUIRE(html.find("-- select a nearby network --") != std::string::npos);
+    REQUIRE(html.find("<option value='MyLayoutWifi'>") == std::string::npos);
+}
+
+TEST_CASE("render escapes a scanned network name containing HTML-significant characters")
+{
+    const std::vector<ScannedNetwork> networks = {{"My\"Network", -50}};
+
+    const std::string html = SetupFormRenderer::render(emptyValues(), networks);
+
+    REQUIRE(html.find("My&quot;Network") != std::string::npos);
+    REQUIRE(html.find("My\"Network") == std::string::npos);
+}
+
+TEST_CASE("render's existing wifi ssid text field is unaffected by the network dropdown")
+{
+    WebFormSubmission form = emptyValues();
+    form.wifiSsid = "AlreadyConfiguredWifi";
+    const std::vector<ScannedNetwork> networks = {{"SomeOtherNetwork", -50}};
+
+    const std::string html = SetupFormRenderer::render(form, networks);
+
+    REQUIRE(html.find("name='wifi_ssid' value='AlreadyConfiguredWifi'") != std::string::npos);
 }

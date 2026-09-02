@@ -1,9 +1,11 @@
 #pragma once
 
 #include <string>
+#include <vector>
 
 #include "NodeConfig.h"
 #include "WebFormSubmission.h"
+#include "WifiScanFormatter.h"
 
 class SetupFormRenderer
 {
@@ -38,7 +40,7 @@ public:
         return escaped;
     }
 
-    static std::string render(const WebFormSubmission& values)
+    static std::string render(const WebFormSubmission& values, const std::vector<ScannedNetwork>& networks = {})
     {
         std::string html;
         html += "<!DOCTYPE html><html><head>";
@@ -48,7 +50,12 @@ public:
         html += "<p class='subtitle'>Configure this panel's network settings</p>";
         html += "<form method='POST' action='/submit'>";
         html += "<label>Node ID</label><select name='id'>" + renderIdOptions(values.nodeId) + "</select>";
-        html += "<label>WiFi SSID</label><input name='wifi_ssid' value='" + escapeHtml(values.wifiSsid) + "'>";
+        html += "<label>WiFi SSID</label>";
+        html += "<select onchange=\"document.getElementsByName('wifi_ssid')[0].value=this.value\">"
+            + renderNetworkOptions(networks) + "</select>";
+        html += "<input name='wifi_ssid' value='" + escapeHtml(values.wifiSsid) + "'>";
+        html += "<p class='hint'>Pick a network above, or type one in directly if it's not listed. "
+            "<a href='/rescan'>Rescan</a></p>";
         html += "<label>WiFi Password</label><input name='wifi_password' type='password' value=''>";
         html += "<p class='hint'>Leave blank to keep the current password.</p>";
         html += "<label>Broker Host</label><input name='broker_host' value='" + escapeHtml(values.brokerHost) + "'>";
@@ -67,6 +74,17 @@ public:
     }
 
 private:
+    static std::string renderNetworkOptions(const std::vector<ScannedNetwork>& networks)
+    {
+        std::string options = "<option value='' disabled selected hidden>-- select a nearby network --</option>";
+        for (const auto& network : networks)
+        {
+            const std::string label = WifiScanFormatter::withSignalBars(network.ssid, network.rssi);
+            options += "<option value='" + escapeHtml(network.ssid) + "'>" + escapeHtml(label) + "</option>";
+        }
+        return options;
+    }
+
     static std::string renderIdOptions(const std::string& selectedId)
     {
         std::string options;
