@@ -11,12 +11,14 @@ CaptivePortalServer::CaptivePortalServer(WebFormCommissioningAdapter& adapter) :
 void CaptivePortalServer::begin(const std::string& apName)
 {
     WiFi.softAP(apName.c_str());
+    scanNetworks();
 
     IPAddress apIp = WiFi.softAPIP();
     dnsServer_.start(53, "*", apIp);
 
     webServer_.on("/", [this]() { handleRoot(); });
     webServer_.on("/submit", HTTP_POST, [this]() { handleSubmit(); });
+    webServer_.on("/rescan", [this]() { handleRescan(); });
     webServer_.onNotFound([this]() { handleRoot(); });
     webServer_.begin();
 }
@@ -29,7 +31,8 @@ void CaptivePortalServer::poll()
 
 void CaptivePortalServer::handleRoot()
 {
-    webServer_.send(200, "text/html", SetupFormRenderer::render(adapter_.currentValues()).c_str());
+    webServer_.send(200, "text/html",
+                     SetupFormRenderer::render(adapter_.currentValues(), scannedNetworks_).c_str());
 }
 
 void CaptivePortalServer::handleSubmit()
@@ -37,6 +40,24 @@ void CaptivePortalServer::handleSubmit()
     const WebFormSubmission form = readForm();
     const std::string response = adapter_.submit(form);
     webServer_.send(200, "text/plain", response.c_str());
+}
+
+void CaptivePortalServer::handleRescan()
+{
+    scanNetworks();
+    webServer_.sendHeader("Location", "/");
+    webServer_.send(302);
+}
+
+void CaptivePortalServer::scanNetworks()
+{
+    std::vector<ScannedNetwork> raw;
+    const int16_t count = WiFi.scanNetworks();
+    for (int16_t i = 0; i < count; ++i)
+    {
+        raw.push_back({std::string(WiFi.SSID(i).c_str()), WiFi.RSSI(i)});
+    }
+    scannedNetworks_ = WifiScanFormatter::dedupeAndSort(raw);
 }
 
 WebFormSubmission CaptivePortalServer::readForm()
