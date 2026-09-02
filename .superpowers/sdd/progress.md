@@ -47,3 +47,17 @@ file, and the test file is byte-for-byte identical to the brief's
 prescribed code covering all 5 cases (never-pressed, released-early,
 released-at-threshold, survives-many-ticks-then-fires, re-triggerable
 after a full cycle). 41/41 native suite (40 existing + 1 new).
+
+Task 2 (main.cpp wiring): complete (commit 4c46a55..a85cfd5 [! F],
+review clean — Approved, zero Critical/Important. Reviewer independently
+reconciled the diff's insert/delete counts per hunk (12/6) against the
+reported stat line and confirmed all 6 brief edits landed verbatim with
+nothing extra, `ComboSetupModeTrigger`'s own files untouched. `pio run -e
+esp32dev` SUCCESS (RAM 16.9%/Flash 81.2%), `pio test -e native` 41/41
+unchanged. 1 Minor recorded, not fixed (correctly out of scope for this
+task per the brief's literal-edit constraint): the include swap left
+`ButtonSetupModeTrigger.h` out of the file's otherwise-alphabetical
+include order (sits where `ComboSetupModeTrigger.h` used to be, between
+`CaptivePortalServer.h` and `EspDeviceIdentity.h`, rather than between
+`ArduinoDigitalOutput.h` and `CaptivePortalServer.h`) — flagged for the
+final whole-branch review to triage.
