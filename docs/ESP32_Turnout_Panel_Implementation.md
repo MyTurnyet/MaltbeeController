@@ -255,10 +255,12 @@ the same fast rate used for MQTT identify-blink (`LedPairDriver::setIdentifying(
 sub-project #2d-b) — the two states can never overlap, since wireless
 setup mode never starts MQTT.
 
-The AP requires a WPA2 passphrase to join: **`maltbee-setup`**. This is
-fixed and shared across every panel (not per-panel or MAC-derived) — write
-it down for field commissioning, since a technician without it cannot join
-the AP to reach the setup web form.
+The AP is **open** (no password required to join) — physical access to
+the panel (the BOOT-button hold that opens it) is the only gate.
+Wireless setup mode has no timeout, so an abandoned mid-commissioning
+panel stays open to anyone in range until someone completes the form or
+power-cycles the board; don't leave a panel in setup mode unattended any
+longer than necessary.
 
 The panel's own current WiFi password is never displayed by the setup
 form — a blank password field on submission keeps the existing password

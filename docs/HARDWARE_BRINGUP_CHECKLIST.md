@@ -183,8 +183,8 @@ it's the only path once panels are deployed.
    "Identifying a Physical Panel" section), reused here since the two
    states can never overlap.
 3. On a phone or laptop, look for a WiFi network named `MaltBee-Setup-XXXX`
-   (last 4 hex digits of the chip's MAC). Join it using the passphrase
-   `maltbee-setup` (documented in `docs/ESP32_Turnout_Panel_Implementation.md`'s
+   (last 4 hex digits of the chip's MAC) and join it — no password
+   required (documented in `docs/ESP32_Turnout_Panel_Implementation.md`'s
    "Wireless Setup Access Point" section).
 4. A captive-portal prompt should appear automatically (or navigate to
    any HTTP address — all DNS is redirected). Confirm the form pre-fills
