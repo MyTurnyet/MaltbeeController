@@ -37,3 +37,13 @@ reference it). Task 4 (docs) has no code dependency but documents the
 end state, so it runs last.
 
 ## Tasks
+
+Task 1 (ButtonSetupModeTrigger): complete (commit 7a545b4..2e78503
+[^ F], review clean — Approved, zero findings at any severity. Reviewer
+confirmed the public surface exactly matches the plan's global constraint
+(no `isHolding()` accessor, unlike `ComboSetupModeTrigger`), the
+implementation mirrors `ComboSetupModeTrigger`'s existing idiom file-for-
+file, and the test file is byte-for-byte identical to the brief's
+prescribed code covering all 5 cases (never-pressed, released-early,
+released-at-threshold, survives-many-ticks-then-fires, re-triggerable
+after a full cycle). 41/41 native suite (40 existing + 1 new).
