@@ -76,3 +76,13 @@ own-flagged "no proof of an end-to-end path to /rescan" note — grepped
 the merged tree and confirmed Task 2's rendered "Rescan" link
 (SetupFormRenderer.h:58) and this task's `/rescan` route
 (CaptivePortalServer.cpp:21) do connect.
+
+Task 4 (docs): complete (commit aaa74b9..709a644 [. d], review clean —
+Approved, zero findings. Reviewer confirmed all 3 edits landed verbatim
+in the correct locations across exactly the 2 named files, and that the
+doc text is accurate (not just present) against the actual shipped
+behavior: scan-once-at-startup, the `/rescan` route, and the
+dropdown-writes-into-existing-field convenience with free-text fallback
+intact.
+
+## ALL 4 TASKS COMPLETE — proceeding to the final whole-branch review.
