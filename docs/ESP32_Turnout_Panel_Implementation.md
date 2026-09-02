@@ -266,6 +266,11 @@ untrusted RF environment — the new password is sent in cleartext over
 the open AP during that submission (stored credentials are never read
 back out, only ever written).
 
+The WiFi SSID field also offers a dropdown of nearby networks (scanned
+once when the AP opens, refreshable via a "Rescan" link on the page) —
+selecting one fills the text field, which can still be typed into
+directly for a network that isn't listed.
+
 The panel's own current WiFi password is never displayed by the setup
 form — a blank password field on submission keeps the existing password
 unchanged. Turnout JMRI name fields work the opposite way: a blank field on
