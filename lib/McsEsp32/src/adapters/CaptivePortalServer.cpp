@@ -11,7 +11,6 @@ CaptivePortalServer::CaptivePortalServer(WebFormCommissioningAdapter& adapter) :
 void CaptivePortalServer::begin(const std::string& apName)
 {
     WiFi.softAP(apName.c_str());
-    scanNetworks();
 
     IPAddress apIp = WiFi.softAPIP();
     dnsServer_.start(53, "*", apIp);
@@ -21,6 +20,8 @@ void CaptivePortalServer::begin(const std::string& apName)
     webServer_.on("/rescan", [this]() { handleRescan(); });
     webServer_.onNotFound([this]() { handleRoot(); });
     webServer_.begin();
+
+    scanNetworks();
 }
 
 void CaptivePortalServer::poll()
@@ -31,7 +32,7 @@ void CaptivePortalServer::poll()
 
 void CaptivePortalServer::handleRoot()
 {
-    webServer_.send(200, "text/html",
+    webServer_.send(200, "text/html; charset=utf-8",
                      SetupFormRenderer::render(adapter_.currentValues(), scannedNetworks_).c_str());
 }
 

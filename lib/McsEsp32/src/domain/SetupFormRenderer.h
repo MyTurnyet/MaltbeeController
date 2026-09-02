@@ -44,6 +44,7 @@ public:
     {
         std::string html;
         html += "<!DOCTYPE html><html><head>";
+        html += "<meta charset='utf-8'>";
         html += "<meta name='viewport' content='width=device-width, initial-scale=1'>";
         html += "<style>" + kStyle + "</style></head><body>";
         html += "<div class='card'><h1>MaltBee Panel Setup</h1>";
