@@ -2,12 +2,32 @@
 
 ## Status
 
-**Planning.** No code written yet. This document captures the hardware design and
-software plan worked out in a ChatGPT conversation (2026-07-21) so it can guide
-implementation and be revised as decisions change. The JMRI communication design
-(MQTT transport, bidirectional send/feedback, connection-loss handling) was
-refined in a follow-up Claude Code session (2026-07-21) — see "JMRI Communication
-(MQTT)" below.
+**Implemented and merged to `main`.** This document originally captured the
+hardware design and software plan worked out in a ChatGPT conversation
+(2026-07-21); since then all 6 "Suggested milestones" below have shipped —
+matrix scanning, LED-pair driving, ESP32 hardware adapters, MQTT/JMRI
+transport, the `src/esp32/main.cpp` composition root, wireless commissioning,
+multi-panel presence/collision detection, and identify-blink are all
+programming-complete (see `CLAUDE.md` for the authoritative, currently-
+maintained architecture description — this doc is kept for the hardware
+design rationale, wiring tables, and JMRI topic scheme, which haven't
+changed). Only the physical hardware bring-up pass remains — see
+`docs/HARDWARE_BRINGUP_CHECKLIST.md`.
+
+The JMRI side of the integration — translating the MQTT command/state topics
+below into real JMRI `Turnout` objects — is implemented as a Jython startup
+script, `jmri/panel_mqtt_turnout_bridge.py`. See "JMRI-side bridge script"
+under "JMRI Communication (MQTT)" below.
+
+**Note on class names below:** the "Suggested per-turnout config" and
+`MqttJmriTurnoutCommandAdapter`/`MqttJmriFeedbackSource`/`JmriCommandEncoder`/
+`JmriFeedbackDecoder` names in this doc were the pre-implementation proposal.
+The classes that actually shipped are named `JmriTurnoutCommandAdapter` and
+`JmriFeedbackSource` (`lib/McsEsp32/src/adapters/`), with the topic/payload
+construction factored into standalone `TopicScheme` and `PayloadCodec` classes
+(`lib/McsEsp32/src/domain/`) rather than separate encoder/decoder classes —
+same native-testable-core-plus-thin-adapter shape as proposed, different
+names/decomposition.
 
 ## Relationship to the Mega/LocoNet system
 
@@ -367,12 +387,45 @@ see State Model below.
 - **On reconnect:** the ESP32 resubscribes to the feedback topic(s); LEDs stay
   in blink mode until each turnout's state is republished by JMRI.
 
-**Open question:** whether JMRI's MQTT connection publishes turnout state as a
-*retained* message (so a freshly (re)subscribed client gets current state
-immediately) or only publishes on change (meaning a panel could stay in
-blink/stale state indefinitely after a reconnect, until someone actually
-operates that turnout again). Needs verification against JMRI's MQTT
-documentation before implementation — see Open Questions below.
+**Resolved:** state is published **on change only, not retained** —
+`jmri/panel_mqtt_turnout_bridge.py` (see below) calls `mqtt.publish(topic,
+payload)` with no retain flag. A panel that reconnects mid-session stays in
+blink/unconfirmed state for a given turnout until that turnout's state next
+actually changes (a button press from any panel, another controller, or a
+physical throw with feedback) — there is no "replay current state on
+resubscribe" behavior today. If that turns out to be a problem in practice,
+the fix belongs on the JMRI side (a retained publish, or a one-time
+publish-current-state pass at script startup), not the panel side.
+
+### JMRI-side bridge script
+
+`jmri/panel_mqtt_turnout_bridge.py` is the concrete implementation of the
+JMRI end of this design — a Jython startup script that connects the topics
+above to JMRI's real `Turnout` objects (no shadow "MT" turnouts, no Logix
+needed). Install it via Edit → Preferences → Startup → Add → "Jython
+script", listed *above* any panel file in the startup order — it discovers
+which turnouts to bridge dynamically, by scanning for every already-
+registered LocoNet-backed turnout (system name starting `LT`) at the moment
+the script runs, so the panel file that creates those turnouts must load
+first. It also requires the MQTT system connection already configured under
+Edit → Preferences → Connections with "MQTT Channel" left blank, so the
+topics on the wire are exactly `track/turnout/<name>` and
+`track/turnout/<name>/state` as described above.
+
+Behavior: an incoming command is applied to the matching turnout via
+`setCommandedState()`, then the resulting state is published back
+unconditionally — even when the command was a no-op, which is exactly the
+case where a panel most needs telling it's out of sync (JMRI's own
+`PropertyChangeSupport` only fires on an actual state *change*, so a no-op
+command wouldn't otherwise generate any state publish at all). Independently,
+a `PropertyChangeListener` on every discovered turnout republishes its
+`KnownState` on every change regardless of cause — this panel's command,
+another panel, PanelPro, a dispatcher, or a physical throw with feedback —
+which is what makes "LEDs reflect changes made elsewhere" (see "Data flow"
+above) fully live rather than only working for panel-originated commands.
+Command handling runs on its own plain thread rather than the MQTT client's
+callback thread, since a synchronous `publish()` from inside the callback
+can deadlock it.
 
 ---
 
@@ -496,22 +549,30 @@ flash on power-up. Mitigate by configuring outputs before anything else:
       JMRI Communication (MQTT) above).
 - [x] `UNKNOWN`-state handling — decided 2026-07-21: blink last-known/default
       color (see State Model above).
+- [x] Exact JMRI MQTT topic structure and payload format — implemented as
+      `track/turnout/<jmri system name>` (command) and
+      `track/turnout/<jmri system name>/state` (state), payload `"THROWN"` or
+      `"CLOSED"` in both directions. See `TopicScheme`/`PayloadCodec`
+      (`lib/McsEsp32/src/domain/`) on the panel side and
+      `jmri/panel_mqtt_turnout_bridge.py` on the JMRI side.
+- [x] Whether JMRI's MQTT connection publishes turnout state as retained —
+      resolved above under "Connection loss and reconnection": on-change
+      only, not retained.
 - [ ] MQTT broker: not yet confirmed whether one already exists on the layout
       network, or needs to be stood up (e.g. Mosquitto) and JMRI's MQTT
       system connection configured to point at it.
-- [ ] Exact JMRI MQTT topic structure and payload format for turnout commands
-      and state (needed before `JmriCommandEncoder`/`JmriFeedbackDecoder` can
-      be implemented) — confirm against JMRI's MQTT connection documentation.
-- [ ] Whether JMRI's MQTT connection publishes turnout state as a retained
-      message (immediate state on fresh subscribe) or only on change (affects
-      how long a panel stays in blink/stale state after reconnecting).
 - [ ] Real JMRI system names for each turnout (placeholders above are
-      `LT1`–`LT12`).
+      `LT1`–`LT12`) — the bridge script needs no such list maintained (it
+      discovers turnouts dynamically), but each panel's per-channel JMRI name
+      is set during commissioning (`turnout N name <jmriSystemName>`), not
+      hardcoded in `main.cpp`.
 - [ ] Verify GPIO 4 boot behavior on the actual ELEGOO board before wiring
-      turnout 12's LEDs to it.
-- [ ] Confirm ESP32 board power behavior before ruling out external 5V/VIN.
+      turnout 12's LEDs to it — folded into
+      `docs/HARDWARE_BRINGUP_CHECKLIST.md`.
+- [ ] Confirm ESP32 board power behavior before ruling out external 5V/VIN —
+      folded into `docs/HARDWARE_BRINGUP_CHECKLIST.md`.
 
-## Suggested milestones (draft — not yet started)
+## Suggested milestones (all shipped — kept for history)
 
 Mirroring the TDD-first approach used for the Mega/LocoNet system:
 

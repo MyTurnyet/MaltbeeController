@@ -110,7 +110,15 @@ assume earlier ones already work.
 ### 2.1 Prerequisites
 
 - An MQTT broker reachable from the ESP32's WiFi network (Mosquitto or
-  similar), with JMRI's MQTT connection configured against it.
+  similar), with JMRI's MQTT connection configured against it (MQTT Channel
+  left blank in JMRI's connection preferences).
+- `jmri/panel_mqtt_turnout_bridge.py` installed in JMRI as a Startup script
+  (Edit → Preferences → Startup → Add → "Jython script"), listed *above*
+  any panel file that creates the LocoNet turnouts it bridges — it
+  discovers turnouts to bridge at script-run time by scanning for every
+  registered `LT`-prefixed turnout, so they need to already exist by then.
+  Restart JMRI after adding it; the System Console should log `"Panel <->
+  MQTT <-> turnout bridge active for N turnouts"` on startup.
 - JMRI turnout system names decided for at least a few channels (the
   panel doesn't require all 12 to be configured to boot — partial
   commissioning is explicitly supported).
