@@ -587,14 +587,13 @@ flash on power-up. Mitigate by configuring outputs before anything else:
 - [x] Whether JMRI's MQTT connection publishes turnout state as retained —
       resolved above under "Connection loss and reconnection": on-change
       only, not retained.
-- [ ] MQTT broker: not yet confirmed whether one already exists on the layout
-      network, or needs to be stood up (e.g. Mosquitto) and JMRI's MQTT
-      system connection configured to point at it.
-- [ ] Real JMRI system names for each turnout (placeholders above are
-      `LT1`–`LT12`) — the bridge script needs no such list maintained (it
-      discovers turnouts dynamically), but each panel's per-channel JMRI name
-      is set during commissioning (`turnout N name <jmriSystemName>`), not
-      hardcoded in `main.cpp`.
+- [x] MQTT broker — confirmed running on the layout network as of 2026-09-02,
+      with two real ESP32 panels already commissioned against it.
+- [x] Real JMRI system names for each turnout — assigned; tracked in JMRI's
+      own panel file, not documented here (the bridge script needs no such
+      list maintained — it discovers turnouts dynamically — and each panel's
+      per-channel JMRI name is set during commissioning, `turnout N name
+      <jmriSystemName>`, not hardcoded in `main.cpp`).
 - [ ] Verify GPIO 4 boot behavior on the actual ELEGOO board before wiring
       turnout 12's LEDs to it — folded into
       `docs/HARDWARE_BRINGUP_CHECKLIST.md`.

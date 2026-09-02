@@ -107,6 +107,17 @@ detection, identify-blink all layered on top of basic turnout control) —
 work through the sections below roughly in order, since later ones
 assume earlier ones already work.
 
+**Status as of 2026-09-02:** two real ESP32 boards are built and
+commissioned against a live MQTT broker/JMRI. Confirmed working: 2.1
+(broker running, real JMRI names assigned), 2.2 (flash/boot/commissioning),
+2.3 (button → LED → JMRI turnout control), and 2.4 (the BOOT-button
+wireless setup gesture, including joining the now-open setup AP and
+submitting the form). **Still outstanding:** 2.5 (presence/collision —
+feasible now with two boards, just not yet exercised), 2.6
+(identify-blink), and turnout 12/GPIO4 specifically (not yet wired, so
+its boot-behavior open question is still unverified) and external
+5V/VIN power behavior (not yet tested).
+
 ### 2.1 Prerequisites
 
 - An MQTT broker reachable from the ESP32's WiFi network (Mosquitto or
