@@ -32,3 +32,13 @@ Task 4 (docs) has no code dependency but documents the end state, so it
 runs last.
 
 ## Tasks
+
+Task 1 (WifiScanFormatter): complete (commit a08ec2f..9b8f591 [^ F],
+review clean — Approved, zero findings at any severity. Reviewer traced
+the actual UTF-8 byte escapes for both the 4-bar and 1-bar cases by hand
+(E2 96 82/84/86/88) and confirmed test and implementation agree exactly,
+confirmed the cascading if/else-if correctly implements the four
+half-open RSSI bands including boundary values, and confirmed
+dedupeAndSort's drop-empty-ssid and keep-strongest-rssi behavior matches
+both the brief and the plan's global constraint. 41/41 native suite (40
+existing + 1 new, 8 cases/17 assertions).
