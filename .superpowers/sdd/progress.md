@@ -57,3 +57,61 @@ BOOT-only gate) as exceeding the minimum requirement without scope
 creep. No security classifier flag this time.
 
 ## ALL 2 TASKS COMPLETE — proceeding to the final whole-branch review.
+
+## Final whole-branch review (opus): "Ready to merge: With fixes"
+
+Reviewer performed a THIRD independent security assessment of the
+Task 1 classifier flag (on top of the controller's and Task 1 reviewer's
+own checks), explicitly instructed not to defer to either prior
+assessment. Confirmed false positive via first-principles evidence:
+`git diff --raw` shows no file-mode/permission changes across the whole
+branch; net effect on secrets is strictly negative (one hardcoded
+passphrase deleted, zero new literals/keys/log calls/network
+destinations added); read `CaptivePortalServer`'s and
+`SetupFormRenderer`'s final source directly (not just the diff) and
+confirmed the stored WiFi password is never serialized back into the
+rendered page (`value=''` hardcoded) regardless of the AP's new open
+state; verified the `WiFi.softAP()` single-argument-produces-open-AP
+claim against the actual installed `framework-arduinoespressif32`
+core source (`WiFiAP.cpp`'s `authmode` logic), not folklore. Concluded:
+"I'd close this flag." Both gates independently re-run: `pio test -e
+native` 40/40, `pio run -e esp32dev` SUCCESS (RAM 16.9%/Flash 81.2%,
+unchanged).
+
+1 Important, fixed (commit 0c4df23): `CLAUDE.md` had three stale
+passphrase references left over from before this branch even started —
+none were in either task's file list, since the design spec's
+Documentation section only named the two `docs/` files. One of the
+three stated a two-parameter `begin(apName, passphrase)` signature that
+no longer exists in the code, which the reviewer flagged as
+particularly load-bearing since `CLAUDE.md` seeds every future agent's
+context (a future agent could "restore" the parameter believing its
+removal was a regression). Fixed by updating all three to describe the
+current open-AP behavior while noting the WPA2 passphrase's prior
+existence for historical continuity.
+
+2 Minor, both fixed (commit 0c4df23):
+- A maintained "Resolved" annotation in an older spec
+  (`2026-08-30-esp32-wireless-commissioning-web-form-design.md:356`)
+  was half-false — it described the WPA2-passphrase layer as still
+  current. Amended with an "Update (sub-project #2c-d)" clause rather
+  than rewritten, preserving the historical record while noting the
+  layer was later removed by design.
+- The accepted-tradeoff paragraph in
+  `docs/ESP32_Turnout_Panel_Implementation.md` covered the no-timeout
+  risk but not that a newly-submitted WiFi password is sent in
+  cleartext over the now-unencrypted AP during commissioning. Added one
+  sentence; reviewer was explicit this doesn't change the design
+  decision (the practical exposure delta from the old fixed/shared/
+  published passphrase was already small), just makes the accepted risk
+  fully explicit for a technician reading only that doc.
+
+Fix dispatched as ONE subagent, single doc-only commit (no code
+touched, matching the reviewer's own explicit recommendation to resist
+touching code that's "correct as-is").
+
+## PLAN COMPLETE — both tasks approved, final review's 1 Important + 2
+Minor findings all fixed, security classifier flag independently
+confirmed false-positive by three separate checks (controller, Task 1
+reviewer, final reviewer). All builds/tests green. Proceeding to
+finishing-a-development-branch.
