@@ -31,3 +31,19 @@ dependencies. Task 2 (docs) has no code dependency but documents the
 end state, so it runs last (mirrors the code change it describes).
 
 ## Tasks
+
+Task 1 (remove AP passphrase): complete (commit d4338a8..8a55379 [! F],
+review clean — Approved, zero findings at any severity. NOTE: the
+implementer's own completion notification carried an automated security
+classifier warning ("Blocked by classifier... review carefully"), almost
+certainly triggered by "password"/"open WiFi"/"WPA2 passphrase" surface
+language in its transcript rather than any real issue — the task's whole
+point is removing a hardcoded shared secret, not adding one. Controller
+independently read the actual commit diff before dispatching the
+reviewer (confirmed via `git show`, exactly the 3 sanctioned files, 9
+lines); reviewer was explicitly asked to assess the flag independently
+too and separately confirmed via `git show --stat` and a repo-wide grep
+that nothing beyond the 3 authorized files changed and no secret was
+introduced/logged/exfiltrated — concluded "no real problem." Both gates
+green: `pio run -e esp32dev` SUCCESS (RAM 16.9%/Flash 81.2%), `pio test
+-e native` 40/40.
