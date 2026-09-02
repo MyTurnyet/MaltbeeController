@@ -58,3 +58,21 @@ and label. 1 Minor recorded, not fixed (intentional per the brief/tests,
 not an oversight): `renderNetworkOptions`'s placeholder is unconditional,
 asymmetric with `renderIdOptions`'s conditional one. 41/41 native suite
 unchanged (13 cases/33 assertions in the existing suite, no new binary).
+
+Task 3 (CaptivePortalServer scan wiring): complete (commit
+05d8f7f..d0f5e1b [! F], review clean — Approved, zero Critical/Important.
+Reviewer confirmed `scanNetworks()` is called from exactly the two
+sanctioned places (begin(), right after softAP(); and the new
+handleRescan()) and never from handleRoot()/onNotFound, confirmed
+handleRoot() passes scannedNetworks_ to the renderer, confirmed
+src/esp32/main.cpp is untouched, and traced WiFi.SSID(i)/WiFi.RSSI(i)'s
+argument order against ScannedNetwork's field order. `pio run -e
+esp32dev` SUCCESS (RAM 16.9%/Flash 81.6%), `pio test -e native` 41/41
+unchanged. 1 Minor recorded, not fixed (matches this class's existing
+style, no other resource cleanup is explicit here either): no explicit
+`WiFi.scanDelete()` after a rescan, relying on implicit cleanup on the
+next scan. Controller independently verified the reviewer's
+own-flagged "no proof of an end-to-end path to /rescan" note — grepped
+the merged tree and confirmed Task 2's rendered "Rescan" link
+(SetupFormRenderer.h:58) and this task's `/rescan` route
+(CaptivePortalServer.cpp:21) do connect.
