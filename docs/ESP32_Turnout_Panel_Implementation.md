@@ -134,11 +134,22 @@ pull-up**, so each needs an external 10 kΩ pull-up to 3.3 V.
 | 11 | 32 |
 | 12 | 33 |
 
+### Onboard BOOT button
+
+| Pin | Role | Wiring |
+|---|---|---|
+| GPIO 0 | Wireless-setup trigger (hold 3 s, then release) | None — the ESP32 dev board's own BOOT button |
+
+GPIO 0 is still a boot-strapping pin and is read live only during `loop()`,
+never at startup. **Do not hold BOOT while pressing EN or applying
+power** — that puts the ROM into UART download mode instead of running
+the firmware (recover by releasing BOOT and pressing EN again).
+
 ### Pins intentionally avoided
 
 - GPIO 1 / 3 — USB serial TX/RX
 - GPIO 6–11 — connected to flash memory
-- GPIO 0, 2, 5, 12, 15 — boot-strapping pins
+- GPIO 2, 5, 12, 15 — boot-strapping pins
 
 **GPIO 4** is used as turnout 12's LED output. It isn't one of the primary
 boot-strapping pins, but startup behavior should still be verified on the
@@ -317,6 +328,10 @@ that's exactly the situation where you need to tell two panels apart).
   it is.
 - **Turnout buttons and feedback are unaffected.** Identify is a pure
   visual overlay; it never blocks or delays normal panel operation.
+- **Wireless setup mode uses this exact same flash pattern** (see the
+  "Wireless Setup Access Point" section above) — the two states can never
+  occur simultaneously, so seeing this flash always means one or the
+  other.
 
 Example: `mosquitto_pub -t panel/5/identify -n` (the `-n` flag sends an
 empty, non-retained message).

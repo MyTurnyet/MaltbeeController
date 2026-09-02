@@ -177,9 +177,9 @@ it's the only path once panels are deployed.
 
 1. Hold the ESP32 board's **BOOT button for 3 seconds**, then release.
    Serial should log `"Entering wireless setup..."` and the panel reboots.
-2. Once it reboots into wireless setup mode, confirm all 12 LED pairs
-   flash green/red together — this is the same fast flash MQTT
-   identify-blink uses (`docs/ESP32_Turnout_Panel_Implementation.md`'s
+2. Once it reboots into wireless setup mode, confirm every LED pair
+   you've wired flashes green/red in unison — this is the same fast
+   flash MQTT identify-blink uses (`docs/ESP32_Turnout_Panel_Implementation.md`'s
    "Identifying a Physical Panel" section), reused here since the two
    states can never overlap.
 3. On a phone or laptop, look for a WiFi network named `MaltBee-Setup-XXXX`
@@ -197,6 +197,12 @@ it's the only path once panels are deployed.
    intentionally suspended (see `BootMode::WirelessSetup` in
    `src/esp32/main.cpp`); confirm it resumes normally after the reboot in
    step 5, and confirm the LED flash from step 2 stops at the same time.
+
+**If wireless setup ever triggers without anyone pressing BOOT** while
+`pio device monitor` is open, check the USB-to-serial chip's DTR/RTS
+auto-reset wiring to GPIO0 first — a steady monitor session shouldn't
+hold the pin low for 3 seconds, but that circuit is the first place to
+look before suspecting a firmware bug.
 
 ### 2.5 Presence and collision detection (requires two panels)
 

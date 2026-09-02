@@ -1,4 +1,4 @@
-# ESP32 BOOT-Button Wireless Setup Trigger — Design
+# ESP32 BOOT-Button Wireless Setup Trigger (Sub-project #2c-c) — Design
 
 This replaces the T1+T2 combo-button wireless-setup trigger (sub-project
 #2c, `ComboSetupModeTrigger`) with a dedicated single-button gesture on the
