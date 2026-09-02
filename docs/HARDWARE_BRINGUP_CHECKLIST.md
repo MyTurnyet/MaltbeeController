@@ -123,9 +123,10 @@ assume earlier ones already work.
   panel doesn't require all 12 to be configured to boot — partial
   commissioning is explicitly supported).
 - The ELEGOO ESP32 board wired per `docs/ESP32_Turnout_Panel_Implementation.md`'s
-  GPIO Assignment section (3×4 button matrix, 12 LED pairs) — at minimum,
-  wire T1 and T2 fully (needed for the wireless-setup combo trigger you'll
-  use in 2.3) plus however many additional turnouts you're bringing up.
+  GPIO Assignment section (3×4 button matrix, 12 LED pairs) — wire
+  however many turnouts you're bringing up. The wireless-setup gesture
+  (2.4) uses the board's own onboard BOOT button, not any turnout wiring,
+  so no turnout needs to be wired first just to exercise it.
 
 ### 2.2 Flash, boot, and bench-serial commissioning
 
@@ -174,28 +175,28 @@ This is the escape hatch a technician uses without a serial cable —
 worth verifying even though you *do* have serial access right now, since
 it's the only path once panels are deployed.
 
-1. Hold **T1 and T2 together for 3 seconds**, then release. Serial should
-   log `"Entering wireless setup..."` and the panel reboots.
-2. On a phone or laptop, look for a WiFi network named `MaltBee-Setup-XXXX`
+1. Hold the ESP32 board's **BOOT button for 3 seconds**, then release.
+   Serial should log `"Entering wireless setup..."` and the panel reboots.
+2. Once it reboots into wireless setup mode, confirm all 12 LED pairs
+   flash green/red together — this is the same fast flash MQTT
+   identify-blink uses (`docs/ESP32_Turnout_Panel_Implementation.md`'s
+   "Identifying a Physical Panel" section), reused here since the two
+   states can never overlap.
+3. On a phone or laptop, look for a WiFi network named `MaltBee-Setup-XXXX`
    (last 4 hex digits of the chip's MAC). Join it using the passphrase
    `maltbee-setup` (documented in `docs/ESP32_Turnout_Panel_Implementation.md`'s
    "Wireless Setup Access Point" section).
-3. A captive-portal prompt should appear automatically (or navigate to
+4. A captive-portal prompt should appear automatically (or navigate to
    any HTTP address — all DNS is redirected). Confirm the form pre-fills
    already-commissioned values (node ID, SSID, channel names) — but never
    the real WiFi password, which should always show blank.
-4. Submit a change (e.g. a new channel name) and confirm the panel reboots
+5. Submit a change (e.g. a new channel name) and confirm the panel reboots
    and applies it.
-5. Confirm normal turnout operation and buttons are completely unaffected
+6. Confirm normal turnout operation and buttons are completely unaffected
    by being in this mode — while the AP is up, turnout control is
    intentionally suspended (see `BootMode::WirelessSetup` in
    `src/esp32/main.cpp`); confirm it resumes normally after the reboot in
-   step 4.
-
-**Known accepted gap to expect, not a bug:** pressing T1 then T2 with any
-noticeable stagger between them may fire one ordinary toggle command on
-whichever was pressed first, before the combo is recognized. This is
-documented and intentional (see `docs/superpowers/specs/2026-08-29-esp32-wireless-setup-trigger-design.md`) — it's self-correcting, not something to debug.
+   step 5, and confirm the LED flash from step 2 stops at the same time.
 
 ### 2.5 Presence and collision detection (requires two panels)
 

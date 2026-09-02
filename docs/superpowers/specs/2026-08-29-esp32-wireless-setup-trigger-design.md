@@ -1,5 +1,13 @@
 # ESP32 Wireless Setup Boot Mode & Trigger (Sub-project #2c-a) — Design
 
+**Superseded (2026-09-01):** the T1+T2 combo trigger this spec designed
+(`ComboSetupModeTrigger`) was replaced by a single-button gesture on the
+ESP32's own BOOT button — see
+`docs/superpowers/specs/2026-09-01-esp32-boot-button-setup-trigger-design.md`.
+`BootMode`/`BootModeSelector`/`SetupModeRequestStore`/`GatedDigitalInput`,
+also designed here, are unaffected and still current. Kept for history,
+not deleted.
+
 This is sub-project **#2c-a**, split out of sub-project #2c (Wireless
 captive-portal commissioning) in the ESP32 panel decomposition. Sub-project
 #2c's original scope — "add a WiFi AP + web form so a panel can be
