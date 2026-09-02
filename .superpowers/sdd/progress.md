@@ -67,3 +67,16 @@ Task 3 (remove ComboSetupModeTrigger): complete (commit e83617a..5c1d8c4
 confirmed the diff is a pure 3-file deletion (259 lines, 0
 modifications/additions) matching exactly the required paths, native
 suite count correctly dropped to 40/40, esp32dev build SUCCESS.
+
+Task 4 (docs): complete (commit 41b275e..b88f074 [. d], review clean —
+Approved, zero Critical/Important. Reviewer verified all 13 find/replace
+edits landed exactly across the 4 named files (CLAUDE.md,
+ESP32_Turnout_Panel_Implementation.md, HARDWARE_BRINGUP_CHECKLIST.md, the
+2026-08-29 spec's superseded pointer), confirmed the historical-record
+boundary was respected (old spec body untouched, no other historical
+plan/spec touched), and confirmed BOOT-button/LED-flash terminology is
+consistent across all three living docs. 1 Minor recorded, not fixed
+(purely cosmetic Markdown line-wrap, no rendered difference): CLAUDE.md:143's
+line-wrap merges an unchanged clause onto the same line as new text.
+
+## ALL 4 TASKS COMPLETE — proceeding to the final whole-branch review.
