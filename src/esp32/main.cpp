@@ -8,7 +8,7 @@
 #include "adapters/ArduinoDigitalInput.h"
 #include "adapters/ArduinoDigitalOutput.h"
 #include "adapters/CaptivePortalServer.h"
-#include "adapters/ComboSetupModeTrigger.h"
+#include "adapters/ButtonSetupModeTrigger.h"
 #include "adapters/EspDeviceIdentity.h"
 #include "adapters/EspUartPort.h"
 #include "adapters/GatedDigitalInput.h"
@@ -117,6 +117,8 @@ ArduinoDigitalInput matrixCol3(MATRIX_COLUMN_PINS[3], true, false);
 MatrixScanner matrixScanner({&matrixRow0, &matrixRow1, &matrixRow2},
                             {&matrixCol0, &matrixCol1, &matrixCol2, &matrixCol3});
 
+ArduinoDigitalInput bootButton(0, /*activeLow=*/true, /*useInternalPullup=*/true);
+
 LedPairStation ledStations[12] = {
     LedPairStation({TURNOUT_CONFIGS[0].ledGpio}, systemClock, BLINK_INTERVAL_MS, DEFAULT_LED_COLOR),
     LedPairStation({TURNOUT_CONFIGS[1].ledGpio}, systemClock, BLINK_INTERVAL_MS, DEFAULT_LED_COLOR),
@@ -147,7 +149,7 @@ MatrixDigitalInput matrixButtons[12] = {
     MatrixDigitalInput(matrixScanner, TURNOUT_CONFIGS[11].matrixRow, TURNOUT_CONFIGS[11].matrixColumn),
 };
 
-ComboSetupModeTrigger setupTrigger(matrixButtons[0], matrixButtons[1], systemClock, SETUP_TRIGGER_HOLD_MS);
+ButtonSetupModeTrigger setupTrigger(bootButton, systemClock, SETUP_TRIGGER_HOLD_MS);
 
 GatedDigitalInput gatedButtons[12] = {
     GatedDigitalInput(matrixButtons[0]),  GatedDigitalInput(matrixButtons[1]),
@@ -211,6 +213,7 @@ void setup()
     matrixCol1.begin();
     matrixCol2.begin();
     matrixCol3.begin();
+    bootButton.begin();
 
     for (auto& ledStation : ledStations)
     {
@@ -256,6 +259,11 @@ void loop()
     if (bootMode == BootMode::WirelessSetup)
     {
         captivePortalServer.poll();
+        for (auto& ledStation : ledStations)
+        {
+            ledStation.setIdentifying(true);
+            ledStation.update();
+        }
         return;
     }
 
@@ -272,11 +280,9 @@ void loop()
         collisionLogged = true;
     }
 
-    gatedButtons[0].setSuppressed(setupTrigger.isHolding() || collision);
-    gatedButtons[1].setSuppressed(setupTrigger.isHolding() || collision);
-    for (int i = 2; i < 12; ++i)
+    for (auto& gated : gatedButtons)
     {
-        gatedButtons[i].setSuppressed(collision);
+        gated.setSuppressed(collision);
     }
 
     if (setupTrigger.requested())
