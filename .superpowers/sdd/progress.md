@@ -80,3 +80,72 @@ consistent across all three living docs. 1 Minor recorded, not fixed
 line-wrap merges an unchanged clause onto the same line as new text.
 
 ## ALL 4 TASKS COMPLETE — proceeding to the final whole-branch review.
+
+## Final whole-branch review (opus): "Ready to merge: With fixes"
+
+Reviewer independently traced the full BOOT-button-to-LED-flash chain
+across all 4 tasks in the assembled code (bootButton GPIO read ->
+ButtonSetupModeTrigger -> NvsSetupModeRequestStore -> ESP.restart() ->
+BootModeSelector -> BootMode::WirelessSetup -> the LED-flash loop),
+confirmed all spec Decisions and Non-goals hold, confirmed
+ComboSetupModeTrigger is fully gone (repo-wide grep), and independently
+re-ran both gates: `pio test -e native` 40/40 PASSED, `pio run -e
+esp32dev` SUCCESS (RAM 16.9%/Flash 81.2%, unchanged). Zero Critical.
+
+2 Important, both fixed (commit 0e64cce):
+1. `docs/ESP32_Turnout_Panel_Implementation.md`'s "Pins intentionally
+   avoided" table still listed GPIO0 as avoided, directly contradicting
+   the wireless-setup section 90 lines earlier that documents GPIO0 as
+   the trigger pin — fixed by removing GPIO0 from that list and adding a
+   new "Onboard BOOT button" subsection with the pin's role and a
+   power-on/EN-strapping caveat.
+2. `CLAUDE.md`'s main.cpp bullet contradicted itself within one paragraph
+   — an early clause said WirelessSetup mode skips "...matrix/trigger/LED/
+   station machinery entirely," while a later sentence in the same
+   paragraph (added by Task 4) says it does drive all 12 LedPairStations.
+   Reviewer flagged this as exactly the kind of stale invariant that
+   could lead a future agent to "restore" it by deleting the new LED
+   loop. Fixed by removing "LED" from the skip-list and noting the
+   LedPairStations as the one exception.
+
+4 Minor, 3 fixed (commit 0e64cce), 1 recorded and left as-is:
+- Fixed: CLAUDE.md:89's `ComboSetupModeTrigger` mention annotated "(since
+  replaced — see below)"; HARDWARE_BRINGUP_CHECKLIST.md's LED-count
+  wording ("confirm all 12 LED pairs" -> "confirm every LED pair you've
+  wired") to match the earlier "wire however many turnouts" prerequisite
+  change; a GPIO0/USB-auto-reset bring-up watch-item note added to
+  section 2.4; identify-blink section cross-references that wireless
+  setup shares its exact visual; new spec's title carries its own
+  "(Sub-project #2c-c)" label for cross-reference resolvability.
+- Left as-is (reviewer's own explicit disposition, not a merge blocker):
+  the pre-existing cosmetic Markdown line-wrap in CLAUDE.md's
+  collision-lockout sentence — re-wrapping would touch an unchanged
+  clause for zero reader benefit.
+
+2 Minor explicitly NOT fixed, reviewer's own guidance ("not a merge
+blocker" / "judgment call" / "explicitly not this branch's fault"):
+- No debounce/settle delay before `ESP.restart()` on BOOT release —
+  theoretical contact-bounce race with GPIO0 sampling at reset, rare and
+  self-recoverable (press EN), reviewer suggested checking whether the
+  sibling project's shipped hardware experience already answers whether
+  this bites in practice before adding complexity.
+- CLAUDE.md's rooted-include tally (35) vs. a mechanical recount (37) —
+  reviewer explicitly verified this drift already existed identically at
+  the branch's base commit, unrelated to this branch's own changes.
+
+Fix dispatched as ONE subagent covering all Important+batchable-Minor
+findings, split into two commits per Arlo's Commit Notation (code vs.
+docs): `. r Alphabetize ButtonSetupModeTrigger.h include` (e1c2c50) and
+`. d Fix final-review doc findings: GPIO0 table, CLAUDE.md
+self-contradiction` (0e64cce). Fix subagent independently re-ran both
+gates after fixing: `pio run -e esp32dev` SUCCESS (unchanged RAM/Flash,
+confirming the include reorder is behavior-neutral), `pio test -e
+native` 40/40. One transient "Permission denied" during the first
+`git commit` (concurrent-process object-write contention, same class
+seen earlier this session) did not corrupt the commit — verified via
+`git fsck` before trusting it.
+
+## PLAN COMPLETE — all 4 tasks approved, final review's 2 Important + 6 of
+8 Minor findings fixed, 2 Minor explicitly deferred per the reviewer's
+own guidance. All builds/tests green. Proceeding to
+finishing-a-development-branch.
