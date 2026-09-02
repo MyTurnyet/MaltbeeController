@@ -86,3 +86,87 @@ dropdown-writes-into-existing-field convenience with free-text fallback
 intact.
 
 ## ALL 4 TASKS COMPLETE — proceeding to the final whole-branch review.
+
+## Final whole-branch review (opus): "Ready to merge: With fixes"
+
+Reviewer independently traced the full scan-to-dropdown-to-textfield
+chain across all 4 tasks in the assembled code, confirmed `/rescan`'s
+route and rendered link genuinely connect, confirmed `scanNetworks()` is
+called from exactly the two sanctioned places (never `handleRoot()`),
+confirmed the network `<select>` has no `name=` so it can never itself
+be submitted, and independently verified the design spec's central
+hardware claim by reading the installed core's `WiFiGeneric.cpp`
+directly (`enableSTA(true)` ORs into the current mode, so softAP
+survives into APSTA — spec's citation confirmed accurate, not just
+trusted). Re-ran both gates: `pio test -e native` 41/41 (40 baseline +
+`test_wifi_scan_formatter`, `test_setup_form_renderer` at 13 cases),
+`pio run -e esp32dev` SUCCESS (RAM 16.9%/Flash 81.6%). Zero Critical.
+
+2 Important, both fixed (commit 7d13bad):
+1. The dropdown's signature UTF-8 signal-bar characters (▂▄▆█) were
+   served with no charset declaration anywhere (`SetupFormRenderer.h`'s
+   `<head>` had a viewport meta but no charset meta;
+   `CaptivePortalServer.cpp`'s `webServer_.send()` used bare
+   `"text/html"`) — reviewer confirmed the ESP32 WebServer core doesn't
+   inject one either, so browsers fall back to a locale-dependent
+   default and would likely mangle the bars on a real phone. Fixed by
+   adding `<meta charset='utf-8'>` and `"text/html; charset=utf-8"`.
+2. `begin()` ran the (up-to-10-second-worst-case, per the core's own
+   `waitStatusBits` timeout) blocking scan BEFORE starting
+   `dnsServer_`/`webServer_` — reviewer identified this as directly
+   undermining Decision 2's own goal (a phone associating during that
+   window could get a DHCP lease with no DNS/HTTP answer yet, missing
+   the captive-portal popup entirely). Fixed by moving `scanNetworks()`
+   to the last line of `begin()` — free, zero-risk, since
+   `scannedNetworks_` is only ever read by `handleRoot()`, which cannot
+   run until `poll()` is called, which cannot happen until `begin()`
+   returns.
+
+1 Minor, fixed (commit 3862f88 + 949971b): `CLAUDE.md`'s test-suite
+count (40) was stale post-branch (41) — fixed. The fix subagent itself
+caught a second-order staleness this introduced (CLAUDE.md's
+`CaptivePortalServer` prose still said the scan ran "right after
+`WiFi.softAP()`", now false after the Fix 2 reorder) and flagged it as
+a concern rather than silently leaving it or overstepping its scoped
+instructions — controller fixed it directly in a follow-up commit.
+
+3 Minor recorded, deliberately NOT fixed per the reviewer's own explicit
+recommendation ("fine to defer or drop entirely; none affect
+correctness"): the Rescan link can discard unsaved form input on
+navigation (no warning); a mid-session rescan freezes the setup-mode LED
+flash and takes the AP off-channel for up to 10s (consistent with the
+already-accepted synchronous-scan tradeoff, just not spelled out for the
+mid-session case); `std::sort` vs `std::stable_sort` for RSSI ties
+(cosmetic, no test depends on ordering among ties). A 4th Minor
+(`CLAUDE.md`'s Test coverage checklist missing `WifiScanFormatter`) was
+explicitly declined by the controller's own fix-dispatch instructions,
+since that checklist already has multiple pre-existing gaps unrelated to
+this branch and partially patching it would be misleading rather than
+helpful — reviewer's own calibration agreed this is "conformance with an
+already-lagging list, not a new regression."
+
+Disposition on the two items carried over from per-task review, both
+re-affirmed by the final reviewer from first principles rather than
+deferring to the earlier verdict: `renderNetworkOptions()`'s
+unconditional placeholder is architecturally required, not just
+stylistically acceptable (the network dropdown has no `name=`/persisted-
+selection concept to reflect, unlike `renderIdOptions`) — left as-is.
+Missing `WiFi.scanDelete()` after a rescan is a genuine non-issue —
+reviewer read the installed core's `WiFiScan.cpp` directly and found
+`scanNetworks()` already calls `scanDelete()` internally before every
+scan, so results structurally cannot accumulate; adding explicit cleanup
+would be dead code.
+
+Fix dispatched as ONE subagent, split into two commits per Arlo's
+Commit Notation (code bugfix vs. doc): `! B Fix WiFi scan charset and
+begin() blocking order` (7d13bad) and `. d Fix stale test-suite count in
+CLAUDE.md` (3862f88), plus one controller follow-up doc commit
+(949971b) for the second-order staleness the fix subagent flagged.
+Controller independently re-ran both gates after all fixes: `pio run -e
+esp32dev` SUCCESS, `pio test -e native` 41/41.
+
+## PLAN COMPLETE — all 4 tasks approved, final review's 2 Important + 1
+Minor findings fixed, plus one controller follow-up doc fix for
+second-order staleness the fix subagent itself flagged; 3 Minor findings
+recorded and left as accepted per the reviewer's explicit guidance. All
+builds/tests green. Proceeding to finishing-a-development-branch.
