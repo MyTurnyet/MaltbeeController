@@ -12,10 +12,14 @@ public:
     [[nodiscard]] bool requested() const;
 
 private:
+    static constexpr unsigned long kReleaseSettleMs = 50;
+
     DigitalInput& button_;
     Clock& clock_;
     unsigned long minHoldMs_;
     bool holding_ = false;
     unsigned long holdStartMs_ = 0;
+    bool releasing_ = false;
+    unsigned long releaseStartMs_ = 0;
     bool requestedThisTick_ = false;
 };

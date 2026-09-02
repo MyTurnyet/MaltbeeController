@@ -16,13 +16,28 @@ void ButtonSetupModeTrigger::update()
         holding_ = true;
         holdStartMs_ = clock_.nowMilliseconds();
     }
-    else if (!active && holding_)
+    else if (!active && holding_ && !releasing_)
     {
-        holding_ = false;
-        const unsigned long heldFor = clock_.nowMilliseconds() - holdStartMs_;
-        if (heldFor >= minHoldMs_)
+        releasing_ = true;
+        releaseStartMs_ = clock_.nowMilliseconds();
+    }
+    else if (releasing_)
+    {
+        if (active)
         {
-            requestedThisTick_ = true;
+            // Contact bounce: the button never actually left the button for
+            // any meaningful duration, so the original press time stands.
+            releasing_ = false;
+        }
+        else if (clock_.nowMilliseconds() - releaseStartMs_ >= kReleaseSettleMs)
+        {
+            holding_ = false;
+            releasing_ = false;
+            const unsigned long heldFor = releaseStartMs_ - holdStartMs_;
+            if (heldFor >= minHoldMs_)
+            {
+                requestedThisTick_ = true;
+            }
         }
     }
 }
