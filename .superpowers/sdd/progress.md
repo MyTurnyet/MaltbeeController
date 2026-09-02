@@ -47,3 +47,13 @@ that nothing beyond the 3 authorized files changed and no secret was
 introduced/logged/exfiltrated — concluded "no real problem." Both gates
 green: `pio run -e esp32dev` SUCCESS (RAM 16.9%/Flash 81.2%), `pio test
 -e native` 40/40.
+
+Task 2 (docs): complete (commit 6215048..4083229 [. d], review clean —
+Approved, zero findings at any severity. Reviewer confirmed both edits
+landed word-for-word, exactly the 2 named files changed, no remaining
+"passphrase"/"maltbee-setup" reference in either file, and praised the
+implementation doc's added operational context (no-timeout risk,
+BOOT-only gate) as exceeding the minimum requirement without scope
+creep. No security classifier flag this time.
+
+## ALL 2 TASKS COMPLETE — proceeding to the final whole-branch review.
