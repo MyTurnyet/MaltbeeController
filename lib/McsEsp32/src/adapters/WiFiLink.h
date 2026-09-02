@@ -25,6 +25,7 @@ private:
     unsigned long lastAttemptMs_ = 0;
     std::string ssid_;
     std::string password_;
+    bool wasConnected_ = false;
 };
 
 #endif

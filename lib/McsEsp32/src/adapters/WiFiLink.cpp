@@ -21,8 +21,15 @@ void WiFiLink::begin(const std::string &ssid, const std::string &password) {
 
 void WiFiLink::poll() {
     if (WiFi.status() == WL_CONNECTED) {
+        if (!wasConnected_) {
+            Serial.print("WiFi connected, IP: ");
+            Serial.println(WiFi.localIP());
+            wasConnected_ = true;
+        }
         return;
     }
+
+    wasConnected_ = false;
 
     if (clock_.nowMilliseconds() - lastAttemptMs_ >= retryIntervalMs_) {
         connect();
@@ -36,15 +43,6 @@ bool WiFiLink::connected() const {
 void WiFiLink::connect() {
     WiFi.begin(ssid_.c_str(), password_.c_str());
     lastAttemptMs_ = clock_.nowMilliseconds();
-
-    while (WiFi.status() != WL_CONNECTED) {
-        delay(500);
-        Serial.print(".");
-    }
-
-    Serial.println();
-    Serial.print("WiFi connected, IP: ");
-    Serial.println(WiFi.localIP());
 }
 
 #endif
