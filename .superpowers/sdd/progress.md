@@ -61,3 +61,9 @@ include order (sits where `ComboSetupModeTrigger.h` used to be, between
 `CaptivePortalServer.h` and `EspDeviceIdentity.h`, rather than between
 `ArduinoDigitalOutput.h` and `CaptivePortalServer.h`) — flagged for the
 final whole-branch review to triage.
+
+Task 3 (remove ComboSetupModeTrigger): complete (commit e83617a..5c1d8c4
+[. r], review clean — Approved, zero findings at any severity. Reviewer
+confirmed the diff is a pure 3-file deletion (259 lines, 0
+modifications/additions) matching exactly the required paths, native
+suite count correctly dropped to 40/40, esp32dev build SUCCESS.
