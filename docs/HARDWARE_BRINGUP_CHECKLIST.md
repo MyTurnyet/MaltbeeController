@@ -110,13 +110,14 @@ assume earlier ones already work.
 **Status as of 2026-09-02:** two real ESP32 boards are built and
 commissioned against a live MQTT broker/JMRI. Confirmed working: 2.1
 (broker running, real JMRI names assigned), 2.2 (flash/boot/commissioning),
-2.3 (button → LED → JMRI turnout control), and 2.4 (the BOOT-button
-wireless setup gesture, including joining the now-open setup AP and
-submitting the form). **Still outstanding:** 2.5 (presence/collision —
-feasible now with two boards, just not yet exercised), 2.6
-(identify-blink), and turnout 12/GPIO4 specifically (not yet wired, so
-its boot-behavior open question is still unverified) and external
-5V/VIN power behavior (not yet tested).
+2.3 (button → LED → JMRI turnout control, including turnout 12/GPIO4 —
+wired, working, and power-cycled multiple times with no boot-time LED
+glitch), and 2.4 (the BOOT-button wireless setup gesture, including
+joining the now-open setup AP and submitting the form). One board also
+runs entirely off 5V/VIN with no USB connected, confirming the
+external-power open question. **Still outstanding:** 2.5
+(presence/collision — feasible now with two boards, just not yet
+exercised) and 2.6 (identify-blink).
 
 ### 2.1 Prerequisites
 

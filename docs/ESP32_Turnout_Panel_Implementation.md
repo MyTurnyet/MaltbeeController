@@ -594,11 +594,14 @@ flash on power-up. Mitigate by configuring outputs before anything else:
       list maintained — it discovers turnouts dynamically — and each panel's
       per-channel JMRI name is set during commissioning, `turnout N name
       <jmriSystemName>`, not hardcoded in `main.cpp`).
-- [ ] Verify GPIO 4 boot behavior on the actual ELEGOO board before wiring
-      turnout 12's LEDs to it — folded into
-      `docs/HARDWARE_BRINGUP_CHECKLIST.md`.
-- [ ] Confirm ESP32 board power behavior before ruling out external 5V/VIN —
-      folded into `docs/HARDWARE_BRINGUP_CHECKLIST.md`.
+- [x] Verify GPIO 4 boot behavior on the actual ELEGOO board — confirmed
+      2026-09-02: turnout 12 wired and working (throws/closes correctly,
+      LEDs correct), and the board has been power-cycled multiple times
+      with no stray flash/glitch on turnout 12's LED pair during boot.
+- [x] Confirm ESP32 board power behavior before ruling out external 5V/VIN —
+      confirmed 2026-09-02: this board runs exclusively off 5V/VIN with no
+      USB connected (and none intended for permanent deployment), working
+      correctly.
 
 ## Suggested milestones (all shipped — kept for history)
 
