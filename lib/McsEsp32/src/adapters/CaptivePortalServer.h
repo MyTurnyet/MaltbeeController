@@ -16,7 +16,7 @@ class CaptivePortalServer
 public:
     explicit CaptivePortalServer(WebFormCommissioningAdapter& adapter);
 
-    void begin(const std::string& apName, const std::string& passphrase);
+    void begin(const std::string& apName);
     void poll();
 
 private:

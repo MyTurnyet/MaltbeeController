@@ -61,7 +61,6 @@ namespace
     constexpr unsigned long RETRY_INTERVAL_MS = 5000;
     constexpr unsigned long UART_BAUD_RATE = 115200;
     constexpr unsigned long SETUP_TRIGGER_HOLD_MS = 3000;
-    constexpr const char* WIRELESS_SETUP_AP_PASSPHRASE = "maltbee-setup";
     constexpr unsigned long IDENTIFY_DURATION_MS = 10000;
 }
 
@@ -228,7 +227,7 @@ void setup()
     if (bootMode == BootMode::WirelessSetup)
     {
         const std::string apName = SetupApName::from(ownMac);
-        captivePortalServer.begin(apName, WIRELESS_SETUP_AP_PASSPHRASE);
+        captivePortalServer.begin(apName);
         uartPort.write("MaltBee panel in wireless setup mode. Connect to " + apName + "\n");
         return;
     }
