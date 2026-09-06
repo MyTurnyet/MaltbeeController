@@ -35,6 +35,7 @@ private:
     std::string clientId_;
     std::string willTopic_;
     std::string willMessage_;
+    std::string host_;
     WiFiClient wifiClient_;
     PubSubClient client_;
     unsigned long lastAttemptMs_ = 0;

@@ -19,7 +19,8 @@ MqttLink::MqttLink(Clock& clock, const unsigned long retryIntervalMs, std::strin
 
 void MqttLink::begin(const std::string& host, const int port)
 {
-    client_.setServer(host.c_str(), port);
+    host_ = host;
+    client_.setServer(host_.c_str(), port);
     connect();
 }
 
