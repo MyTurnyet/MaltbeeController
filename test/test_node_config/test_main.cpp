@@ -44,25 +44,25 @@ TEST_CASE("withBroker returns a modified copy without mutating the original")
     REQUIRE(original.brokerHost.empty());
 }
 
-TEST_CASE("withChannelName sets the named channel (1-based) without mutating the original")
+TEST_CASE("withChannelAddress sets the addressed channel (1-based) without mutating the original")
 {
     const NodeConfig original = NodeConfig::factoryDefault();
 
-    const NodeConfig updated = original.withChannelName(1, "LT1");
+    const NodeConfig updated = original.withChannelAddress(1, 5);
 
-    REQUIRE(updated.channelJmriNames[0] == "LT1");
-    REQUIRE(original.channelJmriNames[0].empty());
+    REQUIRE(updated.channelTurnoutAddresses[0] == 5);
+    REQUIRE(original.channelTurnoutAddresses[0] == 0);
 }
 
-TEST_CASE("withChannelName ignores an out-of-range channel number")
+TEST_CASE("withChannelAddress ignores an out-of-range channel number")
 {
     const NodeConfig original = NodeConfig::factoryDefault();
 
-    const NodeConfig updated = original.withChannelName(13, "LT13");
+    const NodeConfig updated = original.withChannelAddress(13, 5);
 
-    for (const auto& name : updated.channelJmriNames)
+    for (const int address : updated.channelTurnoutAddresses)
     {
-        REQUIRE(name.empty());
+        REQUIRE(address == 0);
     }
 }
 
@@ -76,14 +76,14 @@ TEST_CASE("A fully valid config passes validation")
     REQUIRE(config.validate().empty());
 }
 
-TEST_CASE("A valid config with only some channels named still passes validation")
+TEST_CASE("A valid config with only some channels addressed still passes validation")
 {
     const NodeConfig config = NodeConfig::factoryDefault()
                                    .withNodeId(1)
                                    .withWifi("MyLayoutWifi", "hunter2")
                                    .withBroker("192.168.1.50", 1883)
-                                   .withChannelName(1, "LT1")
-                                   .withChannelName(2, "LT2");
+                                   .withChannelAddress(1, 5)
+                                   .withChannelAddress(2, 6);
 
     REQUIRE(config.validate().empty());
 }
@@ -126,14 +126,48 @@ TEST_CASE("validate rejects a broker port outside 1-65535")
     REQUIRE_FALSE(config.validate().empty());
 }
 
-TEST_CASE("validate rejects two channels claiming the same jmri name")
+TEST_CASE("validate rejects two channels claiming the same turnout address")
 {
     const NodeConfig config = NodeConfig::factoryDefault()
                                    .withNodeId(1)
                                    .withWifi("MyLayoutWifi", "hunter2")
                                    .withBroker("192.168.1.50", 1883)
-                                   .withChannelName(1, "LT1")
-                                   .withChannelName(2, "LT1");
+                                   .withChannelAddress(1, 5)
+                                   .withChannelAddress(2, 5);
+
+    REQUIRE_FALSE(config.validate().empty());
+}
+
+TEST_CASE("validate accepts the address range boundaries 1 and 2048")
+{
+    const NodeConfig config = NodeConfig::factoryDefault()
+                                   .withNodeId(1)
+                                   .withWifi("MyLayoutWifi", "hunter2")
+                                   .withBroker("192.168.1.50", 1883)
+                                   .withChannelAddress(1, 1)
+                                   .withChannelAddress(2, 2048);
+
+    REQUIRE(config.validate().empty());
+}
+
+TEST_CASE("validate rejects a channel address below 1")
+{
+    const NodeConfig config = NodeConfig::factoryDefault()
+                                   .withNodeId(1)
+                                   .withWifi("MyLayoutWifi", "hunter2")
+                                   .withBroker("192.168.1.50", 1883)
+                                   .withChannelAddress(1, -1);
+
+    REQUIRE_FALSE(config.validate().empty());
+}
+
+TEST_CASE("validate rejects a channel address above 2048")
+{
+    const NodeConfig config = NodeConfig::factoryDefault()
+                                   .withNodeId(1)
+                                   .withWifi("MyLayoutWifi", "hunter2")
+                                   .withBroker("192.168.1.50", 1883)
+                                   .withChannelAddress(1, 2049);
 
     REQUIRE_FALSE(config.validate().empty());
 }

@@ -28,12 +28,12 @@ NodeConfig NodeConfig::withBroker(std::string host, const int port) const
     return copy;
 }
 
-NodeConfig NodeConfig::withChannelName(const int channel, std::string jmriName) const
+NodeConfig NodeConfig::withChannelAddress(const int channel, const int address) const
 {
     NodeConfig copy = *this;
     if (channel >= 1 && channel <= kChannelCount)
     {
-        copy.channelJmriNames[channel - 1] = std::move(jmriName);
+        copy.channelTurnoutAddresses[channel - 1] = address;
     }
     return copy;
 }
@@ -66,17 +66,23 @@ std::vector<std::string> NodeConfig::validate() const
 
     for (int i = 0; i < kChannelCount; ++i)
     {
-        if (channelJmriNames[i].empty())
+        const int address = channelTurnoutAddresses[i];
+        if (address == 0)
         {
             continue;
         }
+        if (address < kMinTurnoutAddress || address > kMaxTurnoutAddress)
+        {
+            errors.push_back("channel " + std::to_string(i + 1) + " address must be between " +
+                              std::to_string(kMinTurnoutAddress) + " and " + std::to_string(kMaxTurnoutAddress));
+        }
         for (int j = i + 1; j < kChannelCount; ++j)
         {
-            if (channelJmriNames[i] == channelJmriNames[j])
+            if (channelTurnoutAddresses[j] == address)
             {
                 errors.push_back("channels " + std::to_string(i + 1) + " and " +
-                                  std::to_string(j + 1) + " both claim jmri name \"" +
-                                  channelJmriNames[i] + "\"");
+                                  std::to_string(j + 1) + " both claim turnout address " +
+                                  std::to_string(address));
             }
         }
     }
