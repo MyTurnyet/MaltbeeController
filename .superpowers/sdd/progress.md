@@ -37,6 +37,34 @@ Task 10 (`SetupFormRenderer`/`FirmwareVersion`) depends on 9. Task 11
 (`EspMdnsResolver`) depends on 4. Task 12 (main.cpp wiring) depends on
 everything. Executing in plan order (1→12), which already respects this.
 
+## Amendment: task grouping (discovered during Task 1 dispatch)
+
+First Task 1 dispatch (isolated `TopicScheme` change) failed with
+NEEDS_CONTEXT: PlatformIO compiles `McsEsp32` as one shared static
+library for every native test target, so changing `TopicScheme`'s
+signature broke compilation of `JmriTurnoutCommandAdapter.cpp`/
+`JmriFeedbackSource.cpp` even under a scoped `-f test_topic_scheme` run.
+Controller independently verified this by applying Task 1's exact change
+in the main worktree and reproducing the build error, then reverted the
+probe. Traced the reference graph and confirmed 9 of 12 tasks (1, 2, 3,
+5, 6, 7, 8, 9, 10) are compile-coupled via the `NodeConfig` hub type and
+must land as one commit group; only Task 4, Task 11, and Task 12 are
+independent. Presented finding + fix to the user, who chose "merge into
+one big task." Plan file amended in place (commit ba3ee69) with a
+grouping note; original per-task text unchanged and still the source of
+truth for exact code/tests. Execution now proceeds as 4 dispatches:
+Merged-Task-1 (old 1,2,3,5,6,7,8,9,10), Task 4, Task 11, Task 12.
+
+Cleanup note: the first Task 1 dispatch was also mistakenly launched
+with `isolation: "worktree"`, which silently created a second, separate
+worktree (`.claude/worktrees/agent-ad7233d995ad0726b` on branch
+`worktree-agent-ad7233d995ad0726b`) instead of using this session's
+already-prepared `esp32-loco2mqtt-turnout-bridge` worktree. That stray
+worktree had no commits (implementer correctly stopped at NEEDS_CONTEXT
+before committing) and was removed via `git worktree remove --force` +
+`git branch -D`. Every dispatch from here on omits `isolation` so
+subagents work directly in this worktree.
+
 ## Tasks
 
 (none started yet)
