@@ -155,7 +155,7 @@ a factory-fresh board should show the latter. Commission it over serial:
 id 5
 wifi <your-ssid> <your-password>
 broker <broker-host-or-ip> 1883
-turnout 1 name LT1
+turnout 1 address 5
 show
 save
 ```
