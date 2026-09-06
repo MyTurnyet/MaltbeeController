@@ -34,11 +34,10 @@ std::string WebFormCommissioningAdapter::submit(const WebFormSubmission& form)
 
     for (int i = 0; i < NodeConfig::kChannelCount; ++i)
     {
-        ParsedCommand turnoutCommand;
-        turnoutCommand.kind = CommandKind::TurnoutName;
-        turnoutCommand.intArg = i + 1;
-        turnoutCommand.stringArg1 = form.channelJmriNames[i];
-        response = session_.apply(turnoutCommand);
+        const std::string addressText =
+            form.channelTurnoutAddresses[i].empty() ? "0" : form.channelTurnoutAddresses[i];
+        response = session_.apply(
+            CommandLineParser::parse("turnout " + std::to_string(i + 1) + " address " + addressText));
         if (response != "OK\n")
         {
             return response;
@@ -69,7 +68,11 @@ WebFormSubmission WebFormCommissioningAdapter::currentValues() const
     form.wifiPassword = "";
     form.brokerHost = config.brokerHost;
     form.brokerPort = std::to_string(config.brokerPort);
-    form.channelJmriNames = config.channelJmriNames;
+    for (int i = 0; i < NodeConfig::kChannelCount; ++i)
+    {
+        form.channelTurnoutAddresses[i] =
+            config.channelTurnoutAddresses[i] == 0 ? "" : std::to_string(config.channelTurnoutAddresses[i]);
+    }
 
     return form;
 }

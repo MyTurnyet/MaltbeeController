@@ -16,7 +16,7 @@ namespace
         form.wifiPassword = "hunter2";
         form.brokerHost = "192.168.1.50";
         form.brokerPort = "1883";
-        form.channelJmriNames[0] = "LT1";
+        form.channelTurnoutAddresses[0] = "17";
         return form;
     }
 }
@@ -34,26 +34,26 @@ TEST_CASE("a fully valid submission saves and requests reboot")
     REQUIRE(store.saveCount == 1);
     REQUIRE(store.load().nodeId == 5);
     REQUIRE(store.load().wifiSsid == "MyLayoutWifi");
-    REQUIRE(store.load().channelJmriNames[0] == "LT1");
+    REQUIRE(store.load().channelTurnoutAddresses[0] == 17);
 }
 
-TEST_CASE("a blank channel field clears a previously stored channel name")
+TEST_CASE("a blank channel field clears a previously stored channel address")
 {
     FakeConfigStore store;
     store.save(NodeConfig::factoryDefault()
                    .withNodeId(5)
                    .withWifi("w", "p")
                    .withBroker("h", 1883)
-                   .withChannelName(2, "LT2"));
+                   .withChannelAddress(2, 6));
     CommissioningSession session(store);
     WebFormCommissioningAdapter adapter(session);
 
     WebFormSubmission form = validSubmission();
-    // form.channelJmriNames[1] (channel 2) is blank by default construction
+    // form.channelTurnoutAddresses[1] (channel 2) is blank by default construction
 
     adapter.submit(form);
 
-    REQUIRE(store.load().channelJmriNames[1].empty());
+    REQUIRE(store.load().channelTurnoutAddresses[1] == 0);
 }
 
 TEST_CASE("a non-numeric node id stops immediately and never reaches save")
@@ -64,6 +64,22 @@ TEST_CASE("a non-numeric node id stops immediately and never reaches save")
 
     WebFormSubmission form = validSubmission();
     form.nodeId = "not-a-number";
+
+    const std::string response = adapter.submit(form);
+
+    REQUIRE(response != "rebooting\n");
+    REQUIRE_FALSE(adapter.rebootRequested());
+    REQUIRE(store.saveCount == 0);
+}
+
+TEST_CASE("a non-numeric turnout address stops immediately and never reaches save")
+{
+    FakeConfigStore store;
+    CommissioningSession session(store);
+    WebFormCommissioningAdapter adapter(session);
+
+    WebFormSubmission form = validSubmission();
+    form.channelTurnoutAddresses[0] = "not-a-number";
 
     const std::string response = adapter.submit(form);
 
@@ -113,7 +129,34 @@ TEST_CASE("currentValues reports an unset node id as an empty string")
     REQUIRE(values.nodeId.empty());
 }
 
-TEST_CASE("wifi credentials and turnout names containing spaces round-trip intact")
+TEST_CASE("currentValues reports an unset turnout address as an empty string")
+{
+    FakeConfigStore store;
+    CommissioningSession session(store);
+    WebFormCommissioningAdapter adapter(session);
+
+    const WebFormSubmission values = adapter.currentValues();
+
+    REQUIRE(values.channelTurnoutAddresses[0].empty());
+}
+
+TEST_CASE("currentValues reports a configured turnout address as its decimal text")
+{
+    FakeConfigStore store;
+    store.save(NodeConfig::factoryDefault()
+                   .withNodeId(5)
+                   .withWifi("w", "p")
+                   .withBroker("h", 1883)
+                   .withChannelAddress(3, 99));
+    CommissioningSession session(store);
+    WebFormCommissioningAdapter adapter(session);
+
+    const WebFormSubmission values = adapter.currentValues();
+
+    REQUIRE(values.channelTurnoutAddresses[2] == "99");
+}
+
+TEST_CASE("wifi credentials containing spaces round-trip intact")
 {
     FakeConfigStore store;
     CommissioningSession session(store);
@@ -122,14 +165,12 @@ TEST_CASE("wifi credentials and turnout names containing spaces round-trip intac
     WebFormSubmission form = validSubmission();
     form.wifiSsid = "My Layout Wifi";
     form.wifiPassword = "a pass with spaces";
-    form.channelJmriNames[0] = "Yard Ladder 3";
 
     const std::string response = adapter.submit(form);
 
     REQUIRE(response == "rebooting\n");
     REQUIRE(store.load().wifiSsid == "My Layout Wifi");
     REQUIRE(store.load().wifiPassword == "a pass with spaces");
-    REQUIRE(store.load().channelJmriNames[0] == "Yard Ladder 3");
 }
 
 TEST_CASE("a blank wifi password keeps the previously stored password")

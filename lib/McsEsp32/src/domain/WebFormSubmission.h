@@ -12,5 +12,5 @@ struct WebFormSubmission
     std::string wifiPassword;
     std::string brokerHost;
     std::string brokerPort;
-    std::array<std::string, NodeConfig::kChannelCount> channelJmriNames;
+    std::array<std::string, NodeConfig::kChannelCount> channelTurnoutAddresses;
 };
