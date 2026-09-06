@@ -144,6 +144,77 @@ already-resolved package from the main worktree's `.pio/libdeps/`.
 executed as: merged-Task-1, Task 4, Task 11, Task 12) — proceeding to
 the final whole-branch review.
 
+## Final whole-branch review (opus): "Ready to merge: With fixes"
+
+Reviewer independently confirmed the migration is genuinely complete —
+grepped `lib/`/`src/`/`test/` for every JMRI-era name and found zero
+hits, diffed every planned `TEST_CASE` string from the plan's Task
+1-10 briefs against the actual test tree and found none dropped by the
+9-task merge, confirmed both in-flight amendments (task-grouping
+restructure, missed `NvsConfigStore.cpp`) actually landed in code not
+just documentation, confirmed `jmri/panel_mqtt_turnout_bridge.py` is
+present-but-orphaned exactly as #9c intends, and independently re-ran
+both gates at true HEAD (42/42 native, `esp32dev` BUILD SUCCESS,
+RAM 17.3%/Flash 83.8% — matching every prior checkpoint exactly).
+
+**1 Critical, fixed:** `src/esp32/main.cpp:243-244`'s `resolvedBrokerHost`
+was a `setup()`-local `std::string` handed to `MqttLink::begin()` →
+`PubSubClient::setServer(const char*, ...)`, which stores the raw
+pointer (`this->domain = domain;`, confirmed by reading the installed
+PubSubClient source directly) rather than copying — every MQTT
+reconnect after the first dereferences memory `loop()` has since
+reused. A genuine regression this branch introduced (previously
+`runningConfig.brokerHost` came from a *global* `NodeConfig`, so the
+same call site had accidentally satisfied the lifetime contract).
+Controller independently verified the claim by reading
+`PubSubClient.cpp:715-718,190` directly before dispatching a fix.
+Fixed (commit 9315ce6) by giving `MqttLink` an owned `host_` member
+instead of forwarding a transient caller-owned string.
+
+**1 Important, fixed:** `CLAUDE.md` never got a documentation task in
+the plan (unlike the immediately preceding sub-project, which had one)
+and was left describing the removed JMRI integration throughout — stale
+class names, stale field descriptions, stale test count (41 vs 42), and
+a bridge-script description that was no longer true. Fixed (commit
+17109a6) with 11 targeted corrections plus a new "Loco2MQTT turnout
+bridge (sub-project #9a)" narrative subsection matching this file's
+existing per-sub-project prose convention.
+
+**1 Important (narrowly scoped), fixed:** `docs/HARDWARE_BRINGUP_CHECKLIST.md`'s
+serial-commissioning example still used the old `turnout 1 name LT1`
+syntax, which no longer parses. Fixed (commit eadc363) — just the one
+line; the surrounding JMRI/broker-setup prose is explicitly #9c's scope,
+not this branch's, per the reviewer's own scoping.
+
+**4 Minor recorded**, 2 acted on after user follow-up, 2 left as-is:
+- mDNS self-hostname collision (`EspMdnsResolver` used the same literal
+  for every panel) — user asked for clarification on whether this
+  could affect finding `loco2mqtt.local` (it can't; that's a wholly
+  separate lookup from a panel's own self-announced name), then asked
+  to fix it anyway using the MAC-suffix convention already used
+  elsewhere in this codebase. Fixed directly (commit dfab1af):
+  `EspMdnsResolver` now takes a `selfHostname` constructor parameter,
+  `main.cpp` passes `"maltbee-panel-" + ownMac.lastFourHexDigits()`.
+- Missing `test_commissioning_session` case for "address-range error
+  surfaces at save" (a real design-doc-vs-shipped gap, plan-trimmed) —
+  user asked to add it. Added directly (commit b0fb4b4) — passed
+  immediately with no production change, confirming the composed path
+  (`CommissioningSession` → `NodeConfig::validate()`) already worked
+  end-to-end; closes the coverage gap rather than fixing a bug.
+- `EspMdnsResolver.h`'s rooted `"ports/MdnsResolver.h"` include (should
+  be relative `../ports/MdnsResolver.h` per this codebase's own
+  documented convention, since the port is in the same library) — left
+  as-is, not raised with the user; low real risk (compiles correctly
+  today since `MdnsResolver.h` is basename-unique) but worth a follow-up
+  if this file is touched again.
+- The ~8-second worst-case boot-time WiFi-wait-then-mDNS-query window —
+  an explicitly accepted design-doc tradeoff, not something to fix.
+
+Both gates re-verified by the controller after every fix pass in this
+section (native 42/42, `esp32dev` SUCCESS at unchanged RAM/Flash).
+
+## SUB-PROJECT #9a COMPLETE — proceeding to finishing-a-development-branch.
+
 Also discovered during this task's post-hoc verification: the plan
 never listed `lib/McsEsp32/src/adapters/NvsConfigStore.cpp`, which also
 references the old `channelJmriNames` field (via `Preferences`
