@@ -2,17 +2,16 @@
 
 #include <array>
 #include <deque>
-#include <string>
 
 #include "../domain/NodeConfig.h"
 #include "../ports/MqttTransport.h"
 #include "ports/TurnoutCommandPort.h"
 
-class JmriFeedbackSource
+class Loco2MqttFeedbackSource
 {
 public:
-    JmriFeedbackSource(MqttTransport& transport,
-                        const std::array<std::string, NodeConfig::kChannelCount>& channelJmriNames);
+    Loco2MqttFeedbackSource(MqttTransport& transport,
+                             const std::array<int, NodeConfig::kChannelCount>& channelTurnoutAddresses);
 
     bool poll(TurnoutFeedback& outFeedback);
 

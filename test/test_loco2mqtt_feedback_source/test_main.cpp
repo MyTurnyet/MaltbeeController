@@ -1,37 +1,37 @@
 #include <catch2/catch_test_macros.hpp>
 
-#include "adapters/JmriFeedbackSource.h"
+#include "adapters/Loco2MqttFeedbackSource.h"
 #include "domain/NodeConfig.h"
 #include "support/FakeMqttTransport.h"
 
 namespace
 {
-    std::array<std::string, NodeConfig::kChannelCount> namesWithChannel(int channel, const std::string& name)
+    std::array<int, NodeConfig::kChannelCount> addressesWithChannel(int channel, int address)
     {
-        std::array<std::string, NodeConfig::kChannelCount> names;
-        names[channel - 1] = name;
-        return names;
+        std::array<int, NodeConfig::kChannelCount> addresses{};
+        addresses[channel - 1] = address;
+        return addresses;
     }
 }
 
 TEST_CASE("construction subscribes only the configured channels' state topics")
 {
     FakeMqttTransport transport;
-    const auto names = namesWithChannel(1, "LT1");
+    const auto addresses = addressesWithChannel(1, 5);
 
-    JmriFeedbackSource source(transport, names);
+    Loco2MqttFeedbackSource source(transport, addresses);
 
     REQUIRE(transport.subscribedTopics.size() == 1);
-    REQUIRE(transport.subscribedTopics[0] == "track/turnout/LT1/state");
+    REQUIRE(transport.subscribedTopics[0] == "loconet/turnout/5/state");
 }
 
 TEST_CASE("construction subscribes each configured channel's state topic among several")
 {
     FakeMqttTransport transport;
-    auto names = namesWithChannel(1, "LT1");
-    names[4] = "LT5";
+    auto addresses = addressesWithChannel(1, 5);
+    addresses[4] = 17;
 
-    JmriFeedbackSource source(transport, names);
+    Loco2MqttFeedbackSource source(transport, addresses);
 
     REQUIRE(transport.subscribedTopics.size() == 2);
 }
@@ -39,10 +39,10 @@ TEST_CASE("construction subscribes each configured channel's state topic among s
 TEST_CASE("a valid incoming payload on the state topic becomes a pollable TurnoutFeedback")
 {
     FakeMqttTransport transport;
-    const auto names = namesWithChannel(3, "LT3");
-    JmriFeedbackSource source(transport, names);
+    const auto addresses = addressesWithChannel(3, 9);
+    Loco2MqttFeedbackSource source(transport, addresses);
 
-    transport.deliver("track/turnout/LT3/state", "THROWN");
+    transport.deliver("loconet/turnout/9/state", "THROWN");
 
     TurnoutFeedback feedback{};
     REQUIRE(source.poll(feedback));
@@ -53,22 +53,22 @@ TEST_CASE("a valid incoming payload on the state topic becomes a pollable Turnou
 TEST_CASE("an unrecognized payload on the state topic produces nothing")
 {
     FakeMqttTransport transport;
-    const auto names = namesWithChannel(1, "LT1");
-    JmriFeedbackSource source(transport, names);
+    const auto addresses = addressesWithChannel(1, 5);
+    Loco2MqttFeedbackSource source(transport, addresses);
 
-    transport.deliver("track/turnout/LT1/state", "GARBAGE");
+    transport.deliver("loconet/turnout/5/state", "GARBAGE");
 
     TurnoutFeedback feedback{};
     REQUIRE_FALSE(source.poll(feedback));
 }
 
-TEST_CASE("a message on the plain command topic is not picked up as feedback")
+TEST_CASE("a message on the command topic is not picked up as feedback")
 {
     FakeMqttTransport transport;
-    const auto names = namesWithChannel(1, "LT1");
-    JmriFeedbackSource source(transport, names);
+    const auto addresses = addressesWithChannel(1, 5);
+    Loco2MqttFeedbackSource source(transport, addresses);
 
-    transport.deliver("track/turnout/LT1", "THROWN");
+    transport.deliver("loconet/turnout/5/set", "THROWN");
 
     TurnoutFeedback feedback{};
     REQUIRE_FALSE(source.poll(feedback));
@@ -77,10 +77,10 @@ TEST_CASE("a message on the plain command topic is not picked up as feedback")
 TEST_CASE("poll returns false once the queue is drained")
 {
     FakeMqttTransport transport;
-    const auto names = namesWithChannel(1, "LT1");
-    JmriFeedbackSource source(transport, names);
+    const auto addresses = addressesWithChannel(1, 5);
+    Loco2MqttFeedbackSource source(transport, addresses);
 
-    transport.deliver("track/turnout/LT1/state", "CLOSED");
+    transport.deliver("loconet/turnout/5/state", "CLOSED");
 
     TurnoutFeedback feedback{};
     REQUIRE(source.poll(feedback));
@@ -90,11 +90,11 @@ TEST_CASE("poll returns false once the queue is drained")
 TEST_CASE("multiple queued messages drain in FIFO order")
 {
     FakeMqttTransport transport;
-    const auto names = namesWithChannel(1, "LT1");
-    JmriFeedbackSource source(transport, names);
+    const auto addresses = addressesWithChannel(1, 5);
+    Loco2MqttFeedbackSource source(transport, addresses);
 
-    transport.deliver("track/turnout/LT1/state", "CLOSED");
-    transport.deliver("track/turnout/LT1/state", "THROWN");
+    transport.deliver("loconet/turnout/5/state", "CLOSED");
+    transport.deliver("loconet/turnout/5/state", "THROWN");
 
     TurnoutFeedback first{};
     TurnoutFeedback second{};

@@ -1,23 +1,23 @@
-#include "JmriFeedbackSource.h"
+#include "Loco2MqttFeedbackSource.h"
 
 #include <optional>
 
 #include "../domain/PayloadCodec.h"
 #include "../domain/TopicScheme.h"
 
-JmriFeedbackSource::JmriFeedbackSource(MqttTransport& transport,
-                                        const std::array<std::string, NodeConfig::kChannelCount>& channelJmriNames)
+Loco2MqttFeedbackSource::Loco2MqttFeedbackSource(
+    MqttTransport& transport, const std::array<int, NodeConfig::kChannelCount>& channelTurnoutAddresses)
 {
     for (int i = 0; i < NodeConfig::kChannelCount; ++i)
     {
-        const std::string& jmriName = channelJmriNames[i];
-        if (jmriName.empty())
+        const int turnoutAddress = channelTurnoutAddresses[i];
+        if (turnoutAddress == 0)
         {
             continue;
         }
 
         const int channel = i + 1;
-        transport.subscribe(TopicScheme::stateTopicFor(jmriName), [this, channel](const std::string& payload) {
+        transport.subscribe(TopicScheme::stateTopicFor(turnoutAddress), [this, channel](const std::string& payload) {
             const std::optional<TurnoutPosition> position = PayloadCodec::decode(payload);
             if (!position.has_value())
             {
@@ -28,7 +28,7 @@ JmriFeedbackSource::JmriFeedbackSource(MqttTransport& transport,
     }
 }
 
-bool JmriFeedbackSource::poll(TurnoutFeedback& outFeedback)
+bool Loco2MqttFeedbackSource::poll(TurnoutFeedback& outFeedback)
 {
     if (pending_.empty())
     {
