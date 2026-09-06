@@ -85,6 +85,43 @@ TEST_CASE("an out-of-range turnout channel reports an error and stores nothing")
     REQUIRE(showResponse.find("99") == std::string::npos);
 }
 
+TEST_CASE("save refuses a draft with an out-of-range turnout address and does not persist")
+{
+    FakeConfigStore store;
+    CommissioningSession session(store);
+
+    ParsedCommand idCommand;
+    idCommand.kind = CommandKind::Id;
+    idCommand.intArg = 1;
+    session.apply(idCommand);
+
+    ParsedCommand wifiCommand;
+    wifiCommand.kind = CommandKind::Wifi;
+    wifiCommand.stringArg1 = "MyLayoutWifi";
+    wifiCommand.stringArg2 = "hunter2";
+    session.apply(wifiCommand);
+
+    ParsedCommand brokerCommand;
+    brokerCommand.kind = CommandKind::Broker;
+    brokerCommand.stringArg1 = "192.168.1.50";
+    brokerCommand.intArg2 = 1883;
+    session.apply(brokerCommand);
+
+    ParsedCommand addressCommand;
+    addressCommand.kind = CommandKind::TurnoutAddress;
+    addressCommand.intArg = 1;
+    addressCommand.intArg2 = 9999;
+    session.apply(addressCommand);
+
+    ParsedCommand saveCommand;
+    saveCommand.kind = CommandKind::Save;
+    const std::string response = session.apply(saveCommand);
+
+    REQUIRE(response.find("invalid config") != std::string::npos);
+    REQUIRE(response.find("channel 1 address must be between 1 and 2048") != std::string::npos);
+    REQUIRE(store.saveCount == 0);
+}
+
 TEST_CASE("save persists a valid draft to the config store")
 {
     FakeConfigStore store;
