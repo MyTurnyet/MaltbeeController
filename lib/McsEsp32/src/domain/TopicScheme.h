@@ -5,13 +5,13 @@
 class TopicScheme
 {
 public:
-    static std::string topicFor(const std::string& jmriName)
+    static std::string topicFor(int address)
     {
-        return "track/turnout/" + jmriName;
+        return "loconet/turnout/" + std::to_string(address) + "/set";
     }
 
-    static std::string stateTopicFor(const std::string& jmriName)
+    static std::string stateTopicFor(int address)
     {
-        return "track/turnout/" + jmriName + "/state";
+        return "loconet/turnout/" + std::to_string(address) + "/state";
     }
 };

@@ -2,32 +2,22 @@
 
 #include "domain/TopicScheme.h"
 
-TEST_CASE("topicFor builds the expected prefixed topic")
+TEST_CASE("topicFor builds the expected command topic")
 {
-    REQUIRE(TopicScheme::topicFor("LT5") == "track/turnout/LT5");
+    REQUIRE(TopicScheme::topicFor(5) == "loconet/turnout/5/set");
 }
 
-TEST_CASE("topicFor handles a different name")
+TEST_CASE("topicFor handles a different address")
 {
-    REQUIRE(TopicScheme::topicFor("Yard Ladder 2") == "track/turnout/Yard Ladder 2");
+    REQUIRE(TopicScheme::topicFor(2048) == "loconet/turnout/2048/set");
 }
 
-TEST_CASE("topicFor handles an empty name")
+TEST_CASE("stateTopicFor builds the expected state topic")
 {
-    REQUIRE(TopicScheme::topicFor("") == "track/turnout/");
+    REQUIRE(TopicScheme::stateTopicFor(5) == "loconet/turnout/5/state");
 }
 
-TEST_CASE("stateTopicFor builds the expected state-suffixed topic")
+TEST_CASE("stateTopicFor differs from topicFor for the same address")
 {
-    REQUIRE(TopicScheme::stateTopicFor("LT5") == "track/turnout/LT5/state");
-}
-
-TEST_CASE("stateTopicFor differs from topicFor for the same name")
-{
-    REQUIRE(TopicScheme::stateTopicFor("LT1") != TopicScheme::topicFor("LT1"));
-}
-
-TEST_CASE("stateTopicFor handles an empty name")
-{
-    REQUIRE(TopicScheme::stateTopicFor("") == "track/turnout//state");
+    REQUIRE(TopicScheme::stateTopicFor(17) != TopicScheme::topicFor(17));
 }
