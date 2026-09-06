@@ -10,6 +10,22 @@
 
 **Design doc:** `docs/superpowers/specs/2026-09-06-esp32-loco2mqtt-turnout-bridge-design.md` — read it for the full rationale; this plan is the executable breakdown of it.
 
+## Amendment (discovered during execution, 2026-09-06): task grouping
+
+Dispatching Task 1 in isolation revealed that PlatformIO's `native` environment compiles `McsEsp32` as **one shared static library for every test target**, not per-test — confirmed directly: even the scoped command `pio test -e native -f test_topic_scheme` fails to build once `TopicScheme`'s signature changes, because `JmriTurnoutCommandAdapter.cpp`/`JmriFeedbackSource.cpp` (unmodified, still calling the old signature) are compiled into that same library for every native test run.
+
+Tracing the reference graph further: `NodeConfig` is a hub type consumed by `CommissioningSession`, `WebFormCommissioningAdapter`, `SetupFormRenderer` (via `WebFormSubmission`), and both turnout adapters. **Tasks 1, 2, 3, 5, 6, 7, 8, 9, and 10 below are therefore compile-coupled and cannot land as separate green commits** — changing `NodeConfig` alone breaks `CommissioningSession`'s compile, which breaks the whole shared library, which fails every native test regardless of which one you scope to.
+
+Only Task 4 (`MdnsResolver`/`BrokerAddressResolver` — purely additive, nothing else references it yet), Task 11 (`EspMdnsResolver` — `#ifdef ARDUINO`-guarded, compiles to nothing under `native`), and Task 12 (`main.cpp` wiring — not part of the native build at all per `test_build_src = false`) are genuinely independent.
+
+**Execution therefore proceeds as 4 dispatches, not 12:**
+1. **Merged Task 1** — Tasks 1, 2, 3, 5, 6, 7, 8, 9, 10 below, implemented in the order they appear (each task's steps are still valid and useful as internal checkpoints — an implementer may see an intermediate scoped test run fail to *build* partway through for exactly the coupling reason above; that's expected and not a bug, and isn't a stopping condition), committed as a small number of coherent commits once the group reaches a compiling, fully-green state, verified with the **full** `pio test -e native` (not a single `-f` filter) at the end.
+2. **Task 4** as originally written (`MdnsResolver`/`BrokerAddressResolver`).
+3. **Task 11** as originally written (`EspMdnsResolver`).
+4. **Task 12** as originally written (`main.cpp` + `CaptivePortalServer` wiring), last, as originally planned.
+
+The original per-task text below is unchanged and remains the source of exact file paths/code/tests — this amendment only changes which tasks get dispatched and reviewed together.
+
 ## Global Constraints
 
 - Domain and application code must compile under `native` without `Arduino.h`. Only `#ifdef ARDUINO`-guarded adapter files may include Arduino/ESP32 headers.
