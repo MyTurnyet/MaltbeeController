@@ -122,6 +122,28 @@ stale/mistaken count in the report text, not a real regression (Task 4
 had already brought the total to 42; this task adds 0 native-visible
 suites by design).
 
+Task 12 (main.cpp + CaptivePortalServer + NvsConfigStore wiring — final
+integration): complete (commits 1b84430..1b125f1, 2 commits, both
+`! F`, review clean — Approved, zero findings. Reviewer independently
+confirmed every renamed identifier/constructor call/include-ordering
+matches the actual headers earlier tasks produced (not just the brief's
+text) by reading `NodeConfig.h`, `WebFormSubmission.h`,
+`BrokerAddressResolver.h` directly, confirmed `resolvedBrokerHost` is
+genuinely threaded into `mqttLink.begin(...)` rather than computed and
+discarded, and confirmed `main.cpp` stays strictly composition-root-only
+per this repo's CLAUDE.md (no conditionals/business logic added beyond
+wiring). Controller independently re-ran both gates before dispatching
+the reviewer: `pio test -e native` 42/42, `pio run -e esp32dev` BUILD
+SUCCESS (RAM 17.3%/Flash 83.8%) — both matched the implementer's
+reported numbers exactly. One transient environment wrinkle (not a code
+issue): the first `esp32dev` build attempt hit a network flake
+downloading `PubSubClient`; implementer recovered by reusing the
+already-resolved package from the main worktree's `.pio/libdeps/`.
+
+## ALL 4 DISPATCHED TASK GROUPS COMPLETE (12 original plan tasks,
+executed as: merged-Task-1, Task 4, Task 11, Task 12) — proceeding to
+the final whole-branch review.
+
 Also discovered during this task's post-hoc verification: the plan
 never listed `lib/McsEsp32/src/adapters/NvsConfigStore.cpp`, which also
 references the old `channelJmriNames` field (via `Preferences`
