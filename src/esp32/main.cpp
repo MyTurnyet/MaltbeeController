@@ -169,7 +169,7 @@ const std::string mqttWillMessage = "offline";
 
 MqttLink mqttLink(systemClock, RETRY_INTERVAL_MS, mqttClientId, mqttWillTopic, mqttWillMessage);
 
-EspMdnsResolver mdnsResolver;
+EspMdnsResolver mdnsResolver("maltbee-panel-" + ownMac.lastFourHexDigits());
 BrokerAddressResolver brokerAddressResolver(mdnsResolver);
 
 NodeIdentityGuard identityGuard(ownMac.lastFourHexDigits());

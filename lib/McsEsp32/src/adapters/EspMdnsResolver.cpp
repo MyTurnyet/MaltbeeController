@@ -4,6 +4,11 @@
 
 #include <ESPmDNS.h>
 #include <WiFi.h>
+#include <utility>
+
+EspMdnsResolver::EspMdnsResolver(std::string selfHostname) : selfHostname_(std::move(selfHostname))
+{
+}
 
 std::optional<std::string> EspMdnsResolver::resolveHost(const std::string& hostname)
 {
@@ -19,7 +24,7 @@ std::optional<std::string> EspMdnsResolver::resolveHost(const std::string& hostn
 
     if (!mdnsStarted_)
     {
-        if (!MDNS.begin("maltbee-resolver"))
+        if (!MDNS.begin(selfHostname_.c_str()))
         {
             return std::nullopt;
         }
