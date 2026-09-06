@@ -1,26 +1,26 @@
-#include "JmriTurnoutCommandAdapter.h"
+#include "Loco2MqttTurnoutCommandAdapter.h"
 
 #include "../domain/PayloadCodec.h"
 #include "../domain/TopicScheme.h"
 
-JmriTurnoutCommandAdapter::JmriTurnoutCommandAdapter(
-    MqttTransport& transport, const std::array<std::string, NodeConfig::kChannelCount>& channelJmriNames)
-    : transport_(transport), channelJmriNames_(channelJmriNames)
+Loco2MqttTurnoutCommandAdapter::Loco2MqttTurnoutCommandAdapter(
+    MqttTransport& transport, const std::array<int, NodeConfig::kChannelCount>& channelTurnoutAddresses)
+    : transport_(transport), channelTurnoutAddresses_(channelTurnoutAddresses)
 {
 }
 
-void JmriTurnoutCommandAdapter::send(const int address, const TurnoutPosition position)
+void Loco2MqttTurnoutCommandAdapter::send(const int address, const TurnoutPosition position)
 {
     if (address < 1 || address > NodeConfig::kChannelCount)
     {
         return;
     }
 
-    const std::string& jmriName = channelJmriNames_[address - 1];
-    if (jmriName.empty())
+    const int turnoutAddress = channelTurnoutAddresses_[address - 1];
+    if (turnoutAddress == 0)
     {
         return;
     }
 
-    transport_.publish(TopicScheme::topicFor(jmriName), PayloadCodec::encode(position), false);
+    transport_.publish(TopicScheme::topicFor(turnoutAddress), PayloadCodec::encode(position), false);
 }
