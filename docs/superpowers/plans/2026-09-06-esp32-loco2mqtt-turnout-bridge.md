@@ -2206,13 +2206,91 @@ Commit via the `arlo-commits` skill (message should reflect: add `EspMdnsResolve
 
 ### Task 12: Wire `main.cpp` + `CaptivePortalServer` — final integration
 
+**Amendment (discovered during merged-Task-1 verification, 2026-09-06):** the original plan missed `lib/McsEsp32/src/adapters/NvsConfigStore.cpp` entirely — it also references the old `channelJmriNames` field name (as `prefs.getString`/`putString` round-trips, one per channel). It's `#ifdef ARDUINO`-guarded like `CaptivePortalServer.cpp`, so this didn't break the native suite merged-Task-1 verified, but it will break `pio run -e esp32dev` unless fixed here. Added as Step 0 below.
+
 **Files:**
+- Modify: `lib/McsEsp32/src/adapters/NvsConfigStore.cpp`
 - Modify: `src/esp32/main.cpp`
 - Modify: `lib/McsEsp32/src/adapters/CaptivePortalServer.cpp`
 
 **Interfaces:**
 - Consumes everything produced by Tasks 1–11: `Loco2MqttTurnoutCommandAdapter`/`Loco2MqttFeedbackSource` (Tasks 5–6), `EspMdnsResolver`/`BrokerAddressResolver` (Tasks 4/11), `NodeConfig::channelTurnoutAddresses` (Task 2), `WebFormSubmission::channelTurnoutAddresses` (Task 9).
 - Produces: a fully wired, building `esp32dev` firmware. Nothing downstream depends on this task — it's the top of the stack.
+
+- [ ] **Step 0: Update `NvsConfigStore.cpp`'s channel persistence to store an int**
+
+In `lib/McsEsp32/src/adapters/NvsConfigStore.cpp`, in `load()`, replace:
+
+```cpp
+    for (int i = 0; i < NodeConfig::kChannelCount; ++i)
+    {
+        const std::string key = std::string(kKeyChannelPrefix) + std::to_string(i);
+        config.channelJmriNames[i] = prefs.getString(key.c_str(), "").c_str();
+    }
+```
+
+with:
+
+```cpp
+    for (int i = 0; i < NodeConfig::kChannelCount; ++i)
+    {
+        const std::string key = std::string(kKeyChannelPrefix) + std::to_string(i);
+        config.channelTurnoutAddresses[i] = prefs.getInt(key.c_str(), 0);
+    }
+```
+
+In `save()`, replace the comment and loop:
+
+```cpp
+    // putString()'s return (bytes written) is not checked here: ESP-IDF's
+    // Preferences::putString() returns 0 both on failure AND when writing a
+    // legitimate empty string (e.g. an unconfigured wifiPassword or
+    // channelJmriNames[i], which default to "" and are valid per
+    // NodeConfig::validate()'s partial-commissioning rules). ANDing these
+    // into `ok` would report failure on every normal partial-commissioning
+    // save, so only prefs.begin() and the two putInt calls (which always
+    // write a fixed non-zero byte count on success, since nodeId/brokerPort
+    // are never legitimately absent once validate() has passed) are trusted.
+    prefs.putString(kKeyWifiSsid, config.wifiSsid.c_str());
+    prefs.putString(kKeyWifiPassword, config.wifiPassword.c_str());
+    prefs.putString(kKeyBrokerHost, config.brokerHost.c_str());
+    ok = prefs.putInt(kKeyBrokerPort, config.brokerPort) > 0 && ok;
+
+    for (int i = 0; i < NodeConfig::kChannelCount; ++i)
+    {
+        const std::string key = std::string(kKeyChannelPrefix) + std::to_string(i);
+        prefs.putString(key.c_str(), config.channelJmriNames[i].c_str());
+    }
+```
+
+with:
+
+```cpp
+    // putString()'s return (bytes written) is not checked here: ESP-IDF's
+    // Preferences::putString() returns 0 both on failure AND when writing a
+    // legitimate empty string (e.g. an unconfigured wifiPassword, which
+    // defaults to "" and is valid per NodeConfig::validate()'s
+    // partial-commissioning rules). ANDing that into `ok` would report
+    // failure on every normal partial-commissioning save, so only
+    // prefs.begin() and the putInt calls (which always write a fixed
+    // non-zero byte count on success, regardless of the value stored —
+    // unlike putString, a stored 0 is not ambiguous with failure) are
+    // trusted.
+    prefs.putString(kKeyWifiSsid, config.wifiSsid.c_str());
+    prefs.putString(kKeyWifiPassword, config.wifiPassword.c_str());
+    prefs.putString(kKeyBrokerHost, config.brokerHost.c_str());
+    ok = prefs.putInt(kKeyBrokerPort, config.brokerPort) > 0 && ok;
+
+    for (int i = 0; i < NodeConfig::kChannelCount; ++i)
+    {
+        const std::string key = std::string(kKeyChannelPrefix) + std::to_string(i);
+        ok = prefs.putInt(key.c_str(), config.channelTurnoutAddresses[i]) > 0 && ok;
+    }
+```
+
+(Channel addresses now join the `ok`-tracked group, unlike the string-based fields — a `putInt` write always returns a fixed non-zero byte count on success no matter what value is stored, including `0`/unconfigured, so there's no ambiguity between "legitimately wrote 0" and "failed" the way `putString` has for an empty string. This is a strictly more correct error-tracking story than the field had before, not a functional regression.)
+
+No native test exists for this file (it's `#ifdef ARDUINO`-guarded, same build-check-only convention as `MqttLink`/`WiFiLink` — see this plan's Global Constraints). Verification is the `pio run -e esp32dev` build check in Step 7 below.
 
 - [ ] **Step 1: Update `CaptivePortalServer.cpp`'s form-reading field name**
 
