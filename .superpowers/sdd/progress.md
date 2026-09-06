@@ -107,6 +107,21 @@ confirmed the exact uncaptured-return-value test code is specified
 verbatim in the brief itself, so this is plan-mandated, not an
 implementer defect. 3/3 native suite.
 
+Task 11 (EspMdnsResolver hardware adapter): complete (commit
+3194c82..a009b5e [@ F — no native test coverage possible, Arduino-guarded,
+matches the existing MqttLink/WiFiLink convention], review clean —
+Approved, zero Critical/Important. Reviewer confirmed the `#ifdef
+ARDUINO` guard wraps the whole file in both `.h`/`.cpp`, the bounded
+WiFi-wait-then-mDNS-query logic matches the brief exactly, and
+cross-checked the rooted `"ports/MdnsResolver.h"` include against
+`MqttLink.h`/`WiFiLink.h`'s existing `"ports/Clock.h"` pattern to
+confirm convention compliance. 1 Minor recorded, resolved: implementer's
+report said "41 suites passing" but the controller recounted twice
+(before and after this task) and got 42/42 both times, 0 failures — a
+stale/mistaken count in the report text, not a real regression (Task 4
+had already brought the total to 42; this task adds 0 native-visible
+suites by design).
+
 Also discovered during this task's post-hoc verification: the plan
 never listed `lib/McsEsp32/src/adapters/NvsConfigStore.cpp`, which also
 references the old `channelJmriNames` field (via `Preferences`
