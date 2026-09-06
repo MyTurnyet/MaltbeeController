@@ -73,3 +73,6 @@ __pycache__/
 
 # KiCad local-history auto-backups (contains its own nested .git repo)
 .history/
+
+# Local git worktrees used for isolated feature work
+.worktrees/
