@@ -46,22 +46,22 @@ TEST_CASE("show reports an unconfigured factory-default draft")
     REQUIRE(response.find("(unconfigured)") != std::string::npos);
 }
 
-TEST_CASE("show reports a configured turnout name")
+TEST_CASE("show reports a configured turnout address")
 {
     FakeConfigStore store;
     CommissioningSession session(store);
 
-    ParsedCommand nameCommand;
-    nameCommand.kind = CommandKind::TurnoutName;
-    nameCommand.intArg = 1;
-    nameCommand.stringArg1 = "LT1";
-    session.apply(nameCommand);
+    ParsedCommand addressCommand;
+    addressCommand.kind = CommandKind::TurnoutAddress;
+    addressCommand.intArg = 1;
+    addressCommand.intArg2 = 5;
+    session.apply(addressCommand);
 
     ParsedCommand showCommand;
     showCommand.kind = CommandKind::Show;
     const std::string response = session.apply(showCommand);
 
-    REQUIRE(response.find("turnout 1: LT1") != std::string::npos);
+    REQUIRE(response.find("turnout 1: 5") != std::string::npos);
 }
 
 TEST_CASE("an out-of-range turnout channel reports an error and stores nothing")
@@ -69,12 +69,12 @@ TEST_CASE("an out-of-range turnout channel reports an error and stores nothing")
     FakeConfigStore store;
     CommissioningSession session(store);
 
-    ParsedCommand nameCommand;
-    nameCommand.kind = CommandKind::TurnoutName;
-    nameCommand.intArg = 13;
-    nameCommand.stringArg1 = "LT13";
+    ParsedCommand addressCommand;
+    addressCommand.kind = CommandKind::TurnoutAddress;
+    addressCommand.intArg = 13;
+    addressCommand.intArg2 = 99;
 
-    const std::string response = session.apply(nameCommand);
+    const std::string response = session.apply(addressCommand);
 
     REQUIRE(response.rfind("error:", 0) == 0);
 
@@ -82,7 +82,7 @@ TEST_CASE("an out-of-range turnout channel reports an error and stores nothing")
     showCommand.kind = CommandKind::Show;
     const std::string showResponse = session.apply(showCommand);
 
-    REQUIRE(showResponse.find("LT13") == std::string::npos);
+    REQUIRE(showResponse.find("99") == std::string::npos);
 }
 
 TEST_CASE("save persists a valid draft to the config store")

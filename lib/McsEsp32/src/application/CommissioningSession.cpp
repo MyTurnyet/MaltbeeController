@@ -24,9 +24,9 @@ std::string CommissioningSession::formatShow() const
               ":" + std::to_string(draft_.brokerPort) + "\n";
     for (int i = 0; i < NodeConfig::kChannelCount; ++i)
     {
-        const std::string& name = draft_.channelJmriNames[i];
+        const int address = draft_.channelTurnoutAddresses[i];
         result += "turnout " + std::to_string(i + 1) + ": " +
-                  (name.empty() ? std::string("(unconfigured)") : name) + "\n";
+                  (address == 0 ? std::string("(unconfigured)") : std::to_string(address)) + "\n";
     }
     return result;
 }
@@ -47,13 +47,13 @@ std::string CommissioningSession::apply(const ParsedCommand& command)
         draft_ = draft_.withBroker(command.stringArg1, command.intArg2);
         return "OK\n";
 
-    case CommandKind::TurnoutName:
+    case CommandKind::TurnoutAddress:
         if (command.intArg < 1 || command.intArg > NodeConfig::kChannelCount)
         {
             return "error: turnout channel must be between 1 and " +
                    std::to_string(NodeConfig::kChannelCount) + "\n";
         }
-        draft_ = draft_.withChannelName(command.intArg, command.stringArg1);
+        draft_ = draft_.withChannelAddress(command.intArg, command.intArg2);
         return "OK\n";
 
     case CommandKind::Show:
