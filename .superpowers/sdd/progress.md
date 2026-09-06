@@ -67,4 +67,42 @@ subagents work directly in this worktree.
 
 ## Tasks
 
-(none started yet)
+Merged Task 1 (old Tasks 1,2,3,5,6,7,8,9,10 — core Loco2MQTT
+domain/application/adapter migration): complete (commits
+138d857..63966d0, 9 commits, all `^ F`, review clean — Approved, zero
+Critical/Important. Reviewer diffed every one of the 9 brief sections'
+"replace full contents" blocks against the diff hunks line-by-line and
+found no deviation; specifically verified `NodeConfig`'s `{}`
+zero-init on `channelTurnoutAddresses` (load-bearing for the 0-sentinel
+semantics), both address-range boundaries (1 and 2048) plus
+below/above/duplicate cases, `PayloadCodec` genuinely absent from the
+diff (unchanged as required), and the new heartbeat-repeat regression
+test in the wiring suite. 2 Minor recorded, not fixed: commit 3043708's
+message doesn't mention the 3 inert `git mv` renames it also carries
+(controller independently confirmed via `git show --stat 3043708` —
+all rename entries show 0 content change, pure renames, just an
+incomplete commit-message description); `addressesWithChannel()` test
+helper duplicated verbatim across 3 test files (mandated by the brief
+itself, each is its own Catch2 binary). 2 ⚠️ items, both independently
+resolved by the controller: `git show --stat 3043708` confirmed the
+rename-bundling claim exactly as the implementer described (zero
+content diff on all 4 renamed files); `git log --follow` on
+`Loco2MqttTurnoutCommandAdapter.cpp` confirmed history traces cleanly
+back through the rename to the file's original creation (fbee4f7 →
+3043708 → 20dea41 → 22bb67d) despite the squashed base→head diff not
+showing rename-detection markers for this particular file (a
+similarity-heuristic artifact, not a real history loss). 41/41 native
+suite, independently re-verified by the controller both before and
+after the review (`pio test -e native`, grepped for
+PASSED/FAILED/ERRORED counts directly).
+
+Also discovered during this task's post-hoc verification: the plan
+never listed `lib/McsEsp32/src/adapters/NvsConfigStore.cpp`, which also
+references the old `channelJmriNames` field (via `Preferences`
+get/putString). It's `#ifdef ARDUINO`-guarded so it didn't break the
+native suite, but would break Task 12's `pio run -e esp32dev` check.
+Plan amended (commit 3293a8b) to add a Step 0 to Task 12 fixing this —
+switches to `getInt`/`putInt` (matching the field's new int type) and
+folds channel-address writes into the `ok` failure-tracking chain,
+since `putInt`'s return is unambiguous (unlike `putString`, where an
+empty-string write and a failure are indistinguishable).
