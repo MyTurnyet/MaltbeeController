@@ -30,7 +30,7 @@ NodeConfig NvsConfigStore::load()
     for (int i = 0; i < NodeConfig::kChannelCount; ++i)
     {
         const std::string key = std::string(kKeyChannelPrefix) + std::to_string(i);
-        config.channelJmriNames[i] = prefs.getString(key.c_str(), "").c_str();
+        config.channelTurnoutAddresses[i] = prefs.getInt(key.c_str(), 0);
     }
 
     prefs.end();
@@ -45,13 +45,14 @@ bool NvsConfigStore::save(const NodeConfig& config)
     ok = prefs.putInt(kKeyNodeId, config.nodeId) > 0 && ok;
     // putString()'s return (bytes written) is not checked here: ESP-IDF's
     // Preferences::putString() returns 0 both on failure AND when writing a
-    // legitimate empty string (e.g. an unconfigured wifiPassword or
-    // channelJmriNames[i], which default to "" and are valid per
-    // NodeConfig::validate()'s partial-commissioning rules). ANDing these
-    // into `ok` would report failure on every normal partial-commissioning
-    // save, so only prefs.begin() and the two putInt calls (which always
-    // write a fixed non-zero byte count on success, since nodeId/brokerPort
-    // are never legitimately absent once validate() has passed) are trusted.
+    // legitimate empty string (e.g. an unconfigured wifiPassword, which
+    // defaults to "" and is valid per NodeConfig::validate()'s
+    // partial-commissioning rules). ANDing that into `ok` would report
+    // failure on every normal partial-commissioning save, so only
+    // prefs.begin() and the putInt calls (which always write a fixed
+    // non-zero byte count on success, regardless of the value stored —
+    // unlike putString, a stored 0 is not ambiguous with failure) are
+    // trusted.
     prefs.putString(kKeyWifiSsid, config.wifiSsid.c_str());
     prefs.putString(kKeyWifiPassword, config.wifiPassword.c_str());
     prefs.putString(kKeyBrokerHost, config.brokerHost.c_str());
@@ -60,7 +61,7 @@ bool NvsConfigStore::save(const NodeConfig& config)
     for (int i = 0; i < NodeConfig::kChannelCount; ++i)
     {
         const std::string key = std::string(kKeyChannelPrefix) + std::to_string(i);
-        prefs.putString(key.c_str(), config.channelJmriNames[i].c_str());
+        ok = prefs.putInt(key.c_str(), config.channelTurnoutAddresses[i]) > 0 && ok;
     }
 
     prefs.end();

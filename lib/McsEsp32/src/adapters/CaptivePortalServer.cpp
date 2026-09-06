@@ -72,8 +72,8 @@ WebFormSubmission CaptivePortalServer::readForm()
 
     for (int i = 0; i < NodeConfig::kChannelCount; ++i)
     {
-        const std::string fieldName = "t" + std::to_string(i + 1) + "_name";
-        form.channelJmriNames[i] = webServer_.arg(fieldName.c_str()).c_str();
+        const std::string fieldName = "t" + std::to_string(i + 1) + "_address";
+        form.channelTurnoutAddresses[i] = webServer_.arg(fieldName.c_str()).c_str();
     }
 
     return form;
