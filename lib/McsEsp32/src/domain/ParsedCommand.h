@@ -7,7 +7,7 @@ enum class CommandKind
     Id,
     Wifi,
     Broker,
-    TurnoutName,
+    TurnoutAddress,
     Show,
     Save,
     Reboot,

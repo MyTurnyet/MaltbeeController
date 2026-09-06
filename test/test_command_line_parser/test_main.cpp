@@ -57,25 +57,32 @@ TEST_CASE("broker command with a non-numeric port is invalid")
     REQUIRE(command.kind == CommandKind::Invalid);
 }
 
-TEST_CASE("parses turnout name command")
+TEST_CASE("parses turnout address command")
 {
-    const ParsedCommand command = CommandLineParser::parse("turnout 3 name LT3");
+    const ParsedCommand command = CommandLineParser::parse("turnout 3 address 17");
 
-    REQUIRE(command.kind == CommandKind::TurnoutName);
+    REQUIRE(command.kind == CommandKind::TurnoutAddress);
     REQUIRE(command.intArg == 3);
-    REQUIRE(command.stringArg1 == "LT3");
+    REQUIRE(command.intArg2 == 17);
 }
 
-TEST_CASE("turnout command missing the name keyword is invalid")
+TEST_CASE("turnout command missing the address keyword is invalid")
 {
-    const ParsedCommand command = CommandLineParser::parse("turnout 3 LT3");
+    const ParsedCommand command = CommandLineParser::parse("turnout 3 17");
 
     REQUIRE(command.kind == CommandKind::Invalid);
 }
 
 TEST_CASE("turnout command with a non-numeric channel is invalid")
 {
-    const ParsedCommand command = CommandLineParser::parse("turnout x name LT3");
+    const ParsedCommand command = CommandLineParser::parse("turnout x address 17");
+
+    REQUIRE(command.kind == CommandKind::Invalid);
+}
+
+TEST_CASE("turnout command with a non-numeric address is invalid")
+{
+    const ParsedCommand command = CommandLineParser::parse("turnout 3 address xyz");
 
     REQUIRE(command.kind == CommandKind::Invalid);
 }

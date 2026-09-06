@@ -110,19 +110,24 @@ ParsedCommand CommandLineParser::parse(const std::string& line)
 
     if (verb == "turnout")
     {
-        if (tokens.size() != 4 || tokens[2] != "name")
+        if (tokens.size() != 4 || tokens[2] != "address")
         {
-            return invalid("usage: turnout <n> name <jmriSystemName>");
+            return invalid("usage: turnout <n> address <address>");
         }
         int channel = 0;
         if (!parseInt(tokens[1], channel))
         {
             return invalid("turnout channel must be a number");
         }
+        int address = 0;
+        if (!parseInt(tokens[3], address))
+        {
+            return invalid("turnout address must be a number");
+        }
         ParsedCommand command;
-        command.kind = CommandKind::TurnoutName;
+        command.kind = CommandKind::TurnoutAddress;
         command.intArg = channel;
-        command.stringArg1 = tokens[3];
+        command.intArg2 = address;
         return command;
     }
 
