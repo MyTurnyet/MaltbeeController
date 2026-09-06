@@ -10,11 +10,12 @@
 #include "adapters/ButtonSetupModeTrigger.h"
 #include "adapters/CaptivePortalServer.h"
 #include "adapters/EspDeviceIdentity.h"
+#include "adapters/EspMdnsResolver.h"
 #include "adapters/EspUartPort.h"
 #include "adapters/GatedDigitalInput.h"
-#include "adapters/JmriFeedbackSource.h"
-#include "adapters/JmriTurnoutCommandAdapter.h"
 #include "adapters/LedPairStation.h"
+#include "adapters/Loco2MqttFeedbackSource.h"
+#include "adapters/Loco2MqttTurnoutCommandAdapter.h"
 #include "adapters/MatrixDigitalInput.h"
 #include "adapters/MqttLink.h"
 #include "adapters/NvsConfigStore.h"
@@ -23,6 +24,7 @@
 #include "adapters/ToggleTurnoutStation.h"
 #include "adapters/WebFormCommissioningAdapter.h"
 #include "adapters/WiFiLink.h"
+#include "application/BrokerAddressResolver.h"
 #include "application/CommissioningSession.h"
 #include "application/MqttPresenceAnnouncer.h"
 #include "domain/BootMode.h"
@@ -167,12 +169,15 @@ const std::string mqttWillMessage = "offline";
 
 MqttLink mqttLink(systemClock, RETRY_INTERVAL_MS, mqttClientId, mqttWillTopic, mqttWillMessage);
 
+EspMdnsResolver mdnsResolver;
+BrokerAddressResolver brokerAddressResolver(mdnsResolver);
+
 NodeIdentityGuard identityGuard(ownMac.lastFourHexDigits());
 MqttPresenceAnnouncer presenceAnnouncer(mqttLink, runningConfig.nodeId, ownMac.lastFourHexDigits());
 IdentifyModeTimer identifyTimer(systemClock, IDENTIFY_DURATION_MS);
 
-JmriTurnoutCommandAdapter turnoutCommandPort(mqttLink, runningConfig.channelJmriNames);
-JmriFeedbackSource feedbackSource(mqttLink, runningConfig.channelJmriNames);
+Loco2MqttTurnoutCommandAdapter turnoutCommandPort(mqttLink, runningConfig.channelTurnoutAddresses);
+Loco2MqttFeedbackSource feedbackSource(mqttLink, runningConfig.channelTurnoutAddresses);
 
 ToggleTurnoutStation stations[12] = {
     ToggleTurnoutStation(TURNOUT_CONFIGS[0].address, TURNOUT_CONFIGS[0].name, gatedButtons[0],
@@ -235,7 +240,8 @@ void setup()
     if (configValid)
     {
         wifiLink.begin(runningConfig.wifiSsid, runningConfig.wifiPassword);
-        mqttLink.begin(runningConfig.brokerHost, runningConfig.brokerPort);
+        const std::string resolvedBrokerHost = brokerAddressResolver.resolve("loco2mqtt", runningConfig.brokerHost);
+        mqttLink.begin(resolvedBrokerHost, runningConfig.brokerPort);
         mqttLink.subscribe(PresenceTopics::macTopic(runningConfig.nodeId),
                             [](const std::string& payload) { identityGuard.onMacObserved(payload); });
         mqttLink.subscribe(PresenceTopics::identifyTopic(runningConfig.nodeId),
