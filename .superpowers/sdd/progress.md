@@ -96,6 +96,17 @@ suite, independently re-verified by the controller both before and
 after the review (`pio test -e native`, grepped for
 PASSED/FAILED/ERRORED counts directly).
 
+Task 4 (MdnsResolver port + BrokerAddressResolver): complete (commit
+4a6bec8..3eeb66e [^ F], review clean — Approved, zero findings. Reviewer
+confirmed all 5 files match the brief verbatim line-by-line. Controller
+independently re-ran the scoped suite with `-vvv` and found a real
+`[-Wunused-result]` compiler warning on the `[[nodiscard]]`-ignoring
+test call (invisible in PlatformIO's default non-verbose output) —
+flagged to the reviewer explicitly rather than pre-judging it; reviewer
+confirmed the exact uncaptured-return-value test code is specified
+verbatim in the brief itself, so this is plan-mandated, not an
+implementer defect. 3/3 native suite.
+
 Also discovered during this task's post-hoc verification: the plan
 never listed `lib/McsEsp32/src/adapters/NvsConfigStore.cpp`, which also
 references the old `channelJmriNames` field (via `Preferences`
