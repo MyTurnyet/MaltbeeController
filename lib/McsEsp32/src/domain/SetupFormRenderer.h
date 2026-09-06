@@ -3,6 +3,7 @@
 #include <string>
 #include <vector>
 
+#include "FirmwareVersion.h"
 #include "NodeConfig.h"
 #include "WebFormSubmission.h"
 #include "WifiScanFormatter.h"
@@ -49,6 +50,7 @@ public:
         html += "<style>" + kStyle + "</style></head><body>";
         html += "<div class='card'><h1>MaltBee Panel Setup</h1>";
         html += "<p class='subtitle'>Configure this panel's network settings</p>";
+        html += "<p class='version'>Firmware v" + std::string(kFirmwareVersion) + "</p>";
         html += "<form method='POST' action='/submit'>";
         html += "<label>Node ID</label><select name='id'>" + renderIdOptions(values.nodeId) + "</select>";
         html += "<label>WiFi SSID</label>";
@@ -62,11 +64,11 @@ public:
         html += "<label>Broker Host</label><input name='broker_host' value='" + escapeHtml(values.brokerHost) + "'>";
         html += "<label>Broker Port</label><input name='broker_port' type='number' value='"
             + escapeHtml(values.brokerPort) + "'>";
-        html += "<details><summary>Turnout JMRI Names</summary>";
+        html += "<details><summary>Turnout Addresses</summary>";
         html += "<p class='warning'>Leave a channel blank to leave it unconfigured.</p>";
         for (int i = 0; i < NodeConfig::kChannelCount; ++i)
         {
-            html += renderChannelField(i + 1, values.channelJmriNames[i]);
+            html += renderChannelField(i + 1, values.channelTurnoutAddresses[i]);
         }
         html += "</details>";
         html += "<button type='submit'>Save</button>";
@@ -102,12 +104,12 @@ private:
         return options;
     }
 
-    static std::string renderChannelField(int channelNumber, const std::string& jmriName)
+    static std::string renderChannelField(int channelNumber, const std::string& address)
     {
-        const std::string fieldName = "t" + std::to_string(channelNumber) + "_name";
+        const std::string fieldName = "t" + std::to_string(channelNumber) + "_address";
         std::string html;
-        html += "<label>Turnout " + std::to_string(channelNumber) + " JMRI Name</label>";
-        html += "<input name='" + fieldName + "' value='" + escapeHtml(jmriName) + "'>";
+        html += "<label>Turnout " + std::to_string(channelNumber) + " Address</label>";
+        html += "<input name='" + fieldName + "' type='number' value='" + escapeHtml(address) + "'>";
         return html;
     }
 
@@ -118,6 +120,7 @@ private:
         "box-shadow:0 1px 3px rgba(0,0,0,0.1);padding:24px;}"
         "h1{font-size:1.25rem;margin:0 0 4px;}"
         ".subtitle{color:#6b7280;font-size:0.875rem;margin:0 0 20px;}"
+        ".version{color:#9ca3af;font-size:0.7rem;margin:0 0 12px;}"
         "label{display:block;font-size:0.8rem;font-weight:600;color:#374151;margin:16px 0 4px;}"
         "input,select{width:100%;box-sizing:border-box;padding:8px 10px;border:1px solid #d1d5db;"
         "border-radius:6px;font-size:0.95rem;}"

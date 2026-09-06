@@ -1,5 +1,6 @@
 #include <catch2/catch_test_macros.hpp>
 
+#include "domain/FirmwareVersion.h"
 #include "domain/SetupFormRenderer.h"
 #include "domain/WifiScanFormatter.h"
 
@@ -90,17 +91,24 @@ TEST_CASE("render's selected node id is marked selected")
 TEST_CASE("render includes a labeled input for each of the 12 turnout channels")
 {
     WebFormSubmission form = emptyValues();
-    form.channelJmriNames[0] = "LT1";
-    form.channelJmriNames[11] = "LT12";
+    form.channelTurnoutAddresses[0] = "5";
+    form.channelTurnoutAddresses[11] = "600";
 
     const std::string html = SetupFormRenderer::render(form);
 
-    REQUIRE(html.find("Turnout 1 JMRI Name") != std::string::npos);
-    REQUIRE(html.find("name='t1_name'") != std::string::npos);
-    REQUIRE(html.find("value='LT1'") != std::string::npos);
-    REQUIRE(html.find("Turnout 12 JMRI Name") != std::string::npos);
-    REQUIRE(html.find("name='t12_name'") != std::string::npos);
-    REQUIRE(html.find("value='LT12'") != std::string::npos);
+    REQUIRE(html.find("Turnout 1 Address") != std::string::npos);
+    REQUIRE(html.find("name='t1_address'") != std::string::npos);
+    REQUIRE(html.find("value='5'") != std::string::npos);
+    REQUIRE(html.find("Turnout 12 Address") != std::string::npos);
+    REQUIRE(html.find("name='t12_address'") != std::string::npos);
+    REQUIRE(html.find("value='600'") != std::string::npos);
+}
+
+TEST_CASE("render displays the current firmware version")
+{
+    const std::string html = SetupFormRenderer::render(emptyValues());
+
+    REQUIRE(html.find(kFirmwareVersion) != std::string::npos);
 }
 
 TEST_CASE("render's network dropdown includes an option for each scanned network")
