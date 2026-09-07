@@ -32,4 +32,11 @@ Task 1 and are otherwise independent of each other.
 
 ## Tasks
 
-(none started yet)
+Task 1 (delete jmri script + update CLAUDE.md): complete (commit
+78cc8a4..2d893e4 [. d], review clean — Approved, zero findings. Reviewer
+confirmed exact textual match to the brief for both CLAUDE.md edits,
+confirmed the script deletion, and confirmed no lib/src/test file appears
+anywhere in the diff. Controller independently verified: `jmri/` directory
+fully gone, both CLAUDE.md passages read correctly in past tense.
+
+Task 2: in progress.
