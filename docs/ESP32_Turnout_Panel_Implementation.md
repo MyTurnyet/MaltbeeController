@@ -283,11 +283,13 @@ submission clears that turnout's assigned address.
 
 ## Multi-Panel Presence and Node ID Collisions
 
-**Decision (2026-08-30):** every panel publishes two MQTT topics on
-connect — `panel/<nodeId>/status` (`"online"`/`"offline"`) and
-`panel/<nodeId>/mac` (the panel's own MAC, last 4 hex digits) — so a
-technician with any MQTT client can see which panels are up and which
-physical panel currently claims a given node ID.
+**Decision (2026-08-30, heartbeat redesign 2026-09-06 — sub-project
+#9b):** every panel publishes two MQTT topics — `panel/<nodeId>/status`
+(`"online"`/`"offline"`) and `panel/<nodeId>/mac` (the panel's own MAC,
+last 4 hex digits) — immediately on connect **and again every 30 seconds
+while connected**, so a technician with any MQTT client can see which
+panels are up and which physical panel currently claims a given node ID.
+Neither topic is retained (see "Why not retained" below).
 
 **If two panels are ever accidentally commissioned with the same node
 ID**, each one detects the other by watching its own `mac` topic: seeing
@@ -297,7 +299,8 @@ stop working and every LED falls back to the same blinking
 "unconfirmed/disconnected" state already used when MQTT is down. This
 looks identical to a lost network connection at a glance; check the
 serial log (`pio device monitor`) for `"NodeId collision detected"` to
-tell the two apart.
+tell the two apart. Detection can take up to 30 seconds (the heartbeat
+interval) from the moment both panels are simultaneously connected.
 
 **Two things still work during a collision lockout, so you are never
 stuck:**
@@ -308,14 +311,32 @@ stuck:**
   since it reads a dedicated input (GPIO0) that collision suppression
   never touches.
 
-**If you decommission a panel or reassign its node ID to a different
-physical board**, the new panel's *first* boot may briefly show a false
-collision — the old panel's MAC is still sitting in the retained
-`panel/<nodeId>/mac` topic from before. This clears itself automatically:
-the new panel's own presence announcement overwrites the stale claim on
-that same boot, so a second boot (or the automatic reconnect that follows
-a dropped WiFi/MQTT session) comes up clean. No broker administration or
-manual topic-clearing is ever required.
+**Why not retained (sub-project #9b):** the topics above were originally
+retained, and each panel's MQTT client ID was derived from its `nodeId` —
+so two colliding panels shared a client ID, and MQTT's broker-enforced
+duplicate-`clientId` behavior meant they could never be connected at the
+same time (each new connection kicked the other off). Retention was the
+only way the disconnected panel's last claim stayed on the broker for the
+other to read on its next connect. Loco2MQTT (sub-project #9a) ignores
+the retained flag entirely, so that mechanism went silently dead against
+it. #9b fixed this at the root: the MQTT client ID now derives from the
+panel's own MAC instead, so two colliding panels get distinct client IDs
+and both stay connected simultaneously — and since both are now alive at
+once and heartbeating every 30 seconds, each observes the other's live
+publish without needing retention at all. **Do not revert either topic's
+retained flag to `true` or revert the client ID back to a `nodeId`-derived
+string — both are required together for detection to work against
+Loco2MQTT.**
+
+**Known, accepted limitation — from the original #2d-a design, no longer
+applicable against Loco2MQTT:** decommissioning a panel or reassigning its
+node ID used to risk one false-positive collision on the replacement's
+first boot, because a stale *retained* MAC claim could sit on the broker
+after the old panel stopped publishing. Since #9b's topics are no longer
+retained, this exact scenario can no longer occur — there's nothing left
+on the broker for the replacement to mistakenly observe once the old panel
+is actually gone. See `CLAUDE.md`'s "Presence + collision detection"
+section for the full current design and its remaining known limitations.
 
 ---
 
@@ -595,6 +616,13 @@ flash on power-up. Mitigate by configuring outputs before anything else:
       correctly.
 
 ## Suggested milestones (all shipped — kept for history)
+
+*Section and class names referenced below are the pre-implementation
+originals (e.g. "JMRI Communication (MQTT)", `JmriCommandEncoder`,
+`JmriFeedbackDecoder`) — this milestone list is left as it was written and
+not updated for later renames (`Loco2MQTT Communication (MQTT)` as of
+sub-project #9c, `TopicScheme`/`PayloadCodec` as actually shipped). See the
+current sections above for what these became.*
 
 Mirroring the TDD-first approach used for the Mega/LocoNet system:
 

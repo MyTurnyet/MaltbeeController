@@ -198,10 +198,10 @@ it's the only path once panels are deployed.
    "Wireless Setup Access Point" section).
 4. A captive-portal prompt should appear automatically (or navigate to
    any HTTP address — all DNS is redirected). Confirm the form pre-fills
-   already-commissioned values (node ID, SSID, channel names) — but never
-   the real WiFi password, which should always show blank.
-5. Submit a change (e.g. a new channel name) and confirm the panel reboots
-   and applies it.
+   already-commissioned values (node ID, SSID, channel addresses) — but
+   never the real WiFi password, which should always show blank.
+5. Submit a change (e.g. a new channel address) and confirm the panel
+   reboots and applies it.
 6. Confirm normal turnout operation and buttons are completely unaffected
    by being in this mode — while the AP is up, turnout control is
    intentionally suspended (see `BootMode::WirelessSetup` in
