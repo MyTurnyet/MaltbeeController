@@ -5,25 +5,28 @@
 **Implemented and merged to `main`.** This document originally captured the
 hardware design and software plan worked out in a ChatGPT conversation
 (2026-07-21); since then all 6 "Suggested milestones" below have shipped —
-matrix scanning, LED-pair driving, ESP32 hardware adapters, MQTT/JMRI
-transport, the `src/esp32/main.cpp` composition root, wireless commissioning,
+matrix scanning, LED-pair driving, ESP32 hardware adapters, MQTT transport,
+the `src/esp32/main.cpp` composition root, wireless commissioning,
 multi-panel presence/collision detection, and identify-blink are all
 programming-complete (see `CLAUDE.md` for the authoritative, currently-
 maintained architecture description — this doc is kept for the hardware
-design rationale, wiring tables, and JMRI topic scheme, which haven't
-changed). Only the physical hardware bring-up pass remains — see
-`docs/HARDWARE_BRINGUP_CHECKLIST.md`.
+design rationale and wiring tables, which haven't changed; its MQTT/topic
+content was rewritten in sub-project #9c to match the current Loco2MQTT
+design after sub-project #9a replaced JMRI). Only the physical hardware
+bring-up pass remains — see `docs/HARDWARE_BRINGUP_CHECKLIST.md`.
 
-The JMRI side of the integration — translating the MQTT command/state topics
-below into real JMRI `Turnout` objects — is implemented as a Jython startup
-script, `jmri/panel_mqtt_turnout_bridge.py`. See "JMRI-side bridge script"
-under "JMRI Communication (MQTT)" below.
+The panel talks directly to Loco2MQTT, a companion device that bridges
+LocoNet to MQTT via its own on-device broker — see "Loco2MQTT Communication
+(MQTT)" below. The original design (JMRI over MQTT via an external broker
+and a JMRI-side bridge script, `jmri/panel_mqtt_turnout_bridge.py`) was
+replaced in sub-project #9a and that script was removed in sub-project #9c.
 
 **Note on class names below:** the "Suggested per-turnout config" and
 `MqttJmriTurnoutCommandAdapter`/`MqttJmriFeedbackSource`/`JmriCommandEncoder`/
 `JmriFeedbackDecoder` names in this doc were the pre-implementation proposal.
-The classes that actually shipped are named `JmriTurnoutCommandAdapter` and
-`JmriFeedbackSource` (`lib/McsEsp32/src/adapters/`), with the topic/payload
+The classes that actually shipped were named `JmriTurnoutCommandAdapter` and
+`JmriFeedbackSource` (renamed to `Loco2MqttTurnoutCommandAdapter`/
+`Loco2MqttFeedbackSource` in sub-project #9a), with the topic/payload
 construction factored into standalone `TopicScheme` and `PayloadCodec` classes
 (`lib/McsEsp32/src/domain/`) rather than separate encoder/decoder classes —
 same native-testable-core-plus-thin-adapter shape as proposed, different
@@ -37,10 +40,10 @@ described in `internal_documents/MaltBee_Control_System_Architecture_and_Roadmap
 | | Mega 2560 panel (existing) | ESP32 panel (this doc) |
 |---|---|---|
 | MCU | Arduino Mega 2560 | ESP32-WROOM-32 (ELEGOO dev board) |
-| Turnout command transport | LocoNet (direct to DR5000) | Wi-Fi (MQTT) to JMRI |
+| Turnout command transport | LocoNet (direct to DR5000) | Wi-Fi (MQTT) to Loco2MQTT |
 | Input wiring | Discrete pins per button | 3×4 matrix (7 pins for 12 buttons) |
 | LED wiring | Discrete pins per indicator LED | 1 GPIO per red/green pair (12 pins for 24 LEDs) |
-| Feedback | LocoNet feedback (Milestone 10) | JMRI-confirmed state via MQTT (this doc) — LEDs reflect JMRI's reported state, not just what was commanded |
+| Feedback | LocoNet feedback (Milestone 10) | Loco2MQTT-confirmed state via MQTT (this doc) — LEDs reflect Loco2MQTT's reported state, not just what was commanded |
 
 **Decision (2026-07-21):** this stays in-repo as a second PlatformIO
 environment, reusing the Arduino-independent domain layer (`Button`,
@@ -59,12 +62,12 @@ boards. Each turnout on a panel gets:
 
 - One momentary pushbutton
 - One red LED + one green LED
-- An MQTT command sent to JMRI when the button is pressed
-- LEDs that show JMRI's **confirmed** state for that turnout — updated only once
-  JMRI publishes the resulting state back over MQTT (not optimistically on
-  button press), and updated the same way when the turnout changes for any
-  other reason (another panel, PanelPro, a dispatcher) — see "JMRI
-  Communication (MQTT)" below
+- An MQTT command sent to Loco2MQTT when the button is pressed
+- LEDs that show Loco2MQTT's **confirmed** state for that turnout — updated
+  only once Loco2MQTT publishes the resulting state back over MQTT (not
+  optimistically on button press), and updated the same way when the
+  turnout changes for any other reason (another panel, another controller,
+  physical feedback) — see "Loco2MQTT Communication (MQTT)" below
 
 Design goal: maximize turnout controls per ESP32 while keeping boot reliable and
 USB available for programming/debugging.
@@ -77,7 +80,7 @@ USB available for programming/debugging.
 
 ELEGOO ESP32 Development Board:
 - ESP32-WROOM-32, USB-C, CP2102 USB-to-serial
-- Wi-Fi used continuously to talk to JMRI
+- Wi-Fi used continuously to talk to Loco2MQTT
 - USB kept connected/available for programming and serial debugging
 
 ### Per-turnout panel components
@@ -231,7 +234,7 @@ Because the pair always shows one color or the other, there's no way to show
 - Do not feed 5V/VIN externally while also powered via USB unless the board's
   power-input behavior has been verified.
 - This ESP32 does **not** power turnout motors/decoders — it only handles
-  button input, LED indication, and Wi-Fi/JMRI communication.
+  button input, LED indication, and Wi-Fi/Loco2MQTT communication.
 
 ---
 
@@ -247,8 +250,8 @@ configured, or an already-commissioned panel a technician wants to
 reconfigure. No extra wiring is needed; the BOOT button is already
 present on the board. A factory-fresh panel does **not** automatically
 open the AP on its own; without the BOOT-button hold it boots waiting for
-bench-serial commissioning instead (see "JMRI Communication (MQTT)" and
-the bench-serial commissioning design for that path).
+bench-serial commissioning instead (see "Loco2MQTT Communication (MQTT)"
+and the bench-serial commissioning design for that path).
 
 While the setup AP is open, all 12 LED pairs flash green/red together at
 the same fast rate used for MQTT identify-blink (`LedPairDriver::setIdentifying()`,
@@ -273,8 +276,8 @@ directly for a network that isn't listed.
 
 The panel's own current WiFi password is never displayed by the setup
 form — a blank password field on submission keeps the existing password
-unchanged. Turnout JMRI name fields work the opposite way: a blank field on
-submission clears that turnout's assigned name.
+unchanged. Turnout address fields work the opposite way: a blank field on
+submission clears that turnout's assigned address.
 
 ---
 
@@ -321,7 +324,7 @@ manual topic-clearing is ever required.
 **Decision (2026-08-30):** publish any message to `panel/<nodeId>/identify`
 to make that one physical panel's LEDs flash so you can find it among
 several deployed panels — useful when verifying commissioning worked,
-debugging via JMRI/MQTT tooling, or telling apart two panels mid-collision
+debugging via MQTT tooling, or telling apart two panels mid-collision
 (see above; identify keeps working even during a collision lockout, since
 that's exactly the situation where you need to tell two panels apart).
 
@@ -349,134 +352,107 @@ empty, non-retained message).
 
 ---
 
-## JMRI Communication (MQTT)
+## Loco2MQTT Communication (MQTT)
 
-**Decision (2026-07-21):** the ESP32 talks to JMRI over MQTT, both to send
-turnout commands and to receive turnout state-change notifications. MQTT was
-chosen over JMRI's WebSocket JSON server, the WiThrottle/simple TCP protocol,
-and HTTP polling because it gives a persistent, push-based connection for
-feedback (no polling) with a comparatively simple client library on the ESP32
-side.
+**Decision (2026-07-21, migrated to Loco2MQTT 2026-09-06 — sub-project
+#9a):** the ESP32 talks directly to Loco2MQTT — a companion ESP32 device
+that bridges the layout's LocoNet bus to MQTT via its own on-device broker
+— both to send turnout commands and to receive turnout state-change
+notifications. This replaced an earlier design where the panel talked to
+JMRI over MQTT via an external broker and a JMRI-side bridge script; that
+path is fully retired (`jmri/panel_mqtt_turnout_bridge.py` was removed in
+sub-project #9c). MQTT itself was chosen over JMRI's WebSocket JSON server,
+the WiThrottle/simple TCP protocol, and HTTP polling because it gives a
+persistent, push-based connection for feedback (no polling) with a
+comparatively simple client library on the ESP32 side — that reasoning
+carried over unchanged to the Loco2MQTT design.
 
 This reuses the existing Mega/LocoNet application layer almost unchanged —
 `TurnoutCommandPort`, `TurnoutControl`, and `TurnoutFeedback`
 (`lib/McsCore/src/ports/TurnoutCommandPort.h`,
 `lib/McsCore/src/application/TurnoutControl.h`) are already transport-agnostic.
-The ESP32-specific work is new adapters that plug into those same interfaces,
-mirroring the pattern already used for LocoNet
+The ESP32-specific work is adapters that plug into those same interfaces,
+mirroring the pattern already used for LocoNet on the Mega side
 (`MrrwaLocoNetTurnoutAdapter` / `LocoNetFeedbackDecoder`):
 
-- **`MqttJmriTurnoutCommandAdapter`** implements `TurnoutCommandPort::send()`.
-  Looks up the turnout's `jmriSystemName` from the config table and publishes
-  the command over MQTT. The topic/payload construction is factored into a
-  pure, native-testable `JmriCommandEncoder` so only the actual
-  `mqttClient.publish()` call is untestable off-hardware.
-- **`MqttJmriFeedbackSource`** — a poll-shaped port matching
+- **`Loco2MqttTurnoutCommandAdapter`** (`lib/McsEsp32/src/adapters/`)
+  implements `TurnoutCommandPort::send()`. Looks up the turnout channel's
+  configured LocoNet address from `NodeConfig::channelTurnoutAddresses` and
+  publishes the command over MQTT. Topic construction is factored into a
+  pure, native-testable `TopicScheme` class (`lib/McsEsp32/src/domain/`) so
+  only the actual MQTT `publish()` call is untestable off-hardware.
+- **`Loco2MqttFeedbackSource`** — a poll-shaped port matching
   `LocoNetFeedbackSource::poll()`. The MQTT client library's subscribe
-  callback pushes incoming `{topic, payload}` messages into a small bounded
-  queue; `poll()` drains one per call, non-blocking.
-- **`JmriFeedbackDecoder::decode()`** — native-testable, mirrors
-  `LocoNetFeedbackDecoder`. Matches an incoming topic's system name against
-  the config table to recover the numeric `address`, and maps the payload
-  string to `TurnoutPosition`, producing a `TurnoutFeedbackLookup` exactly
-  like the LocoNet decoder does.
+  callback pushes incoming `{topic, payload}` messages into a small queue;
+  `poll()` drains one per call, non-blocking.
+- **`PayloadCodec`** (`lib/McsEsp32/src/domain/`) — native-testable,
+  encodes/decodes the `CLOSED`/`THROWN` payload words.
 - **12× `TurnoutControl`**, unmodified, one per turnout, each wired to its
   button pair, LED-pair indicator, and the shared
-  `MqttJmriTurnoutCommandAdapter`.
+  `Loco2MqttTurnoutCommandAdapter`.
 
 ### Data flow
 
-**Command (panel → JMRI):** button press → `TurnoutControl::update()` (already
-existing, unmodified) → `turnoutCommandPort_.send(address, position)` →
-`MqttJmriTurnoutCommandAdapter` publishes over MQTT. `update()` never touches
-the indicator, so the LED does not change at this point.
+**Command (panel → Loco2MQTT):** button press → `TurnoutControl::update()`
+(unmodified) → `turnoutCommandPort_.send(address, position)` →
+`Loco2MqttTurnoutCommandAdapter` publishes to `loconet/turnout/<address>/set`.
+`update()` never touches the indicator, so the LED does not change at this
+point.
 
-**Feedback (JMRI → panel):** JMRI publishes the turnout's new state on MQTT —
-whether that's because of this panel's command or because it changed for any
-other reason. The ESP32 (subscribed to turnout state topics, one wildcard
-subscription covering all 12 turnouts is simplest) queues the message via
-`MqttJmriFeedbackSource`; each `loop()` the composition root drains the queue,
-decodes each entry with `JmriFeedbackDecoder`, and on a match calls that
-turnout's `TurnoutControl::applyFeedback(feedback)` — which is the only place
-`indicator_.display()` gets called. Because `TurnoutControl` is reused
-unmodified, "wait for MQTT confirmation before updating the LED" and "reflect
-changes made elsewhere" both fall out of the existing class for free — no new
-domain/application logic needed.
+**Feedback (Loco2MQTT → panel):** Loco2MQTT publishes a turnout's state on
+`loconet/turnout/<address>/state` — whether that's because of this panel's
+command or because it changed for any other reason on the layout (another
+panel, a physical throw with feedback) — and re-publishes every known
+turnout's state unconditionally every 30 seconds as its own workaround for
+not honoring the MQTT retained flag. The ESP32 (subscribed to each
+configured turnout's own state topic) queues the message via
+`Loco2MqttFeedbackSource`; each `loop()` the composition root drains the
+queue and calls the matching turnout's `TurnoutControl::applyFeedback(feedback)`
+— which is the only place `indicator_.display()` gets called. A repeated
+identical feedback message (from the 30-second re-publish) is a harmless
+no-op here.
 
 ### Connection loss and reconnection
 
-`TurnoutIndicator::clear()` (`thrownIndicator_.off(); closedIndicator_.off();`
-— already exists, currently unused by `TurnoutControl`) is the hook for "no
-confirmed state." The ESP32 LED-pair driver (Milestone 2/3) treats "both off"
-as blink mode, showing whichever color it last actively displayed (or a
-configured default if it has never displayed anything, e.g. at first boot) —
-see State Model below.
+Unchanged from the original design: `TurnoutIndicator::clear()` is the hook
+for "no confirmed state," and the ESP32 LED-pair driver treats "both off"
+as blink mode. Startup, disconnect, and reconnect all behave exactly as
+described below in "Startup sequence" — none of that logic depended on
+which broker/backend was on the other end.
 
-- **Startup:** before connecting to Wi-Fi/MQTT, the composition root calls
-  `clear()` on all 12 `TurnoutIndicator`s, so the panel boots with every LED
-  blinking a default color rather than an undefined GPIO level.
-- **On disconnect:** when the composition root detects the MQTT connection has
-  dropped, it calls `clear()` on all 12 `TurnoutIndicator`s — every LED starts
-  blinking its last-known color, signaling "not currently confirmed."
-- **On reconnect:** the ESP32 resubscribes to the feedback topic(s); LEDs stay
-  in blink mode until each turnout's state is republished by JMRI.
+**State publishes are not retained** — this is now inherent to Loco2MQTT's
+broker, which ignores the retained flag entirely (rather than a deliberate
+choice on the JMRI-bridge side, as it was originally). A panel that
+reconnects mid-session stays in blink/unconfirmed state for a given turnout
+until that turnout's state next actually changes, or until the next
+30-second unconditional re-publish arrives (see "Data flow" above) —
+whichever comes first.
 
-**Resolved:** state is published **on change only, not retained** —
-`jmri/panel_mqtt_turnout_bridge.py` (see below) calls `mqtt.publish(topic,
-payload)` with no retain flag. A panel that reconnects mid-session stays in
-blink/unconfirmed state for a given turnout until that turnout's state next
-actually changes (a button press from any panel, another controller, or a
-physical throw with feedback) — there is no "replay current state on
-resubscribe" behavior today. If that turns out to be a problem in practice,
-the fix belongs on the JMRI side (a retained publish, or a one-time
-publish-current-state pass at script startup), not the panel side.
+### Broker discovery
 
-### JMRI-side bridge script
-
-`jmri/panel_mqtt_turnout_bridge.py` is the concrete implementation of the
-JMRI end of this design — a Jython startup script that connects the topics
-above to JMRI's real `Turnout` objects (no shadow "MT" turnouts, no Logix
-needed). Install it via Edit → Preferences → Startup → Add → "Jython
-script", listed *above* any panel file in the startup order — it discovers
-which turnouts to bridge dynamically, by scanning for every already-
-registered LocoNet-backed turnout (system name starting `LT`) at the moment
-the script runs, so the panel file that creates those turnouts must load
-first. It also requires the MQTT system connection already configured under
-Edit → Preferences → Connections with "MQTT Channel" left blank, so the
-topics on the wire are exactly `track/turnout/<name>` and
-`track/turnout/<name>/state` as described above.
-
-Behavior: an incoming command is applied to the matching turnout via
-`setCommandedState()`, then the resulting state is published back
-unconditionally — even when the command was a no-op, which is exactly the
-case where a panel most needs telling it's out of sync (JMRI's own
-`PropertyChangeSupport` only fires on an actual state *change*, so a no-op
-command wouldn't otherwise generate any state publish at all). Independently,
-a `PropertyChangeListener` on every discovered turnout republishes its
-`KnownState` on every change regardless of cause — this panel's command,
-another panel, PanelPro, a dispatcher, or a physical throw with feedback —
-which is what makes "LEDs reflect changes made elsewhere" (see "Data flow"
-above) fully live rather than only working for panel-originated commands.
-Command handling runs on its own plain thread rather than the MQTT client's
-callback thread, since a synchronous `publish()` from inside the callback
-can deadlock it.
+Loco2MQTT advertises itself via mDNS as `loco2mqtt.local`. The panel
+resolves this once at boot (`EspMdnsResolver`/`BrokerAddressResolver`,
+`lib/McsEsp32/src/`), falling back to a manually-configured broker
+host/port if mDNS resolution fails. See `CLAUDE.md`'s "Loco2MQTT turnout
+bridge (sub-project #9a)" section for the full contract and known
+limitations (no periodic re-resolution after boot, etc.).
 
 ---
 
 ## Software responsibilities
 
 1. Connect to Wi-Fi.
-2. Connect to / communicate with the JMRI server.
+2. Connect to / communicate with Loco2MQTT.
 3. Scan the 3×4 button matrix.
 4. Debounce button presses.
 5. Detect a new press (not repeated triggers while held).
 6. Map matrix position → turnout identifier.
 7. Toggle / request the appropriate turnout state.
-8. Send the turnout command to JMRI over MQTT.
-9. Subscribe to JMRI's turnout state topic(s) and decode incoming feedback.
-10. Store/retrieve the last JMRI-confirmed turnout state (not the commanded
-    state — see "JMRI Communication (MQTT)" above).
-11. Drive the LED GPIO: HIGH for green, LOW for red, only once JMRI confirms
+8. Send the turnout command to Loco2MQTT over MQTT.
+9. Subscribe to Loco2MQTT's turnout state topic(s) and decode incoming feedback.
+10. Store/retrieve the last Loco2MQTT-confirmed turnout state (not the commanded
+    state — see "Loco2MQTT Communication (MQTT)" above).
+11. Drive the LED GPIO: HIGH for green, LOW for red, only once Loco2MQTT confirms
     the state — never optimistically on button press.
 12. Blink the last-known/default color while a turnout's state is
     unconfirmed (before first feedback, or during a connection outage).
@@ -491,30 +467,31 @@ struct TurnoutConfig {
     int matrixRow;
     int matrixColumn;
     int ledGpio;
-    const char* jmriSystemName;
+    int locoNetAddress;
 };
 
 TurnoutConfig turnouts[] = {
-    {1, 0, 0, 4,  "LT1"},
-    {2, 0, 1, 13, "LT2"},
-    {3, 0, 2, 14, "LT3"},
-    {4, 0, 3, 16, "LT4"},
-    {5, 1, 0, 17, "LT5"},
-    {6, 1, 1, 22, "LT6"},
-    {7, 1, 2, 23, "LT7"},
-    {8, 1, 3, 25, "LT8"},
-    {9, 2, 0, 26, "LT9"},
-    {10, 2, 1, 27, "LT10"},
-    {11, 2, 2, 32, "LT11"},
-    {12, 2, 3, 33, "LT12"}
+    {1, 0, 0, 4,  5},
+    {2, 0, 1, 13, 6},
+    {3, 0, 2, 14, 7},
+    {4, 0, 3, 16, 8},
+    {5, 1, 0, 17, 9},
+    {6, 1, 1, 22, 10},
+    {7, 1, 2, 23, 11},
+    {8, 1, 3, 25, 12},
+    {9, 2, 0, 26, 13},
+    {10, 2, 1, 27, 14},
+    {11, 2, 2, 32, 15},
+    {12, 2, 3, 33, 16}
 };
 ```
 
-`jmriSystemName` values above are placeholders — must be set to match the real
-layout's JMRI turnout names before deployment. `jmriSystemName` is also the
-key used to derive both the MQTT command topic and the state/feedback topic
-for that turnout (exact topic scheme still TBD — see Open Questions) — no
-separate topic fields are needed in this struct.
+`locoNetAddress` values above are placeholders — must be set to match the
+real layout's LocoNet turnout addresses before deployment. `locoNetAddress`
+is also the value substituted into the MQTT command topic
+(`loconet/turnout/<address>/set`) and state topic
+(`loconet/turnout/<address>/state`) for that turnout — no separate topic
+fields are needed in this struct.
 
 ### State model
 
@@ -535,8 +512,8 @@ HIGH/LOW at the last actively-displayed color (or a configured default color
 if none has ever been displayed, e.g. at first boot). This is driven entirely
 by the ESP32 LED-pair driver (Milestone 2) reacting to `TurnoutIndicator`
 calling `off()` on both the thrown and closed sides (i.e. `clear()`) — see
-"Connection loss and reconnection" under JMRI Communication above for when
-that happens. `TurnoutState`/`UNKNOWN` here is purely an ESP32 LED-driver
+"Connection loss and reconnection" under Loco2MQTT Communication above for
+when that happens. `TurnoutState`/`UNKNOWN` here is purely an ESP32 LED-driver
 concept — it does not exist in and does not need to be added to the shared
 domain `TurnoutPosition` enum (`Closed`/`Thrown` only), since `TurnoutControl`
 never calls `display()` until real feedback arrives.
@@ -556,11 +533,12 @@ flash on power-up. Mitigate by configuring outputs before anything else:
 2. Configure matrix column inputs.
 3. Set up matrix scanning.
 4. Connect to Wi-Fi.
-5. Connect to JMRI over MQTT; subscribe to turnout state topic(s).
-6. Wait for JMRI to publish confirmed state for each turnout (each arrival
-   calls that turnout's `TurnoutControl::applyFeedback()`, which stops that
-   LED's blinking and shows the confirmed color) — turnouts JMRI hasn't
-   reported yet keep blinking.
+5. Connect to Loco2MQTT over MQTT (resolved via mDNS, falling back to a
+   manually-configured broker host); subscribe to turnout state topic(s).
+6. Wait for Loco2MQTT to publish confirmed state for each turnout (each
+   arrival calls that turnout's `TurnoutControl::applyFeedback()`, which
+   stops that LED's blinking and shows the confirmed color) — turnouts not
+   yet reported keep blinking.
 
 ---
 
@@ -579,30 +557,38 @@ flash on power-up. Mitigate by configuring outputs before anything else:
 
 ## Open questions / follow-ups
 
-- [x] JMRI communication protocol/transport — decided 2026-07-21: MQTT (see
-      JMRI Communication (MQTT) above).
+- [x] Turnout MQTT communication protocol/transport — decided 2026-07-21:
+      MQTT; migrated 2026-09-06 (sub-project #9a) from an external broker +
+      JMRI-side bridge script to Loco2MQTT's on-device broker (see
+      "Loco2MQTT Communication (MQTT)" above).
 - [x] `UNKNOWN`-state handling — decided 2026-07-21: blink last-known/default
-      color (see State Model above).
-- [x] Exact JMRI MQTT topic structure and payload format — implemented as
-      `track/turnout/<jmri system name>` (command) and
-      `track/turnout/<jmri system name>/state` (state), payload `"THROWN"` or
-      `"CLOSED"` in both directions. See `TopicScheme`/`PayloadCodec`
-      (`lib/McsEsp32/src/domain/`) on the panel side and
-      `jmri/panel_mqtt_turnout_bridge.py` on the JMRI side.
-- [x] Whether JMRI's MQTT connection publishes turnout state as retained —
-      resolved above under "Connection loss and reconnection": on-change
-      only, not retained.
-- [x] MQTT broker — confirmed running on the layout network as of 2026-09-02,
-      with two real ESP32 panels already commissioned against it.
-- [x] Real JMRI system names for each turnout — assigned; tracked in JMRI's
-      own panel file, not documented here (the bridge script needs no such
-      list maintained — it discovers turnouts dynamically — and each panel's
-      per-channel JMRI name is set during commissioning, `turnout N name
-      <jmriSystemName>`, not hardcoded in `main.cpp`).
+      color (see State Model above). Unaffected by the #9a migration.
+- [x] Exact MQTT topic structure and payload format — implemented as
+      `loconet/turnout/<address>/set` (command) and
+      `loconet/turnout/<address>/state` (state), payload `"THROWN"` or
+      `"CLOSED"` in both directions (unchanged from the original design's
+      payload words — only the topic prefix and the value keying the
+      address changed). See `TopicScheme`/`PayloadCodec`
+      (`lib/McsEsp32/src/domain/`).
+- [x] Whether turnout state is published as retained — resolved above under
+      "Connection loss and reconnection": on-change plus an unconditional
+      30-second re-publish, never retained (Loco2MQTT's broker ignores the
+      retained flag entirely).
+- [x] MQTT broker — as of sub-project #9a, the broker is Loco2MQTT itself
+      (a companion ESP32 device with its own on-device broker), discovered
+      via mDNS (`loco2mqtt.local`) with a manual-host fallback. No longer a
+      separate Mosquitto-style broker + JMRI.
+- [x] Real LocoNet turnout addresses for each channel — assigned during
+      commissioning (`turnout N address <address>`), not hardcoded in
+      `main.cpp` — same pattern the original JMRI-name assignment used,
+      just an integer instead of a system-name string.
 - [x] Verify GPIO 4 boot behavior on the actual ELEGOO board — confirmed
       2026-09-02: turnout 12 wired and working (throws/closes correctly,
       LEDs correct), and the board has been power-cycled multiple times
       with no stray flash/glitch on turnout 12's LED pair during boot.
+      (This verification predates the #9a migration and was against the
+      original JMRI setup — see `docs/HARDWARE_BRINGUP_CHECKLIST.md` for
+      the current bring-up status.)
 - [x] Confirm ESP32 board power behavior before ruling out external 5V/VIN —
       confirmed 2026-09-02: this board runs exclusively off 5V/VIN with no
       USB connected (and none intended for permanent deployment), working
