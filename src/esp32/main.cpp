@@ -163,7 +163,7 @@ GatedDigitalInput gatedButtons[12] = {
 
 WiFiLink wifiLink(systemClock, RETRY_INTERVAL_MS);
 
-const std::string mqttClientId = "maltbee-esp32-" + std::to_string(runningConfig.nodeId);
+const std::string mqttClientId = "maltbee-esp32-" + ownMac.lastFourHexDigits();
 const std::string mqttWillTopic = PresenceTopics::statusTopic(runningConfig.nodeId);
 const std::string mqttWillMessage = "offline";
 
@@ -173,7 +173,7 @@ EspMdnsResolver mdnsResolver("maltbee-panel-" + ownMac.lastFourHexDigits());
 BrokerAddressResolver brokerAddressResolver(mdnsResolver);
 
 NodeIdentityGuard identityGuard(ownMac.lastFourHexDigits());
-MqttPresenceAnnouncer presenceAnnouncer(mqttLink, runningConfig.nodeId, ownMac.lastFourHexDigits());
+MqttPresenceAnnouncer presenceAnnouncer(mqttLink, systemClock, runningConfig.nodeId, ownMac.lastFourHexDigits());
 IdentifyModeTimer identifyTimer(systemClock, IDENTIFY_DURATION_MS);
 
 Loco2MqttTurnoutCommandAdapter turnoutCommandPort(mqttLink, runningConfig.channelTurnoutAddresses);
