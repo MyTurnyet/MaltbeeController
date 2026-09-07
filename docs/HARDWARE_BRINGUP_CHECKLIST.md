@@ -107,33 +107,32 @@ detection, identify-blink all layered on top of basic turnout control) —
 work through the sections below roughly in order, since later ones
 assume earlier ones already work.
 
-**Status as of 2026-09-02:** two real ESP32 boards are built and
-commissioned against a live MQTT broker/JMRI. Confirmed working: 2.1
-(broker running, real JMRI names assigned), 2.2 (flash/boot/commissioning),
-2.3 (button → LED → JMRI turnout control, including turnout 12/GPIO4 —
-wired, working, and power-cycled multiple times with no boot-time LED
-glitch), and 2.4 (the BOOT-button wireless setup gesture, including
-joining the now-open setup AP and submitting the form). One board also
-runs entirely off 5V/VIN with no USB connected, confirming the
-external-power open question. **Still outstanding:** 2.5
-(presence/collision — feasible now with two boards, just not yet
-exercised) and 2.6 (identify-blink).
+**Status as of 2026-09-02** (predates sub-project #9a's JMRI→Loco2MQTT
+migration — this verification was against the original JMRI setup and has
+not been re-run against Loco2MQTT; §2.1/§2.2/§2.3 below now describe the
+current Loco2MQTT-based procedure, not what was actually exercised on
+this date): two real ESP32 boards were built and commissioned against a
+live MQTT broker/JMRI. Confirmed working: 2.1 (broker running, real JMRI
+names assigned), 2.2 (flash/boot/commissioning), 2.3 (button → LED → JMRI
+turnout control, including turnout 12/GPIO4 — wired, working, and
+power-cycled multiple times with no boot-time LED glitch), and 2.4 (the
+BOOT-button wireless setup gesture, including joining the now-open setup
+AP and submitting the form). One board also ran entirely off 5V/VIN with
+no USB connected, confirming the external-power open question. **Still
+outstanding:** 2.5 (presence/collision — feasible now with two boards,
+just not yet exercised) and 2.6 (identify-blink), plus **re-verifying
+2.1-2.3 against the current Loco2MQTT procedure**, which has not been
+tested on real hardware yet.
 
 ### 2.1 Prerequisites
 
-- An MQTT broker reachable from the ESP32's WiFi network (Mosquitto or
-  similar), with JMRI's MQTT connection configured against it (MQTT Channel
-  left blank in JMRI's connection preferences).
-- `jmri/panel_mqtt_turnout_bridge.py` installed in JMRI as a Startup script
-  (Edit → Preferences → Startup → Add → "Jython script"), listed *above*
-  any panel file that creates the LocoNet turnouts it bridges — it
-  discovers turnouts to bridge at script-run time by scanning for every
-  registered `LT`-prefixed turnout, so they need to already exist by then.
-  Restart JMRI after adding it; the System Console should log `"Panel <->
-  MQTT <-> turnout bridge active for N turnouts"` on startup.
-- JMRI turnout system names decided for at least a few channels (the
-  panel doesn't require all 12 to be configured to boot — partial
-  commissioning is explicitly supported).
+- A Loco2MQTT device (see its own project documentation) running and
+  reachable from the ESP32 panel's WiFi network — either discoverable via
+  mDNS as `loco2mqtt.local`, or its IP/port known for manual configuration
+  as a fallback.
+- LocoNet turnout addresses decided for at least a few channels (the panel
+  doesn't require all 12 to be configured to boot — partial commissioning
+  is explicitly supported).
 - The ELEGOO ESP32 board wired per `docs/ESP32_Turnout_Panel_Implementation.md`'s
   GPIO Assignment section (3×4 button matrix, 12 LED pairs) — wire
   however many turnouts you're bringing up. The wireless-setup gesture
@@ -172,13 +171,12 @@ assuming the hardware is at fault.
 
 ### 2.3 Matrix buttons, LEDs, and turnout control
 
-For each turnout channel you've wired and named in commissioning:
+For each turnout channel you've wired and addressed in commissioning:
 
-- Press its button. LED should update once JMRI confirms the state (not
-  optimistically on press) — expect a brief delay, not instant.
+- Press its button. LED should update once Loco2MQTT confirms the state
+  (not optimistically on press) — expect a brief delay, not instant.
 - Confirm the LED blinks (unconfirmed/disconnected state) if you
-  temporarily stop the MQTT broker, and resumes normal display once it's
-  back.
+  temporarily stop Loco2MQTT, and resumes normal display once it's back.
 - Confirm two different turnouts' buttons don't cross-trigger each other.
 
 ### 2.4 Wireless setup (captive portal)
