@@ -40,4 +40,21 @@ include (correct — Clock lives in McsCore). Confirmed NodeIdentityGuard/
 PresenceTopics and their tests are completely untouched. 42/42 native
 suite, independently re-verified by the controller.
 
-Task 2: in progress.
+Task 2 (main.cpp wiring — unique client ID + heartbeat construction):
+complete (commit 9890edf..cb86b25 [! F], review clean on the SECOND
+attempt — Approved, zero findings. First review attempt returned a false
+Critical ("constructor signature mismatch, missing Clock& parameter")
+that the controller disproved immediately by reading the actual current
+`MqttPresenceAnnouncer.h` directly (confirmed the 4-param constructor
+with `Clock&` genuinely is there) and by having already independently
+re-run `pio run -e esp32dev` twice with BUILD SUCCESS on this exact
+commit — a real signature mismatch would have failed that build, so the
+first reviewer's claim was self-evidently a misread, not a real defect.
+Re-dispatched a fresh reviewer with an explicit instruction to read the
+real file directly rather than trust either party's claim; it did so and
+confirmed the correct 4-parameter signature, approved cleanly. Both
+`pio run -e esp32dev` (BUILD SUCCESS, RAM 17.3%/Flash 83.8%) and
+`pio test -e native` (42/42) independently re-verified by the controller
+before dispatching either review.
+
+## ALL 2 TASKS COMPLETE — proceeding to the final whole-branch review.
