@@ -258,7 +258,7 @@ restarting a second, independent one.
 
 ### 2.7 Done when
 
-- At least a few turnout channels: button → confirmed LED, matching JMRI.
+- At least a few turnout channels: button → confirmed LED, matching Loco2MQTT.
 - Wireless setup (2.4) completes a full commission-and-apply cycle.
 - If you have two boards: collision detection (2.5) fires and clears
   correctly.
