@@ -163,7 +163,7 @@ save
 `save` validates and persists to NVS; `reboot` (or a manual reset) applies
 it. After reboot, confirm the panel connects — watch for MQTT activity on
 your broker (e.g. `mosquitto_sub -t 'panel/#' -v` shows `panel/5/status`
-go retained-`online`, per sub-project #2d-a).
+go `online` — not retained as of sub-project #9b, so if you subscribe right after boot you may briefly see nothing until the next 30s heartbeat).
 
 **If commissioning behaves unexpectedly:** the exact command syntax and
 every response string are in `lib/McsEsp32/src/application/CommissioningSession.cpp`
@@ -223,17 +223,20 @@ to exercise. Reference: `CLAUDE.md`'s "Presence + collision detection"
 section.
 
 1. With one panel commissioned and running, subscribe to `panel/<nodeId>/mac`
-   on your broker and confirm it holds a retained value (the panel's own
-   MAC, last 4 hex digits).
+   on your broker — confirm you see the panel's own MAC (last 4 hex
+   digits) within 30 seconds. As of sub-project #9b this is a periodic
+   heartbeat, not a retained value, so an immediate subscribe right after
+   boot may briefly show nothing until the next heartbeat.
 2. Commission a **second** panel with the **same nodeId** as the first
    (deliberately — this is testing the collision path). Boot it.
-3. Within a few seconds, confirm via serial monitor on *both* panels: the
-   log line `"NodeId collision detected: this panel is <mac>, another
-   panel claiming this node id is <mac>"` — each should report the
-   other's MAC, not its own. This mutual-detection behavior is a
-   consequence of the MQTT broker kicking whichever panel connects second
-   (duplicate `clientId`) and each panel re-announcing on every reconnect
-   — see `CLAUDE.md` if it doesn't happen as described.
+3. Within 30 seconds (the heartbeat interval), confirm via serial monitor
+   on *both* panels: the log line `"NodeId collision detected: this panel
+   is <mac>, another panel claiming this node id is <mac>"` — each should
+   report the other's MAC, not its own. Detection works because each
+   panel's MQTT client ID is derived from its own MAC (sub-project #9b),
+   so colliding panels no longer kick each other off the broker and both
+   stay connected long enough to observe each other's periodic MAC
+   publish — see `CLAUDE.md` if it doesn't happen as described.
 4. Confirm all 12 buttons and turnout feedback stop responding on
    whichever panel(s) show the collision — this is expected suppression,
    not a hang.
