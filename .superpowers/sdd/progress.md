@@ -31,4 +31,13 @@ esp32dev`).
 
 ## Tasks
 
-(none started yet)
+Task 1 (MqttPresenceAnnouncer heartbeat): complete (commit
+04f8e91..a65d896 [^ F], review clean — Approved, zero findings. Reviewer
+confirmed the heartbeat calculation, the timer reset on every publish
+(edge and periodic alike), the `retained=false` change on both topics,
+the new `Clock&` constructor parameter, and the rooted `"ports/Clock.h"`
+include (correct — Clock lives in McsCore). Confirmed NodeIdentityGuard/
+PresenceTopics and their tests are completely untouched. 42/42 native
+suite, independently re-verified by the controller.
+
+Task 2: in progress.
