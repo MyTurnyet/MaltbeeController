@@ -39,4 +39,17 @@ confirmed the script deletion, and confirmed no lib/src/test file appears
 anywhere in the diff. Controller independently verified: `jmri/` directory
 fully gone, both CLAUDE.md passages read correctly in past tense.
 
-Task 2: in progress.
+Task 2 (rewrite docs/ESP32_Turnout_Panel_Implementation.md): complete
+(commit 42dd00f..b8b6a05 [. d], review clean — Approved, zero findings.
+Reviewer confirmed all 12 labeled edits (A-L) byte-for-byte match the
+brief, confirmed only the one permitted file was touched, confirmed
+wiring/GPIO tables and "Suggested milestones" genuinely untouched, and
+independently verified the implementer's self-reported bonus fix (a
+State Model cross-reference broken by Edit H's section rename) is real,
+correctly scoped to exactly one line-pair, and necessary. 1 Minor noted
+(reviewer didn't independently re-run the Step 13 verification grep,
+per its own no-command-re-run instructions) — resolved: controller
+already ran that exact grep directly against this checkout earlier and
+confirmed the same result.
+
+Task 3: in progress.
