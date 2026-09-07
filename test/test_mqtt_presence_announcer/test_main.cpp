@@ -75,3 +75,19 @@ TEST_CASE("update re-announces immediately after a disconnect and reconnect cycl
     REQUIRE(transport.published[2].topic == "panel/5/status");
     REQUIRE(transport.published[3].topic == "panel/5/mac");
 }
+
+TEST_CASE("a heartbeat publish rearms the interval rather than firing every tick")
+{
+    FakeMqttTransport transport;
+    FakeClock clock;
+    MqttPresenceAnnouncer announcer(transport, clock, 5, "AAAA");
+
+    announcer.update(true);
+    clock.advanceBy(MqttPresenceAnnouncer::kHeartbeatIntervalMs);
+    announcer.update(true);
+    clock.advanceBy(1);
+    announcer.update(true);
+    announcer.update(true);
+
+    REQUIRE(transport.published.size() == 4);
+}
