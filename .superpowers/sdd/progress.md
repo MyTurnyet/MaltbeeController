@@ -52,4 +52,19 @@ per its own no-command-re-run instructions) — resolved: controller
 already ran that exact grep directly against this checkout earlier and
 confirmed the same result.
 
-Task 3: in progress.
+Task 3 (rewrite docs/HARDWARE_BRINGUP_CHECKLIST.md + final sanity check):
+complete (commits 05f9631..e8dd3ad, 2 commits [. d, . d], review clean —
+Approved, zero findings. Implementer applied all 3 edits, ran both build
+gates and both grep sweeps, but correctly stopped short of fixing a
+4th stale line (§2.7's "matching JMRI") since it was outside the brief's
+3 listed edits, reporting DONE_WITH_CONCERNS rather than silently
+expanding scope or silently leaving it. Controller independently
+re-verified all of the implementer's claims directly against the
+checkout (build gates unchanged: native 42/42, esp32dev SUCCESS at
+17.3%/83.8%; grep sweep — confirmed the two Part-1 "JMRI" mentions the
+implementer flagged are generic LocoNet-monitoring-tool examples,
+correctly out of scope) and fixed the §2.7 line directly in a small
+follow-up commit. Reviewer confirmed the follow-up fix is narrowly
+scoped and matches the established rewrite pattern.
+
+## ALL 3 TASKS COMPLETE — proceeding to the final whole-branch review.
