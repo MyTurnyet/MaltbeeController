@@ -1,5 +1,6 @@
 #include <Arduino.h>
 
+#include <array>
 #include <string>
 
 #include <nvs_flash.h>
@@ -13,7 +14,9 @@
 #include "adapters/EspMdnsResolver.h"
 #include "adapters/EspUartPort.h"
 #include "adapters/GatedDigitalInput.h"
+#include "adapters/LedPairFlashIndicator.h"
 #include "adapters/LedPairStation.h"
+#include "ports/BootModeIndicator.h"
 #include "adapters/Loco2MqttFeedbackSource.h"
 #include "adapters/Loco2MqttTurnoutCommandAdapter.h"
 #include "adapters/MatrixDigitalInput.h"
@@ -135,6 +138,14 @@ LedPairStation ledStations[12] = {
     LedPairStation({TURNOUT_CONFIGS[11].ledGpio}, systemClock, BLINK_INTERVAL_MS, DEFAULT_LED_COLOR),
 };
 
+const std::array<LedPairDriver*, 12> bootModeLedPairs = {
+    &ledStations[0].driver(),  &ledStations[1].driver(),  &ledStations[2].driver(),
+    &ledStations[3].driver(),  &ledStations[4].driver(),  &ledStations[5].driver(),
+    &ledStations[6].driver(),  &ledStations[7].driver(),  &ledStations[8].driver(),
+    &ledStations[9].driver(),  &ledStations[10].driver(), &ledStations[11].driver(),
+};
+LedPairFlashIndicator<12> bootModeIndicator(bootModeLedPairs);
+
 MatrixDigitalInput matrixButtons[12] = {
     MatrixDigitalInput(matrixScanner, TURNOUT_CONFIGS[0].matrixRow, TURNOUT_CONFIGS[0].matrixColumn),
     MatrixDigitalInput(matrixScanner, TURNOUT_CONFIGS[1].matrixRow, TURNOUT_CONFIGS[1].matrixColumn),
@@ -229,6 +240,8 @@ void setup()
         station.begin();
     }
 
+    bootModeIndicator.show(bootMode);
+
     if (bootMode == BootMode::WirelessSetup)
     {
         const std::string apName = SetupApName::from(ownMac);
@@ -254,6 +267,7 @@ void setup()
 
 void loop()
 {
+    bootModeIndicator.update();
     serialCommissioningAdapter.poll();
     if (serialCommissioningAdapter.rebootRequested())
     {
@@ -266,7 +280,6 @@ void loop()
         captivePortalServer.poll();
         for (auto& ledStation : ledStations)
         {
-            ledStation.setIdentifying(true);
             ledStation.update();
         }
         return;
@@ -340,10 +353,13 @@ void loop()
     // identify activation takes visible effect the same tick it arrives.
     // Merging the two loops would compile and pass every test while
     // silently reintroducing a one-tick activation lag.
-    const bool identifying = identifyTimer.isActive();
-    for (auto& ledStation : ledStations)
+    if (bootMode == BootMode::Normal)
     {
-        ledStation.setIdentifying(identifying);
+        const bool identifying = identifyTimer.isActive();
+        for (auto& ledStation : ledStations)
+        {
+            ledStation.setIdentifying(identifying);
+        }
     }
 
     for (auto& ledStation : ledStations)
