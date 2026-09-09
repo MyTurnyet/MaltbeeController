@@ -37,4 +37,9 @@ DigitalOutput& LedPairStation::red()
     return red_;
 }
 
+LedPairDriver& LedPairStation::driver()
+{
+    return driver_;
+}
+
 #endif

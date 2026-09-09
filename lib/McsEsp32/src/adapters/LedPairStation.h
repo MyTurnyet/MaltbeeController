@@ -23,6 +23,7 @@ public:
 
     DigitalOutput& green();
     DigitalOutput& red();
+    LedPairDriver& driver();
 
 private:
     ArduinoDigitalOutput gpio_;
