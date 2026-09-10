@@ -178,10 +178,10 @@ const std::string mqttClientId = "maltbee-esp32-" + ownMac.lastFourHexDigits();
 const std::string mqttWillTopic = PresenceTopics::statusTopic(runningConfig.nodeId);
 const std::string mqttWillMessage = "offline";
 
-MqttLink mqttLink(systemClock, RETRY_INTERVAL_MS, mqttClientId, mqttWillTopic, mqttWillMessage);
-
 EspMdnsResolver mdnsResolver("maltbee-panel-" + ownMac.lastFourHexDigits());
 BrokerAddressResolver brokerAddressResolver(mdnsResolver);
+
+MqttLink mqttLink(systemClock, RETRY_INTERVAL_MS, mqttClientId, mqttWillTopic, mqttWillMessage, brokerAddressResolver);
 
 NodeIdentityGuard identityGuard(ownMac.lastFourHexDigits());
 MqttPresenceAnnouncer presenceAnnouncer(mqttLink, systemClock, runningConfig.nodeId, ownMac.lastFourHexDigits());
@@ -253,8 +253,7 @@ void setup()
     if (configValid)
     {
         wifiLink.begin(runningConfig.wifiSsid, runningConfig.wifiPassword);
-        const std::string resolvedBrokerHost = brokerAddressResolver.resolve("loco2mqtt", runningConfig.brokerHost);
-        mqttLink.begin(resolvedBrokerHost, runningConfig.brokerPort);
+        mqttLink.begin(runningConfig.brokerHost, runningConfig.brokerPort);
         mqttLink.subscribe(PresenceTopics::macTopic(runningConfig.nodeId),
                             [](const std::string& payload) { identityGuard.onMacObserved(payload); });
         mqttLink.subscribe(PresenceTopics::identifyTopic(runningConfig.nodeId),

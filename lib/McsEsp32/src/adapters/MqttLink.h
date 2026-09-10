@@ -11,13 +11,14 @@
 #include <vector>
 
 #include "ports/Clock.h"
+#include "../application/BrokerAddressResolver.h"
 #include "../ports/MqttTransport.h"
 
 class MqttLink final : public MqttTransport
 {
 public:
     MqttLink(Clock& clock, unsigned long retryIntervalMs, std::string clientId,
-              std::string willTopic, std::string willMessage);
+              std::string willTopic, std::string willMessage, BrokerAddressResolver& brokerAddressResolver);
 
     void begin(const std::string& host, int port);
     void poll();
@@ -35,7 +36,9 @@ private:
     std::string clientId_;
     std::string willTopic_;
     std::string willMessage_;
-    std::string host_;
+    BrokerAddressResolver& brokerAddressResolver_;
+    std::string fallbackHost_;
+    int port_ = 0;
     WiFiClient wifiClient_;
     PubSubClient client_;
     unsigned long lastAttemptMs_ = 0;

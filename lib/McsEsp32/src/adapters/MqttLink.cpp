@@ -2,13 +2,19 @@
 
 #include "MqttLink.h"
 
+namespace
+{
+    constexpr const char* kMdnsHostname = "loco2mqtt";
+}
+
 MqttLink::MqttLink(Clock& clock, const unsigned long retryIntervalMs, std::string clientId,
-                    std::string willTopic, std::string willMessage)
+                    std::string willTopic, std::string willMessage, BrokerAddressResolver& brokerAddressResolver)
     : clock_(clock),
       retryIntervalMs_(retryIntervalMs),
       clientId_(std::move(clientId)),
       willTopic_(std::move(willTopic)),
       willMessage_(std::move(willMessage)),
+      brokerAddressResolver_(brokerAddressResolver),
       client_(wifiClient_)
 {
     client_.setCallback([this](char* topic, byte* payload, unsigned int length) {
@@ -19,8 +25,8 @@ MqttLink::MqttLink(Clock& clock, const unsigned long retryIntervalMs, std::strin
 
 void MqttLink::begin(const std::string& host, const int port)
 {
-    host_ = host;
-    client_.setServer(host_.c_str(), port);
+    fallbackHost_ = host;
+    port_ = port;
     connect();
 }
 
@@ -67,6 +73,8 @@ void MqttLink::dispatch(const std::string& topic, const std::string& payload)
 
 void MqttLink::connect()
 {
+    const std::string resolvedHost = brokerAddressResolver_.resolve(kMdnsHostname, fallbackHost_);
+    client_.setServer(resolvedHost.c_str(), port_);
     client_.connect(clientId_.c_str(), willTopic_.c_str(), 1, true, willMessage_.c_str());
     lastAttemptMs_ = clock_.nowMilliseconds();
 
