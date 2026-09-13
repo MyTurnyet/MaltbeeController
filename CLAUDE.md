@@ -228,17 +228,39 @@ can contain spaces).
 `loco2mqtt.local`. A new `MdnsResolver` port (implemented by
 `EspMdnsResolver` on hardware) plus `BrokerAddressResolver` application
 class implement "try mDNS first, fall back to the manually-configured
-`brokerHost`" — resolved once, synchronously, in `setup()` before
-`mqttLink.begin()`. `EspMdnsResolver::resolveHost()` blocks with a bounded
-(8s) wait for WiFi association before querying, since mDNS needs an active
-WiFi connection and `wifiLink.begin()` is fire-and-forget; this is
-acceptable specifically because it runs once at boot, never in `loop()`.
-**Known, accepted limitation:** resolution never re-runs after boot, so if
-Loco2MQTT's IP changes mid-session (e.g. its own reboot picking up a new
-DHCP lease), a panel keeps retrying the stale address until power-cycled —
-a DHCP reservation for the Loco2MQTT board avoids this in practice;
-periodic re-resolution is a deferred future enhancement, not implemented
-here.
+`brokerHost`". `MqttLink::connect()` re-resolves on every connect attempt
+(both the initial `begin()` call and every subsequent `poll()`-triggered
+retry) rather than once at boot — `MqttLink` holds the
+`BrokerAddressResolver&` as a constructor dependency and resolves against
+a file-local `kMdnsHostname` (`"loco2mqtt"`) constant in `MqttLink.cpp`
+(`main.cpp` passes `runningConfig.brokerHost` as the fallback via
+`begin()`, and declares `brokerAddressResolver` before `mqttLink` since
+the latter holds it by reference). This makes a Loco2MQTT IP change (e.g.
+its own reboot picking up a new DHCP lease) self-heal through the
+existing 5s retry-on-timer loop in `poll()`, typically within one
+`BROKER_RESOLVE_INTERVAL_MS` window, without a panel power-cycle.
+
+`EspMdnsResolver::resolveHost()` is a blocking call: it loops on `delay()`
+for up to 8s waiting for WiFi association, then blocks again on
+`MDNS.queryHost()`. That's tolerable once at boot but not on every 5s retry
+from inside `loop()` — so `BrokerAddressResolver` throttles actual
+`resolveHost()` calls to at most once per `BROKER_RESOLVE_INTERVAL_MS`
+(60s, set in `main.cpp`), returning the last successfully resolved host (or
+the caller's current fallback, if mDNS has never resolved) on every
+throttled call in between. This bounds the loop-freeze risk to roughly once
+a minute instead of every retry, while still self-healing within that
+window. It does not make the underlying mDNS query itself non-blocking —
+a single resolution attempt can still stall `loop()` for up to ~8s in the
+worst case (WiFi flapping); moving that to a background task would be a
+larger change than this throttle.
+
+**Testability note:** `MqttLink` is `#ifdef ARDUINO`-guarded (depends on
+`PubSubClient`/`WiFiClient`) and is never compiled under the `native` test
+environment, so it has no native tests — this was already true of its
+pre-existing retry-timer logic before this change. The one piece of new
+logic this wiring depends on, `BrokerAddressResolver`'s throttling, is
+fully covered by `test/test_broker_address_resolver`; the `MqttLink`
+change itself is pure delegation to that already-tested class.
 
 A manually-bumped `kFirmwareVersion` constant (`FirmwareVersion.h`) is now
 shown on the commissioning web page, so a fleet of panels can be checked
@@ -314,7 +336,7 @@ mode is confusing rather than a clean error.
 - ✅ Loco2MqttTurnoutCommandAdapter (channel → Loco2MQTT topic/payload publish translation)
 - ✅ Loco2MqttFeedbackSource (MQTT payload → TurnoutFeedback translation)
 - ✅ Loco2MQTT command/feedback wiring integration (end-to-end command/state topic separation + real-feedback proof + 30s-heartbeat-repeat idempotence)
-- ✅ BrokerAddressResolver (mDNS-first, manual-fallback broker host resolution)
+- ✅ BrokerAddressResolver (mDNS-first, manual-fallback broker host resolution; throttles repeat mDNS queries to once per configured interval, returning the cached resolved host — or the caller's current fallback if mDNS has never resolved — on throttled calls)
 - ✅ MatrixScanner (row-cycling scan, per-row column caching, default-false before first scan)
 - ✅ MatrixDigitalInput (forwards to the scanner's cached reading for its own fixed cell)
 - ✅ LedPairDriver (steady green/red, blink between last-displayed color and its opposite, `begin()` re-stamping the timer and re-writing the current color)

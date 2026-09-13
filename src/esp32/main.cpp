@@ -67,6 +67,7 @@ namespace
     constexpr unsigned long UART_BAUD_RATE = 115200;
     constexpr unsigned long SETUP_TRIGGER_HOLD_MS = 3000;
     constexpr unsigned long IDENTIFY_DURATION_MS = 10000;
+    constexpr unsigned long BROKER_RESOLVE_INTERVAL_MS = 60000;
 }
 
 namespace
@@ -179,7 +180,7 @@ const std::string mqttWillTopic = PresenceTopics::statusTopic(runningConfig.node
 const std::string mqttWillMessage = "offline";
 
 EspMdnsResolver mdnsResolver("maltbee-panel-" + ownMac.lastFourHexDigits());
-BrokerAddressResolver brokerAddressResolver(mdnsResolver);
+BrokerAddressResolver brokerAddressResolver(mdnsResolver, systemClock, BROKER_RESOLVE_INTERVAL_MS);
 
 MqttLink mqttLink(systemClock, RETRY_INTERVAL_MS, mqttClientId, mqttWillTopic, mqttWillMessage, brokerAddressResolver);
 
