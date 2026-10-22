@@ -43,3 +43,16 @@ TEST_CASE("both inputs active is active")
 
     REQUIRE(composite.isActive());
 }
+
+TEST_CASE("reads the composed inputs live rather than latching at construction")
+{
+    FakeDigitalInput first;
+    FakeDigitalInput second;
+    EitherActiveDigitalInput composite(first, second);
+
+    REQUIRE_FALSE(composite.isActive());
+
+    second.active = true;
+
+    REQUIRE(composite.isActive());
+}
