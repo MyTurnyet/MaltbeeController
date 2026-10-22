@@ -18,6 +18,9 @@ public:
     IndependentLedPairStation(const IndependentLedPairConfig& config, Clock& clock,
                                unsigned long blinkIntervalMs, LedPairColor defaultColor);
 
+    IndependentLedPairStation(const IndependentLedPairStation&) = delete;
+    IndependentLedPairStation& operator=(const IndependentLedPairStation&) = delete;
+
     void begin();
     void update();
     void setIdentifying(bool active);

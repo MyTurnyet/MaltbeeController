@@ -106,14 +106,18 @@ ArduinoDigitalInput buttons[4] = {
 };
 
 IndependentLedPairStation ledStations[4] = {
-    IndependentLedPairStation({TURNOUT_CONFIGS[0].redGpio, TURNOUT_CONFIGS[0].greenGpio}, systemClock,
-                              BLINK_INTERVAL_MS, DEFAULT_LED_COLOR),
-    IndependentLedPairStation({TURNOUT_CONFIGS[1].redGpio, TURNOUT_CONFIGS[1].greenGpio}, systemClock,
-                              BLINK_INTERVAL_MS, DEFAULT_LED_COLOR),
-    IndependentLedPairStation({TURNOUT_CONFIGS[2].redGpio, TURNOUT_CONFIGS[2].greenGpio}, systemClock,
-                              BLINK_INTERVAL_MS, DEFAULT_LED_COLOR),
-    IndependentLedPairStation({TURNOUT_CONFIGS[3].redGpio, TURNOUT_CONFIGS[3].greenGpio}, systemClock,
-                              BLINK_INTERVAL_MS, DEFAULT_LED_COLOR),
+    IndependentLedPairStation(IndependentLedPairConfig{.redGpioPin = TURNOUT_CONFIGS[0].redGpio,
+                                                       .greenGpioPin = TURNOUT_CONFIGS[0].greenGpio},
+                              systemClock, BLINK_INTERVAL_MS, DEFAULT_LED_COLOR),
+    IndependentLedPairStation(IndependentLedPairConfig{.redGpioPin = TURNOUT_CONFIGS[1].redGpio,
+                                                       .greenGpioPin = TURNOUT_CONFIGS[1].greenGpio},
+                              systemClock, BLINK_INTERVAL_MS, DEFAULT_LED_COLOR),
+    IndependentLedPairStation(IndependentLedPairConfig{.redGpioPin = TURNOUT_CONFIGS[2].redGpio,
+                                                       .greenGpioPin = TURNOUT_CONFIGS[2].greenGpio},
+                              systemClock, BLINK_INTERVAL_MS, DEFAULT_LED_COLOR),
+    IndependentLedPairStation(IndependentLedPairConfig{.redGpioPin = TURNOUT_CONFIGS[3].redGpio,
+                                                       .greenGpioPin = TURNOUT_CONFIGS[3].greenGpio},
+                              systemClock, BLINK_INTERVAL_MS, DEFAULT_LED_COLOR),
 };
 
 NullTurnoutCommandPort turnoutCommandPort;
