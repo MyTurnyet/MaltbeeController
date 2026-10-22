@@ -132,3 +132,46 @@ only, per plan). Controller ran all four checks directly:
 - pio run -e megaatmega2560: SUCCESS, RAM 9.9%/Flash 2.7% - unchanged.
 
 ALL 10 TASKS COMPLETE. Proceeding to the final whole-branch review.
+
+## Final whole-branch review (opus): "Ready to merge: With fixes"
+
+Reviewer confirmed the core architectural bet paid off (real logic sharing,
+not disguised duplication - net new logic in the branch is zero), confirmed
+"zero 12-channel behavior change" independently (empty diff on src/esp32/main.cpp,
+no NVS/MQTT/firmware-version string touched), and independently re-ran
+pio test -e native getting 48/48 passing.
+
+2 Important findings:
+1. CLAUDE.md was never updated - a plan gap (no task for it), not implementer
+   negligence. Fixed via a dedicated fix dispatch: added a full "4-channel
+   node board: channel-count templating (sub-project #1)" section plus 3
+   stale-fact corrections (3->4 environments, 2->3 composition roots,
+   44->48 suites).
+2. Wireless commissioning is wired but unreachable at runtime on the node
+   (no ButtonSetupModeTrigger-equivalent wiring to ever request
+   BootMode::WirelessSetup) - confirmed as legitimately deferred scope per
+   the roadmap's sub-project #3, not a bug. User chose to document as
+   dormant rather than pull the trigger forward. Documented explicitly in
+   the new CLAUDE.md section as a "Known, accepted gap."
+
+3 Minor findings addressed opportunistically in the same fix dispatch:
+dead #include in CaptivePortalServer.cpp removed; failed-save test case
+added to test_commissioning_session4; valid-config-selects-Normal test
+case added to test_boot_mode_selector. Also recorded a forward-looking
+note in CLAUDE.md that Loco2MqttTurnoutCommandAdapter/Loco2MqttFeedbackSource
+will need the same Basic<X><N> treatment before MQTT can be wired onto the
+node, for whichever future sub-project does that.
+
+Remaining Minor findings left as documented watch items, per reviewer's
+own recommendation (not worth code changes now): half-templated N-invariant
+constants in SetupFormRenderer's renderIdOptions(); explicit instantiation
+of both N=12/N=4 in the two hardware adapters even though each environment
+only uses one (relies on linker --gc-sections, confirmed harmless by
+unchanged flash %); three tests asserting compile-time array-size invariants
+rather than runtime behavior (plan-prescribed, not a real risk).
+
+Controller independently re-verified after the fix: pio test -e native
+48/48, CLAUDE.md diff read in full and confirmed accurate/well-matched to
+house style, both new test cases read and confirmed correct.
+
+## SUB-PROJECT #1 (4-TURNOUT NODE: CHANNEL COUNT AND BUILD TARGET) COMPLETE.
