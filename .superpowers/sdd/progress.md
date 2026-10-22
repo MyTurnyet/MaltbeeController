@@ -69,3 +69,11 @@ escapeHtml/renderIdOptions/renderNetworkOptions/renderChannelField/kStyle
 are untouched, confirmed the test append is byte-for-byte per the brief,
 and checked that WebFormSubmission4 (from Task 3) exists for the template
 to bind against.
+
+Task 5 (BootModeSelector::select() becomes a function template): complete
+(commit f7729ca..e57da17 [^ F], review clean — Approved, zero findings.
+Reviewer confirmed the append-only test edit, confirmed BootModeSelector
+stays non-template with only select() templated, and checked that NodeConfig4
+(from Task 1) was visible to the test file without needing a new include.
+1 Minor, non-blocking: no "valid 4-channel config selects Normal" positive
+case added, but the brief specified exactly the two cases that were added.
