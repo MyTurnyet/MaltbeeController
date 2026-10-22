@@ -32,3 +32,17 @@ initializer-list order consistency, and confirmed only the 2 planned
 files were touched. Controller independently verified both files on disk
 matched the brief before approving the commit. All 3 builds + full
 native suite (51/51) per implementer report.
+
+Task 2 (Wire 4 real turnout stations into src/esp32node4/main.cpp):
+complete (commit d1f970f..81f3a41 [@ F], review clean — Approved, zero
+findings. Reviewer independently cross-checked all 4 GPIO triples against
+the hardware pin map (no transpositions), confirmed green=closedOutput/
+red=thrownOutput for all 4 stations, confirmed control-flow placement
+(begin before boot-mode check, update gated out of WirelessSetup by the
+existing early return), confirmed purely additive (0 deletions), and
+confirmed the @ F risk symbol correctly matches established repo
+convention this time. All 3 builds + full native suite (51/51) per
+implementer report.
+
+ALL 2 TASKS COMPLETE. Proceeding to final full-suite verification and the
+final whole-branch review.
