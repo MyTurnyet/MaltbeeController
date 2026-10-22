@@ -95,3 +95,17 @@ byte-for-byte unchanged (hard constraint satisfied), confirmed the explicit
 template instantiations for N=12/N=4, and checked that BasicConfigStore<N>
 (Task 2's dependency) exists and matches. Native suite 48/48, esp32dev build
 SUCCESS per implementer report.
+
+Task 8 (Template CaptivePortalServer, hardware adapter, no native test):
+complete (commit 2f1aea2..037de16 [^ r], review clean — Approved, zero
+blocking findings. This was the last task touching shared McsEsp32 code
+before the new environment/composition-root task; reviewer confirmed the
+line-for-line match to the brief, confirmed both aliases exist, and checked
+unused-template-instantiation flash bloat risk (unreferenced <4> code is
+expected to be garbage-collected by the toolchain's default linker flags).
+Native suite 48/48, esp32dev build SUCCESS at 17.4%/83.8% per implementer
+report. 1 Minor, non-blocking: one now-unused #include inherited verbatim
+from the brief's own prescribed code, not introduced by the implementer.
+
+ALL 8 TEMPLATING TASKS (1-8) COMPLETE. Proceeding to Task 9 (new esp32node4
+environment + placeholder composition root).
