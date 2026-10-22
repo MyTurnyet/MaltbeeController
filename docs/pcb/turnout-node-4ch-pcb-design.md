@@ -386,16 +386,18 @@ Grounded in the repo at the time of writing (`src/esp32/main.cpp`, `lib/McsEsp32
 plus `CLAUDE.md`'s "4-channel node board: channel-count templating" and
 "Composite setup-mode trigger" sections, for the implementations.
 
-1. **Turnout count — done (sub-project #1).** `NodeConfig::kChannelCount` is a compile-time `12`, `main.cpp` builds `TURNOUT_CONFIGS[12]`, 12 `LedPairStation`s and 12 `ToggleTurnoutStation`s, and the commissioning web form carries 12 channel fields. A 4-turnout node needs a per-board-variant constant (build flag or separate PlatformIO environment) driving all of these. *(Resolved via a channel-count template parameter on 8 commissioning classes plus a new `[env:esp32node4]` environment and `src/esp32node4/main.cpp` composition root — the latter is still a minimal placeholder with no turnout stations/LEDs/buttons wired, which items 2-6 below still need.)*
+1. **Turnout count — done (sub-project #1).** `NodeConfig::kChannelCount` is a compile-time `12`, `main.cpp` builds `TURNOUT_CONFIGS[12]`, 12 `LedPairStation`s and 12 `ToggleTurnoutStation`s, and the commissioning web form carries 12 channel fields. A 4-turnout node needs a per-board-variant constant (build flag or separate PlatformIO environment) driving all of these. *(Resolved via a channel-count template parameter on 8 commissioning classes plus a new `[env:esp32node4]` environment and `src/esp32node4/main.cpp` composition root — the latter is still a minimal placeholder with no turnout stations/LEDs/buttons wired, which items 2-5 below still need.)*
 2. **Buttons.** Replace `MatrixScanner`/`MatrixDigitalInput` with four `ArduinoDigitalInput`s on GPIO 34/35/36/39 (active-low, no internal pull-up). The existing matrix column inputs use that same constructor form.
 3. **LEDs.** Replace `LedPairStation` (shared GPIO) with two independent `ArduinoDigitalOutput`s per turnout and an adapter supplying the "unconfirmed → blink" behaviour, since "both off" is now physically possible. `ToggleTurnoutStation` is unchanged.
 4. **Identify and setup-mode flashing.** `LedPairFlashIndicator` and the `panel/<nodeId>/identify` overlay both use `LedPairDriver::setIdentifying()`. They need equivalents for independent outputs.
 5. **Status and activity LEDs.** New outputs, with no existing firmware owner. This is also where wireless-setup and WiFi/broker state get their own indicator instead of borrowing the turnout LEDs.
-6. **Setup trigger.** `ButtonSetupModeTrigger` takes any `DigitalInput&`. Construct it
+6. **Setup trigger — done (sub-project #3).** `ButtonSetupModeTrigger` takes any `DigitalInput&`. Construct it
    with a small composite input that is active when either the existing `bootButton`
    (GPIO 0) or a new `ArduinoDigitalInput(16, /*activeLow=*/true,
    /*useInternalPullup=*/true)` is active, so both buttons work. The hold and
-   release-settle logic is unchanged.
+   release-settle logic is unchanged. *(Resolved via a new `EitherActiveDigitalInput`
+   adapter feeding the unmodified `ButtonSetupModeTrigger` — see `CLAUDE.md`'s
+   "Composite setup-mode trigger" section.)*
 7. **Unchanged:** `ButtonSetupModeTrigger`'s hold logic, Loco2MQTT per-channel addresses, `MqttPresenceAnnouncer`, collision detection. The MQTT client ID is already MAC-derived (`maltbee-esp32-<mac4>`), so several nodes on one broker do not collide. Each board still needs its own `nodeId`.
 
 ---
