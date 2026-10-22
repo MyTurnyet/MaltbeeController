@@ -48,3 +48,43 @@ suite 51/51, per implementer report.
 
 ALL 2 TASKS COMPLETE. Proceeding to final full-suite verification and the
 final whole-branch review.
+
+## Final whole-branch review (opus): "Ready to merge: With fixes (documentation only)"
+
+Reviewer independently traced the full reachability path end-to-end (globals
+-> consumeRequest false -> Normal/NeedsCommissioning -> both buttons begin() ->
+loop() falls past WirelessSetup's new early return -> setupTrigger.update() ->
+3s hold + 50ms-settled release -> requestOnNextBoot -> restart -> next boot
+reaches WirelessSetup), cross-checked constructor signatures against the real
+unmodified headers, confirmed pin/pull-up config matches the PCB spec's §3.4
+exactly, confirmed global-constructor safety, and confirmed zero modification
+to any forbidden file (5 files / 135 insertions / 0 deletions total).
+
+1 Important finding, fixed: CLAUDE.md's sub-project #1 section still asserted
+wireless setup was unreachable - now false. Fixed via a dedicated fix dispatch:
+replaced the stale paragraph, added a full "Composite setup-mode trigger
+(sub-project #3)" section, corrected 50->51 suites, corrected the rooted-
+include tally (re-grepped rather than guessed: actually 41, not the expected
+36 - 5 more drift than anticipated, from sub-project #2 and the prior
+reconciliation itself never being updated), added EitherActiveDigitalInput to
+the adapters inventory. Also closed one self-contradiction the fix itself
+would have introduced (a stale cross-reference at line 81).
+
+2 Minor findings, both addressed: PCB spec's §7 status line/checklist updated
+to mark item 6 done (fix dispatch); its own item-6 body text and item-1
+parenthetical still read as open after that fix - closed directly as a tiny
+follow-up (commit 55ac4ef) rather than another dispatch, since it was two
+one-line edits. Test suite's 4 original cases didn't prove live reads vs
+construction-time latching - closed via one new appended test case,
+confirmed correct and append-only by direct read.
+
+2 Informational notes (no action needed): no LED/visual confirmation of
+wireless-setup mode on the node board yet (correctly deferred, matches PCB
+doc's own scope boundary); GPIO16-short-low failure mode is fail-safe
+(no spurious reboots) but worth one bring-up-notes sentence eventually.
+
+Controller independently re-verified after all fixes: pio test -e native
+51/51 passing, both docs read in full and confirmed accurate/complete,
+new test case read and confirmed append-only and correct.
+
+## SUB-PROJECT #3 (COMPOSITE SETUP TRIGGER) COMPLETE.
