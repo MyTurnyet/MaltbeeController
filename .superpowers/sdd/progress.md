@@ -47,3 +47,49 @@ coverage (3 cases, matches the brief's exact scope).
 
 ALL 2 TASKS COMPLETE. Proceeding to final full-suite verification and the
 final whole-branch review.
+
+## Final whole-branch review (opus): "Ready to merge: Yes"
+
+Reviewer independently verified the one essential property (the two GPIOs
+are provably mutually exclusive in every writeColor() call site, confirmed
+via the closed two-value LedPairColor enum plus a single-writer check),
+confirmed the cross-task seam (IndependentLedPairOutput -> IndependentLedPairDriver)
+is exercised by a real (non-mocked) driver in a passing test, confirmed
+zero collateral change via file list + repo-wide grep, and confirmed the
+class genuinely stands alone (no inheritance/composition of LedPairDriver).
+Re-ran all 4 relevant suites independently: all passed, 50 suites total
+confirmed on disk.
+
+1 Important finding, fixed: CLAUDE.md was not updated after sub-project #2
+(stale 48-suite count, both new classes unlisted) - a real risk since the
+next sub-project (wiring turnout stations into main.cpp) needs to know
+these classes already exist. Fixed: added domain/adapters inventory
+entries, corrected 48->50, added a full "Independent-output turnout
+indicator" CLAUDE.md section documenting the deliberate non-sharing
+decision and its maintenance liability, plus a one-line cross-reference
+comment in IndependentLedPairDriver.h. Re-verified zero behavior change
+(test_independent_led_pair_driver still 67/67 assertions).
+
+3 Minor findings, left as documented watch items per reviewer's own
+recommendation (not worth code changes now): setIdentifying(false) not
+re-stamping lastToggleTime_ is an existing, already-shipped LedPairDriver
+quirk now duplicated (fixing only one side would diverge the two drivers,
+worse than the glitch - now explicitly flagged in both CLAUDE.md and the
+header comment for whoever eventually revisits both together); the
+redundant-call test proves only the timer half of its own claim, not the
+no-rewrite half (same gap exists in the original LedPairDriver suite, so
+fixing one without the other would diverge them); output suite doesn't
+exercise set(false) (exact parity with the suite it mirrors). Reviewer
+also re-triaged 2 previously-flagged task-level Minors as true non-issues
+(if/else-vs-ternary and 3-test-case count both exactly match the existing
+LedPairOutput file/suite they mirror) - confirmed, no action needed.
+
+One forward-looking recommendation (not actionable now): extracting
+LedPairColor out of LedPairDriver.h into its own header would remove the
+one include dependency the "independent" driver still has on the driver
+it's otherwise independent of - natural moment is whichever future
+sub-project adds the GPIO-owning composition helper and is already
+touching this area. Noted in the new CLAUDE.md section for that future
+session to pick up.
+
+## SUB-PROJECT #2 (INDEPENDENT-OUTPUT TURNOUT INDICATOR) COMPLETE.
