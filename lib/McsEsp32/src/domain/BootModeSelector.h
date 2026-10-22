@@ -6,7 +6,8 @@
 class BootModeSelector
 {
 public:
-    static BootMode select(const NodeConfig& config, const bool wirelessSetupRequested)
+    template <int N>
+    static BootMode select(const BasicNodeConfig<N>& config, const bool wirelessSetupRequested)
     {
         if (wirelessSetupRequested)
         {

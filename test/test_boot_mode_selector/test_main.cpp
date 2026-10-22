@@ -37,3 +37,17 @@ TEST_CASE("no request and an invalid config selects NeedsCommissioning")
 
     REQUIRE(BootModeSelector::select(config, false) == BootMode::NeedsCommissioning);
 }
+
+TEST_CASE("a pending wireless setup request selects WirelessSetup for a 4-channel config")
+{
+    const NodeConfig4 config = NodeConfig4::factoryDefault();
+
+    REQUIRE(BootModeSelector::select(config, true) == BootMode::WirelessSetup);
+}
+
+TEST_CASE("no request and an invalid 4-channel config selects NeedsCommissioning")
+{
+    const NodeConfig4 config = NodeConfig4::factoryDefault();
+
+    REQUIRE(BootModeSelector::select(config, false) == BootMode::NeedsCommissioning);
+}
