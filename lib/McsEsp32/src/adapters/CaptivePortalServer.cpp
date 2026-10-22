@@ -2,8 +2,6 @@
 
 #include "CaptivePortalServer.h"
 
-#include "../domain/NodeConfig.h"
-
 template <int N>
 BasicCaptivePortalServer<N>::BasicCaptivePortalServer(BasicWebFormCommissioningAdapter<N>& adapter)
     : adapter_(adapter)

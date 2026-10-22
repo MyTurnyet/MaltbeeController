@@ -84,3 +84,35 @@ TEST_CASE("save persists a valid draft with all 4 channels addressed")
     REQUIRE(response == "saved\n");
     REQUIRE(store.saveCount == 1);
 }
+
+TEST_CASE("save reports a failure when the 4-channel config store cannot persist")
+{
+    FakeConfigStore4 store;
+    CommissioningSession4 session(store);
+
+    ParsedCommand idCommand;
+    idCommand.kind = CommandKind::Id;
+    idCommand.intArg = 1;
+    session.apply(idCommand);
+
+    ParsedCommand wifiCommand;
+    wifiCommand.kind = CommandKind::Wifi;
+    wifiCommand.stringArg1 = "MyLayoutWifi";
+    wifiCommand.stringArg2 = "hunter2";
+    session.apply(wifiCommand);
+
+    ParsedCommand brokerCommand;
+    brokerCommand.kind = CommandKind::Broker;
+    brokerCommand.stringArg1 = "192.168.1.50";
+    brokerCommand.intArg2 = 1883;
+    session.apply(brokerCommand);
+
+    store.failNextSave = true;
+
+    ParsedCommand saveCommand;
+    saveCommand.kind = CommandKind::Save;
+    const std::string response = session.apply(saveCommand);
+
+    REQUIRE(response == "save failed: could not write to storage\n");
+    REQUIRE(store.saveCount == 0);
+}

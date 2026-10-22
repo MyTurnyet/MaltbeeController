@@ -51,3 +51,17 @@ TEST_CASE("no request and an invalid 4-channel config selects NeedsCommissioning
 
     REQUIRE(BootModeSelector::select(config, false) == BootMode::NeedsCommissioning);
 }
+
+TEST_CASE("no request and a valid 4-channel config selects Normal")
+{
+    const NodeConfig4 config = NodeConfig4::factoryDefault()
+                                   .withNodeId(1)
+                                   .withWifi("MyLayoutWifi", "hunter2")
+                                   .withBroker("192.168.1.50", 1883)
+                                   .withChannelAddress(1, 1)
+                                   .withChannelAddress(2, 2)
+                                   .withChannelAddress(3, 3)
+                                   .withChannelAddress(4, 4);
+
+    REQUIRE(BootModeSelector::select(config, false) == BootMode::Normal);
+}
