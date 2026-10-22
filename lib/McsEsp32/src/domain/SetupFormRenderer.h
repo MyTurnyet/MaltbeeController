@@ -41,7 +41,8 @@ public:
         return escaped;
     }
 
-    static std::string render(const WebFormSubmission& values, const std::vector<ScannedNetwork>& networks = {})
+    template <int N>
+    static std::string render(const BasicWebFormSubmission<N>& values, const std::vector<ScannedNetwork>& networks = {})
     {
         std::string html;
         html += "<!DOCTYPE html><html><head>";
@@ -66,7 +67,7 @@ public:
             + escapeHtml(values.brokerPort) + "'>";
         html += "<details><summary>Turnout Addresses</summary>";
         html += "<p class='warning'>Leave a channel blank to leave it unconfigured.</p>";
-        for (int i = 0; i < NodeConfig::kChannelCount; ++i)
+        for (int i = 0; i < N; ++i)
         {
             html += renderChannelField(i + 1, values.channelTurnoutAddresses[i]);
         }

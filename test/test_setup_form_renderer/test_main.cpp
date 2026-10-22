@@ -151,3 +151,20 @@ TEST_CASE("render's existing wifi ssid text field is unaffected by the network d
 
     REQUIRE(html.find("name='wifi_ssid' value='AlreadyConfiguredWifi'") != std::string::npos);
 }
+
+TEST_CASE("render includes a labeled input for each of the 4 turnout channels on the node variant")
+{
+    WebFormSubmission4 form;
+    form.channelTurnoutAddresses[0] = "5";
+    form.channelTurnoutAddresses[3] = "600";
+
+    const std::string html = SetupFormRenderer::render(form);
+
+    REQUIRE(html.find("Turnout 1 Address") != std::string::npos);
+    REQUIRE(html.find("name='t1_address'") != std::string::npos);
+    REQUIRE(html.find("value='5'") != std::string::npos);
+    REQUIRE(html.find("Turnout 4 Address") != std::string::npos);
+    REQUIRE(html.find("name='t4_address'") != std::string::npos);
+    REQUIRE(html.find("value='600'") != std::string::npos);
+    REQUIRE(html.find("Turnout 5 Address") == std::string::npos);
+}
