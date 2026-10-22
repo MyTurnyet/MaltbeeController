@@ -11,13 +11,17 @@
 #include "adapters/EitherActiveDigitalInput.h"
 #include "adapters/EspDeviceIdentity.h"
 #include "adapters/EspUartPort.h"
+#include "adapters/IndependentLedPairStation.h"
+#include "adapters/NullTurnoutCommandPort.h"
 #include "adapters/NvsConfigStore.h"
 #include "adapters/NvsSetupModeRequestStore.h"
 #include "adapters/SerialCommissioningAdapter.h"
+#include "adapters/ToggleTurnoutStation.h"
 #include "adapters/WebFormCommissioningAdapter.h"
 #include "application/CommissioningSession.h"
 #include "domain/BootMode.h"
 #include "domain/BootModeSelector.h"
+#include "domain/LedPairDriver.h"
 #include "domain/MacAddress.h"
 #include "domain/NodeConfig.h"
 #include "domain/SetupApName.h"
@@ -26,6 +30,8 @@ namespace
 {
     constexpr unsigned long UART_BAUD_RATE = 115200;
     constexpr unsigned long SETUP_TRIGGER_HOLD_MS = 3000;
+    constexpr unsigned long BLINK_INTERVAL_MS = 500;
+    constexpr LedPairColor DEFAULT_LED_COLOR = LedPairColor::Red;
 }
 
 namespace
@@ -46,6 +52,25 @@ namespace
                 nvs_flash_init();
             }
         }
+    };
+}
+
+namespace
+{
+    struct TurnoutNodeConfig
+    {
+        int address;
+        const char* name;
+        int buttonGpio;
+        int redGpio;
+        int greenGpio;
+    };
+
+    constexpr TurnoutNodeConfig TURNOUT_CONFIGS[4] = {
+        {1, "T1", 34, 32, 33},
+        {2, "T2", 35, 25, 26},
+        {3, "T3", 36, 27, 13},
+        {4, "T4", 39, 23, 19},
     };
 }
 
@@ -73,12 +98,58 @@ ArduinoDigitalInput setupButton(16, /*activeLow=*/true, /*useInternalPullup=*/tr
 EitherActiveDigitalInput setupTriggerInput(bootButton, setupButton);
 ButtonSetupModeTrigger setupTrigger(setupTriggerInput, systemClock, SETUP_TRIGGER_HOLD_MS);
 
+ArduinoDigitalInput buttons[4] = {
+    ArduinoDigitalInput(TURNOUT_CONFIGS[0].buttonGpio, /*activeLow=*/true, /*useInternalPullup=*/false),
+    ArduinoDigitalInput(TURNOUT_CONFIGS[1].buttonGpio, /*activeLow=*/true, /*useInternalPullup=*/false),
+    ArduinoDigitalInput(TURNOUT_CONFIGS[2].buttonGpio, /*activeLow=*/true, /*useInternalPullup=*/false),
+    ArduinoDigitalInput(TURNOUT_CONFIGS[3].buttonGpio, /*activeLow=*/true, /*useInternalPullup=*/false),
+};
+
+IndependentLedPairStation ledStations[4] = {
+    IndependentLedPairStation({TURNOUT_CONFIGS[0].redGpio, TURNOUT_CONFIGS[0].greenGpio}, systemClock,
+                              BLINK_INTERVAL_MS, DEFAULT_LED_COLOR),
+    IndependentLedPairStation({TURNOUT_CONFIGS[1].redGpio, TURNOUT_CONFIGS[1].greenGpio}, systemClock,
+                              BLINK_INTERVAL_MS, DEFAULT_LED_COLOR),
+    IndependentLedPairStation({TURNOUT_CONFIGS[2].redGpio, TURNOUT_CONFIGS[2].greenGpio}, systemClock,
+                              BLINK_INTERVAL_MS, DEFAULT_LED_COLOR),
+    IndependentLedPairStation({TURNOUT_CONFIGS[3].redGpio, TURNOUT_CONFIGS[3].greenGpio}, systemClock,
+                              BLINK_INTERVAL_MS, DEFAULT_LED_COLOR),
+};
+
+NullTurnoutCommandPort turnoutCommandPort;
+
+ToggleTurnoutStation stations[4] = {
+    ToggleTurnoutStation(TURNOUT_CONFIGS[0].address, TURNOUT_CONFIGS[0].name, buttons[0],
+                          ledStations[0].green(), ledStations[0].red(), systemClock, turnoutCommandPort),
+    ToggleTurnoutStation(TURNOUT_CONFIGS[1].address, TURNOUT_CONFIGS[1].name, buttons[1],
+                          ledStations[1].green(), ledStations[1].red(), systemClock, turnoutCommandPort),
+    ToggleTurnoutStation(TURNOUT_CONFIGS[2].address, TURNOUT_CONFIGS[2].name, buttons[2],
+                          ledStations[2].green(), ledStations[2].red(), systemClock, turnoutCommandPort),
+    ToggleTurnoutStation(TURNOUT_CONFIGS[3].address, TURNOUT_CONFIGS[3].name, buttons[3],
+                          ledStations[3].green(), ledStations[3].red(), systemClock, turnoutCommandPort),
+};
+
 void setup()
 {
     uartPort.begin();
 
     bootButton.begin();
     setupButton.begin();
+
+    for (auto& button : buttons)
+    {
+        button.begin();
+    }
+
+    for (auto& ledStation : ledStations)
+    {
+        ledStation.begin();
+    }
+
+    for (auto& station : stations)
+    {
+        station.begin();
+    }
 
     if (bootMode == BootMode::WirelessSetup)
     {
@@ -122,5 +193,15 @@ void loop()
         {
             uartPort.write("Failed to persist wireless setup request; staying in normal mode.\n");
         }
+    }
+
+    for (auto& ledStation : ledStations)
+    {
+        ledStation.update();
+    }
+
+    for (auto& station : stations)
+    {
+        station.update();
     }
 }
