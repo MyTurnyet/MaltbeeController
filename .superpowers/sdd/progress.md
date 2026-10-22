@@ -61,3 +61,11 @@ transitive dependency) was honored, confirmed alias preservation, and confirmed
 the existing test_web_form_commissioning_adapter suite is untouched. 1 Minor,
 non-blocking: one new test asserts a compile-time array-size invariant rather
 than runtime behavior — plan-mandated (copied from the brief), not a defect.
+
+Task 4 (SetupFormRenderer::render() becomes a function template): complete
+(commit 5b5c040..a685311 [^ F], review clean — Approved, zero findings.
+Reviewer confirmed the two-line edit is exact and minimal, confirmed
+escapeHtml/renderIdOptions/renderNetworkOptions/renderChannelField/kStyle
+are untouched, confirmed the test append is byte-for-byte per the brief,
+and checked that WebFormSubmission4 (from Task 3) exists for the template
+to bind against.
