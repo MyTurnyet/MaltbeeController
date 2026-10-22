@@ -20,3 +20,13 @@ Global Constraints. Proceeding without a batched question to the user.
 ## Tasks
 
 (none started yet)
+
+Task 1 (EitherActiveDigitalInput): complete (commit a990ead..f42edf2 [^ F],
+review clean — Approved, zero findings. Note: the first implementer dispatch
+hit a safety-classifier timeout warning before committing; controller
+independently verified all 3 files on disk matched the brief exactly and
+re-ran the new suite (4/4 assertions) before approving the commit - no
+issue found, approval was warranted. Reviewer confirmed exact file set
+(3 files, 74 insertions, 0 deletions), confirmed DigitalInput::isActive()
+override signature matches the port, and confirmed all 4 boolean
+combinations are covered.
