@@ -40,12 +40,25 @@ GPIO-owning wrapper).
 hard-bound to `NodeConfig::kChannelCount` (12) — a gap sub-project #1's
 `CLAUDE.md` section already flags as its own future sub-project. Decided
 with Paige: use the existing `NullTurnoutCommandPort` (no-op) for now.
-This sub-project proves the button-to-LED mechanics work on real
-hardware; wiring real Loco2MQTT send/receive is a separate, later
-sub-project. Consequence: with no real feedback source, every station
-stays on its post-`begin()` unconfirmed blink indefinitely — there is
-nothing yet that would ever call `applyFeedback()`. That's expected, not
-a bug, given a no-op command port.
+Wiring real Loco2MQTT send/receive is a separate, later sub-project.
+
+**This sub-project proves only the LED half, not the button-to-LED
+mechanics.** Bring-up can confirm all 4 channels' red and green GPIOs are
+wired to the right pins and that each pair blinks at the 500 ms
+unconfirmed interval. It cannot confirm anything about button response,
+because no path from a button press to any visible change exists yet:
+`ToggleTurnoutControl::update()` only calls
+`turnoutCommandPort_.send(...)` — it never mutates the `Turnout` and
+never calls `indicator_.display()`. The LED changes only via
+`applyFeedback()`, a separate method, and nothing in
+`src/esp32node4/main.cpp` calls it (no real command port, no feedback
+source; `NullTurnoutCommandPort::send()` is a no-op). **Net effect: a
+button press on the node board produces zero observable effect.** All 4
+LED pairs stay on their post-`begin()` unconfirmed blink forever,
+completely independent of button activity. That is expected given a
+no-op command port, not a bug — but it means button-to-LED verification
+arrives only once a real `TurnoutCommandPort` and a real feedback source
+exist.
 
 ## Decision
 
