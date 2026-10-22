@@ -379,10 +379,12 @@ Indicative only; final placement is a KiCad decision.
 ## 7. Firmware impacts (Proposed)
 
 Grounded in the repo at the time of writing (`src/esp32/main.cpp`, `lib/McsEsp32/`).
-**Status as of sub-project #1 (2026-10-21):** item 1 is done; items 2-6 are not yet
-started. See `docs/superpowers/specs/2026-10-21-esp32-node4-channel-count-design.md`
-and `CLAUDE.md`'s "4-channel node board: channel-count templating" section for the
-implementation.
+**Status as of sub-project #3 (2026-10-21):** items 1 (sub-project #1) and 6
+(sub-project #3) are done; items 2-5 are not yet started. See
+`docs/superpowers/specs/2026-10-21-esp32-node4-channel-count-design.md` and
+`docs/superpowers/specs/2026-10-21-esp32-node4-setup-trigger-wiring-design.md`,
+plus `CLAUDE.md`'s "4-channel node board: channel-count templating" and
+"Composite setup-mode trigger" sections, for the implementations.
 
 1. **Turnout count — done (sub-project #1).** `NodeConfig::kChannelCount` is a compile-time `12`, `main.cpp` builds `TURNOUT_CONFIGS[12]`, 12 `LedPairStation`s and 12 `ToggleTurnoutStation`s, and the commissioning web form carries 12 channel fields. A 4-turnout node needs a per-board-variant constant (build flag or separate PlatformIO environment) driving all of these. *(Resolved via a channel-count template parameter on 8 commissioning classes plus a new `[env:esp32node4]` environment and `src/esp32node4/main.cpp` composition root — the latter is still a minimal placeholder with no turnout stations/LEDs/buttons wired, which items 2-6 below still need.)*
 2. **Buttons.** Replace `MatrixScanner`/`MatrixDigitalInput` with four `ArduinoDigitalInput`s on GPIO 34/35/36/39 (active-low, no internal pull-up). The existing matrix column inputs use that same constructor form.
@@ -472,6 +474,7 @@ for the panel end, a switch, a red LED and a green LED.
 - [ ] **RJ12 LocoNet plug in an RJ45 jack:** try it with parts in hand to see what the contacts hit (pins 2–7), then decide on labelling or keying.
 - [ ] **TVS and fuse datasheets:** confirm P6KE6.8A standoff and clamping against the actual rail, and the PTC's hold/trip current.
 - [ ] **Audit firmware** for `Wire.begin()`, `SPI.begin()` and `Serial2.begin()` calls without explicit pins (§4.2).
-- [x] **Firmware work** (§7) **item 1 only** — per-variant channel count, done in sub-project #1 (2026-10-21).
-- [ ] **Firmware work** (§7) items 2-6 — direct-GPIO buttons, independent-LED adapter with blink, identify/setup-mode flashing, status LED ownership, composite setup trigger.
+- [x] **Firmware work** (§7) **item 1** — per-variant channel count, done in sub-project #1 (2026-10-21).
+- [x] **Firmware work** (§7) **item 6** — composite setup trigger (GPIO 0 or GPIO 16, 3 s hold-then-release), done in sub-project #3 (2026-10-21).
+- [ ] **Firmware work** (§7) items 2-5 — direct-GPIO buttons, independent-LED adapter with blink, identify/setup-mode flashing, status LED ownership.
 - [ ] **Reconcile** `esp32-turnout-node-rev-a/` with this design before starting the KiCad schematic.
