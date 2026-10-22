@@ -109,3 +109,15 @@ from the brief's own prescribed code, not introduced by the implementer.
 
 ALL 8 TEMPLATING TASKS (1-8) COMPLETE. Proceeding to Task 9 (new esp32node4
 environment + placeholder composition root).
+
+Task 9 (New esp32node4 environment + placeholder composition root): complete
+(commit 8ce2924..d4c1f23 [@ F], review clean — Approved, zero blocking
+findings. Reviewer directly compared the new main.cpp against src/esp32/main.cpp
+line-by-line, confirmed byte-for-byte match to the brief for both platformio.ini's
+new block and the new main.cpp, confirmed zero turnout/LED/button/WiFi/MQTT
+scope creep, and confirmed global declaration ordering matches the established
+NvsBootstrap-first pattern. All three builds (esp32node4 new/SUCCESS,
+esp32dev/SUCCESS unaffected, megaatmega2560/SUCCESS unaffected) per implementer
+report. Controller independently confirmed git status clean and .pio/ properly
+gitignored after the implementer's reported transient registry-fetch workaround
+(no trace of it in the commit).
