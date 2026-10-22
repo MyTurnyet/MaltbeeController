@@ -30,3 +30,21 @@ issue found, approval was warranted. Reviewer confirmed exact file set
 (3 files, 74 insertions, 0 deletions), confirmed DigitalInput::isActive()
 override signature matches the port, and confirmed all 4 boolean
 combinations are covered.
+
+Task 2 (Wire composite setup trigger into src/esp32node4/main.cpp): complete
+(commit 9417fce..7efe3c4 [! F], review clean — Approved, zero functional
+findings. Reviewer confirmed the file is byte-identical to the brief,
+confirmed global declaration order is correct, confirmed main.cpp stays a
+pure composition root, and independently cross-checked both constructor
+signatures (EitherActiveDigitalInput, ButtonSetupModeTrigger) against the
+real unmodified headers. 1 Minor, non-blocking, no action taken: the
+commit's risk symbol (! F) is inconsistent with this repo's own established
+convention for build-only composition-root changes with no possible unit
+test (two prior commits, d4c1f23 and fc84e29, both used @ F for the same
+shape of change). This is a notation label on an already-landed commit,
+not a code defect - not worth rewriting history for; noted here for the
+record. All builds (esp32node4/esp32dev/megaatmega2560) SUCCESS, native
+suite 51/51, per implementer report.
+
+ALL 2 TASKS COMPLETE. Proceeding to final full-suite verification and the
+final whole-branch review.
