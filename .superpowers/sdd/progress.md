@@ -30,3 +30,14 @@ to the user.
 ## Tasks
 
 (none started yet)
+
+Task 1 (Template NodeConfig): complete (commit 865ffa2..edba58c [^ F], review
+clean — Approved, zero blocking findings. Reviewer confirmed line-for-line
+match to the brief, confirmed test_node_config (36 assertions/16 cases)
+unchanged and test_node_config4 (13 assertions/6 cases) new/passing, and
+independently checked two named risks: no forward-declarations of NodeConfig
+anywhere in McsEsp32 that the alias conversion could break, and no
+platformio.ini reference to the deleted NodeConfig.cpp. 1 Minor, non-blocking:
+flagged that the inline-everything-in-header pattern is about to repeat 7
+more times per the plan — worth watching for header bloat on heavier classes,
+not a defect here.
