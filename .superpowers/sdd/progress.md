@@ -87,3 +87,11 @@ independently re-ran pio test -e native and confirmed the true count: 48
 suites passed, 0 failed, 0 errored (44 pre-existing + 4 new across Tasks
 1/2/3/6). Corrected the report file directly (no fix subagent needed, since
 code/tests were never wrong) rather than re-dispatching for a non-code issue.
+
+Task 7 (Template NvsConfigStore, hardware adapter, no native test): complete
+(commit ad4e1a8..084dd2f [^ r], review clean — Approved, zero findings.
+Reviewer confirmed NVS namespace/key strings and the putString() comment are
+byte-for-byte unchanged (hard constraint satisfied), confirmed the explicit
+template instantiations for N=12/N=4, and checked that BasicConfigStore<N>
+(Task 2's dependency) exists and matches. Native suite 48/48, esp32dev build
+SUCCESS per implementer report.
