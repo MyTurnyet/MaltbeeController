@@ -2,11 +2,15 @@
 
 #include "../domain/NodeConfig.h"
 
-class ConfigStore
+template <int N>
+class BasicConfigStore
 {
 public:
-    virtual ~ConfigStore() = default;
+    virtual ~BasicConfigStore() = default;
 
-    virtual NodeConfig load() = 0;
-    virtual bool save(const NodeConfig& config) = 0;
+    virtual BasicNodeConfig<N> load() = 0;
+    virtual bool save(const BasicNodeConfig<N>& config) = 0;
 };
+
+using ConfigStore = BasicConfigStore<12>;
+using ConfigStore4 = BasicConfigStore<4>;
