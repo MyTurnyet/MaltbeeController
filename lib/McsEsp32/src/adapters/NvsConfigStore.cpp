@@ -15,19 +15,20 @@ namespace
     constexpr const char* kKeyChannelPrefix = "ch";
 }
 
-NodeConfig NvsConfigStore::load()
+template <int N>
+BasicNodeConfig<N> BasicNvsConfigStore<N>::load()
 {
     Preferences prefs;
     prefs.begin(kNamespace, true);
 
-    NodeConfig config = NodeConfig::factoryDefault();
+    BasicNodeConfig<N> config = BasicNodeConfig<N>::factoryDefault();
     config.nodeId = prefs.getInt(kKeyNodeId, 0);
     config.wifiSsid = prefs.getString(kKeyWifiSsid, "").c_str();
     config.wifiPassword = prefs.getString(kKeyWifiPassword, "").c_str();
     config.brokerHost = prefs.getString(kKeyBrokerHost, "").c_str();
     config.brokerPort = prefs.getInt(kKeyBrokerPort, 1883);
 
-    for (int i = 0; i < NodeConfig::kChannelCount; ++i)
+    for (int i = 0; i < N; ++i)
     {
         const std::string key = std::string(kKeyChannelPrefix) + std::to_string(i);
         config.channelTurnoutAddresses[i] = prefs.getInt(key.c_str(), 0);
@@ -37,7 +38,8 @@ NodeConfig NvsConfigStore::load()
     return config;
 }
 
-bool NvsConfigStore::save(const NodeConfig& config)
+template <int N>
+bool BasicNvsConfigStore<N>::save(const BasicNodeConfig<N>& config)
 {
     Preferences prefs;
     bool ok = prefs.begin(kNamespace, false);
@@ -58,7 +60,7 @@ bool NvsConfigStore::save(const NodeConfig& config)
     prefs.putString(kKeyBrokerHost, config.brokerHost.c_str());
     ok = prefs.putInt(kKeyBrokerPort, config.brokerPort) > 0 && ok;
 
-    for (int i = 0; i < NodeConfig::kChannelCount; ++i)
+    for (int i = 0; i < N; ++i)
     {
         const std::string key = std::string(kKeyChannelPrefix) + std::to_string(i);
         ok = prefs.putInt(key.c_str(), config.channelTurnoutAddresses[i]) > 0 && ok;
@@ -67,5 +69,8 @@ bool NvsConfigStore::save(const NodeConfig& config)
     prefs.end();
     return ok;
 }
+
+template class BasicNvsConfigStore<12>;
+template class BasicNvsConfigStore<4>;
 
 #endif

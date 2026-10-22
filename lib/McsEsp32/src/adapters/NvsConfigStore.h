@@ -2,9 +2,13 @@
 
 #include "../ports/ConfigStore.h"
 
-class NvsConfigStore final : public ConfigStore
+template <int N>
+class BasicNvsConfigStore final : public BasicConfigStore<N>
 {
 public:
-    NodeConfig load() override;
-    bool save(const NodeConfig& config) override;
+    BasicNodeConfig<N> load() override;
+    bool save(const BasicNodeConfig<N>& config) override;
 };
+
+using NvsConfigStore = BasicNvsConfigStore<12>;
+using NvsConfigStore4 = BasicNvsConfigStore<4>;
