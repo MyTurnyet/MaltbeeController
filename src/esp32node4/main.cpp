@@ -4,7 +4,11 @@
 
 #include <nvs_flash.h>
 
+#include "adapters/ArduinoClock.h"
+#include "adapters/ArduinoDigitalInput.h"
+#include "adapters/ButtonSetupModeTrigger.h"
 #include "adapters/CaptivePortalServer.h"
+#include "adapters/EitherActiveDigitalInput.h"
 #include "adapters/EspDeviceIdentity.h"
 #include "adapters/EspUartPort.h"
 #include "adapters/NvsConfigStore.h"
@@ -21,6 +25,7 @@
 namespace
 {
     constexpr unsigned long UART_BAUD_RATE = 115200;
+    constexpr unsigned long SETUP_TRIGGER_HOLD_MS = 3000;
 }
 
 namespace
@@ -46,6 +51,8 @@ namespace
 
 NvsBootstrap nvsBootstrap;
 
+ArduinoClock systemClock;
+
 const MacAddress ownMac = EspDeviceIdentity().mac();
 
 EspUartPort uartPort(UART_BAUD_RATE);
@@ -61,9 +68,17 @@ const bool wirelessSetupRequested = setupModeRequestStore.consumeRequest();
 const BootMode bootMode = BootModeSelector::select(runningConfig, wirelessSetupRequested);
 const bool configValid = runningConfig.validate().empty();
 
+ArduinoDigitalInput bootButton(0, /*activeLow=*/true, /*useInternalPullup=*/true);
+ArduinoDigitalInput setupButton(16, /*activeLow=*/true, /*useInternalPullup=*/true);
+EitherActiveDigitalInput setupTriggerInput(bootButton, setupButton);
+ButtonSetupModeTrigger setupTrigger(setupTriggerInput, systemClock, SETUP_TRIGGER_HOLD_MS);
+
 void setup()
 {
     uartPort.begin();
+
+    bootButton.begin();
+    setupButton.begin();
 
     if (bootMode == BootMode::WirelessSetup)
     {
@@ -89,5 +104,23 @@ void loop()
     if (bootMode == BootMode::WirelessSetup)
     {
         captivePortalServer.poll();
+        return;
+    }
+
+    setupTrigger.update();
+
+    if (setupTrigger.requested())
+    {
+        const bool stored = setupModeRequestStore.requestOnNextBoot();
+        if (stored)
+        {
+            uartPort.write("Entering wireless setup...\n");
+            Serial.flush();
+            ESP.restart();
+        }
+        else
+        {
+            uartPort.write("Failed to persist wireless setup request; staying in normal mode.\n");
+        }
     }
 }
