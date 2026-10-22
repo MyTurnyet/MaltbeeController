@@ -52,3 +52,12 @@ Full native suite 46/46 passing per implementer report. 2 Minor, non-blocking:
 inline-header duplication across N instantiations is plan-mandated, not a
 defect; new N=4 suite doesn't cover a failed-save case the N=12 suite likely
 has (acceptable — focused N-sensitive coverage was the brief's intent).
+
+Task 3 (Template WebFormSubmission and WebFormCommissioningAdapter): complete
+(commit 8305f66..95e46c9 [^ F], review clean — Approved, zero blocking
+findings. Reviewer confirmed the explicit include-retention constraint
+(WebFormSubmission.h keeps #include "NodeConfig.h" for test_setup_form_renderer's
+transitive dependency) was honored, confirmed alias preservation, and confirmed
+the existing test_web_form_commissioning_adapter suite is untouched. 1 Minor,
+non-blocking: one new test asserts a compile-time array-size invariant rather
+than runtime behavior — plan-mandated (copied from the brief), not a defect.
