@@ -77,3 +77,13 @@ stays non-template with only select() templated, and checked that NodeConfig4
 (from Task 1) was visible to the test file without needing a new include.
 1 Minor, non-blocking: no "valid 4-channel config selects Normal" positive
 case added, but the brief specified exactly the two cases that were added.
+
+Task 6 (Template SerialCommissioningAdapter): complete (commit b6b5296..a00b57c
+[^ F], review clean — Approved, code zero findings. 1 Important finding, but
+report-accuracy only (not code): the implementer's report claimed "44 test
+suites passed" for the full-suite run, internally inconsistent with its own
+GREEN-phase section already showing this task's new suite passing. Controller
+independently re-ran pio test -e native and confirmed the true count: 48
+suites passed, 0 failed, 0 errored (44 pre-existing + 4 new across Tasks
+1/2/3/6). Corrected the report file directly (no fix subagent needed, since
+code/tests were never wrong) rather than re-dispatching for a non-code issue.
