@@ -13,10 +13,11 @@
 #include "../domain/SetupFormRenderer.h"
 #include "../domain/WifiScanFormatter.h"
 
-class CaptivePortalServer
+template <int N>
+class BasicCaptivePortalServer
 {
 public:
-    explicit CaptivePortalServer(WebFormCommissioningAdapter& adapter);
+    explicit BasicCaptivePortalServer(BasicWebFormCommissioningAdapter<N>& adapter);
 
     void begin(const std::string& apName);
     void poll();
@@ -26,12 +27,15 @@ private:
     void handleSubmit();
     void handleRescan();
     void scanNetworks();
-    WebFormSubmission readForm();
+    BasicWebFormSubmission<N> readForm();
 
-    WebFormCommissioningAdapter& adapter_;
+    BasicWebFormCommissioningAdapter<N>& adapter_;
     DNSServer dnsServer_;
     WebServer webServer_{80};
     std::vector<ScannedNetwork> scannedNetworks_;
 };
+
+using CaptivePortalServer = BasicCaptivePortalServer<12>;
+using CaptivePortalServer4 = BasicCaptivePortalServer<4>;
 
 #endif
