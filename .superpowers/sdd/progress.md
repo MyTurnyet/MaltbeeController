@@ -41,3 +41,14 @@ platformio.ini reference to the deleted NodeConfig.cpp. 1 Minor, non-blocking:
 flagged that the inline-everything-in-header pattern is about to repeat 7
 more times per the plan — worth watching for header bloat on heavier classes,
 not a defect here.
+
+Task 2 (Template ConfigStore and CommissioningSession): complete (commit
+3506f8b..2a7ed4c [^ F], review clean — Approved, zero blocking findings.
+Reviewer independently confirmed the core correctness requirement (existing
+callers compile unchanged against the aliased names) by inspecting
+FakeConfigStore.h and all three production consumers (WebFormCommissioningAdapter,
+SerialCommissioningAdapter, NvsConfigStore), not just the implementer's claim.
+Full native suite 46/46 passing per implementer report. 2 Minor, non-blocking:
+inline-header duplication across N instantiations is plan-mandated, not a
+defect; new N=4 suite doesn't cover a failed-save case the N=12 suite likely
+has (acceptable — focused N-sensitive coverage was the brief's intent).
