@@ -11,6 +11,12 @@
 // drives exactly one high and the other low, reproducing the shared-pin
 // driver's exact blink visual on independent hardware. update() must be
 // called on every loop iteration for blinking to work.
+//
+// This is a deliberate, separate copy of LedPairDriver.cpp's state
+// machine (see CLAUDE.md's "Independent-output turnout indicator"
+// section for why), not a subclass or a shared helper — a state-machine
+// bugfix to one must be mirrored to the other by hand, since neither
+// includes or calls into the other.
 class IndependentLedPairDriver
 {
 public:
