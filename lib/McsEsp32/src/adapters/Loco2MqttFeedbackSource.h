@@ -3,18 +3,20 @@
 #include <array>
 #include <deque>
 
-#include "../domain/NodeConfig.h"
 #include "../ports/MqttTransport.h"
 #include "ports/TurnoutCommandPort.h"
 
-class Loco2MqttFeedbackSource
+template <int N>
+class BasicLoco2MqttFeedbackSource
 {
 public:
-    Loco2MqttFeedbackSource(MqttTransport& transport,
-                             const std::array<int, NodeConfig::kChannelCount>& channelTurnoutAddresses);
+    BasicLoco2MqttFeedbackSource(MqttTransport& transport, const std::array<int, N>& channelTurnoutAddresses);
 
     bool poll(TurnoutFeedback& outFeedback);
 
 private:
     std::deque<TurnoutFeedback> pending_;
 };
+
+using Loco2MqttFeedbackSource = BasicLoco2MqttFeedbackSource<12>;
+using Loco2MqttFeedbackSource4 = BasicLoco2MqttFeedbackSource<4>;

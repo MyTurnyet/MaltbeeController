@@ -5,10 +5,11 @@
 #include "../domain/PayloadCodec.h"
 #include "../domain/TopicScheme.h"
 
-Loco2MqttFeedbackSource::Loco2MqttFeedbackSource(
-    MqttTransport& transport, const std::array<int, NodeConfig::kChannelCount>& channelTurnoutAddresses)
+template <int N>
+BasicLoco2MqttFeedbackSource<N>::BasicLoco2MqttFeedbackSource(
+    MqttTransport& transport, const std::array<int, N>& channelTurnoutAddresses)
 {
-    for (int i = 0; i < NodeConfig::kChannelCount; ++i)
+    for (int i = 0; i < N; ++i)
     {
         const int turnoutAddress = channelTurnoutAddresses[i];
         if (turnoutAddress == 0)
@@ -28,7 +29,8 @@ Loco2MqttFeedbackSource::Loco2MqttFeedbackSource(
     }
 }
 
-bool Loco2MqttFeedbackSource::poll(TurnoutFeedback& outFeedback)
+template <int N>
+bool BasicLoco2MqttFeedbackSource<N>::poll(TurnoutFeedback& outFeedback)
 {
     if (pending_.empty())
     {
@@ -39,3 +41,6 @@ bool Loco2MqttFeedbackSource::poll(TurnoutFeedback& outFeedback)
     pending_.pop_front();
     return true;
 }
+
+template class BasicLoco2MqttFeedbackSource<12>;
+template class BasicLoco2MqttFeedbackSource<4>;
