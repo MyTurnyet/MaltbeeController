@@ -3,15 +3,17 @@
 #include "../domain/PayloadCodec.h"
 #include "../domain/TopicScheme.h"
 
-Loco2MqttTurnoutCommandAdapter::Loco2MqttTurnoutCommandAdapter(
-    MqttTransport& transport, const std::array<int, NodeConfig::kChannelCount>& channelTurnoutAddresses)
+template <int N>
+BasicLoco2MqttTurnoutCommandAdapter<N>::BasicLoco2MqttTurnoutCommandAdapter(
+    MqttTransport& transport, const std::array<int, N>& channelTurnoutAddresses)
     : transport_(transport), channelTurnoutAddresses_(channelTurnoutAddresses)
 {
 }
 
-void Loco2MqttTurnoutCommandAdapter::send(const int address, const TurnoutPosition position)
+template <int N>
+void BasicLoco2MqttTurnoutCommandAdapter<N>::send(const int address, const TurnoutPosition position)
 {
-    if (address < 1 || address > NodeConfig::kChannelCount)
+    if (address < 1 || address > N)
     {
         return;
     }
@@ -24,3 +26,6 @@ void Loco2MqttTurnoutCommandAdapter::send(const int address, const TurnoutPositi
 
     transport_.publish(TopicScheme::topicFor(turnoutAddress), PayloadCodec::encode(position), false);
 }
+
+template class BasicLoco2MqttTurnoutCommandAdapter<12>;
+template class BasicLoco2MqttTurnoutCommandAdapter<4>;
