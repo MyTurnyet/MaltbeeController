@@ -1,109 +1,134 @@
 # Subagent-Driven Development Progress
 
-Plan: docs/superpowers/plans/2026-10-22-esp32-node4-turnout-station-wiring.md
+Plan: docs/superpowers/plans/2026-10-22-esp32-node4-boot-mode-indicator.md
 
 Started: 2026-10-22
 
-Ledger reset for sub-project #4 (turnout station wiring). Previous plan
-(sub-project #3, composite setup trigger) is complete and merged into
+Ledger reset for sub-project #5 (boot-mode LED indicator). Previous plan
+(sub-project #4, turnout station wiring) is complete and merged into
 main's history.
 
 Workspace: working directly on main per the user's earlier explicit
 confirmation for this same overall effort.
 
-Pre-flight plan scan: 2 tasks. Task 1 is a new composition-helper class
-with zero logic of its own (mirrors LedPairStation's own no-test
-precedent) - verified by build only. Task 2 is a main.cpp composition-root
-rewrite with no native test (consistent with every prior main.cpp change
-in this project) - verified by build only. No contradictions against the
+Pre-flight plan scan: 3 tasks. Task 1 is a new header-only template class
+mirroring an existing one (LedPairFlashIndicator<N>), fully covered by 3
+new native test cases. Task 2 is a main.cpp composition-root change with
+no native test (consistent with every prior main.cpp-only change in this
+project) - verified by build only across 3 environments plus the full
+native suite. Task 3 is documentation only. No contradictions against the
 plan's Global Constraints. Proceeding without a batched question to the
 user.
 
 ## Tasks
 
-(none started yet)
+Task 1 (IndependentLedPairFlashIndicator + tests): complete (commit
+78989df..9cfb59b [^ F], review clean — Approved, zero findings. Reviewer
+independently traced the NeedsCommissioning test's expected final GPIO
+state by hand through IndependentLedPairDriver.cpp's real state machine
+(not just taken on the brief's word), confirmed byte-for-byte structural
+match to LedPairFlashIndicator<N>, confirmed both files match the brief's
+exact content verbatim. 3/3 test cases, 10 assertions, 0 failures per
+implementer report; controller independently re-read both files on disk
+before dispatching review.
 
-Task 1 (IndependentLedPairStation): complete (commit 7511e4f..2c8a65d
-[^ F], review clean — Approved, zero findings. Reviewer independently
-cross-checked the IndependentLedPairDriver constructor call's green-
-before-red argument order against that class's real unmodified header,
-confirmed the structure mirrors LedPairStation 1:1, confirmed member/
-initializer-list order consistency, and confirmed only the 2 planned
-files were touched. Controller independently verified both files on disk
-matched the brief before approving the commit. All 3 builds + full
-native suite (51/51) per implementer report.
+Task 2 (Wire bootModeIndicator into src/esp32node4/main.cpp): complete
+(commit 9cfb59b..29f61d4 [@ F], review clean — Approved, zero findings.
+Reviewer independently cross-checked placement against src/esp32/main.cpp's
+analogous wiring (read outside the diff), confirmed include-block stays
+alphabetical, confirmed all 4 driver() calls present with correct indices,
+confirmed both call sites at the exact prescribed lines, confirmed no
+use-before-initialization risk. All 4 builds (esp32node4, esp32dev,
+megaatmega2560) + full native suite (52/52) per implementer report.
+Controller independently re-diffed the commit before dispatching review.
 
-Task 2 (Wire 4 real turnout stations into src/esp32node4/main.cpp):
-complete (commit d1f970f..81f3a41 [@ F], review clean — Approved, zero
-findings. Reviewer independently cross-checked all 4 GPIO triples against
-the hardware pin map (no transpositions), confirmed green=closedOutput/
-red=thrownOutput for all 4 stations, confirmed control-flow placement
-(begin before boot-mode check, update gated out of WirelessSetup by the
-existing early return), confirmed purely additive (0 deletions), and
-confirmed the @ F risk symbol correctly matches established repo
-convention this time. All 3 builds + full native suite (51/51) per
-implementer report.
+Task 3 (CLAUDE.md + PCB doc updates): commit f457967 [. d] initially
+reviewed with 1 Important/plan-mandated finding — the new CLAUDE.md
+"Net effect" claim ("all 4 LED pairs flash... during WirelessSetup") was
+FALSE: src/esp32node4/main.cpp's WirelessSetup branch of loop() returned
+before ever reaching the ledStations.update() loop, so the identify
+flash's per-tick toggle (IndependentLedPairDriver::update()) never ran -
+LEDs latched solid green instead of flashing. Root cause: the sub-project
+#5 design spec/plan itself wrongly asserted update() "already drives the
+flash timing every tick" without accounting for the early return. User
+chose to fix the code (not just document the gap). Fix dispatched and
+landed: commit b4ad17a [@ F] adds the missing ledStation.update() loop to
+node4's WirelessSetup branch, mirroring src/esp32/main.cpp's identical
+branch exactly; commit 5206b80 [. d] corrects CLAUDE.md to describe the
+real mechanism and credits the fix. All 4 builds + full native suite
+(52/52) verified after the fix. Re-review: Approved, 0
+Critical/Important findings remaining; 1 Minor (b4ad17a's ACN letter
+"F" arguably should be "B" for a bugfix) - not amending published
+history, noted here for the final review to see. Task 3 complete
+(commits 29f61d4..5206b80, review clean after 1 fix cycle).
 
-ALL 2 TASKS COMPLETE. Proceeding to final full-suite verification and the
+ALL 3 TASKS COMPLETE. Proceeding to final full-suite verification and the
 final whole-branch review.
 
-## Final whole-branch review (opus): "Ready to merge: With fixes" (docs only, code was correct)
+## Final whole-branch review (opus): "Ready to merge: With fixes" (docs only, code confirmed correct)
 
-Reviewer found the code itself fully correct and plan-exact (independently
-re-verified all 12 GPIO numbers against the hardware spec, confirmed zero
-modification to any protected file via git diff --name-only, traced the
-full button-to-LED path, and caught a genuine non-obvious hazard already
-handled correctly: ArduinoDigitalOutput::begin() discards the constructor's
-initial write, so LED-GPIO begin() must precede driver begin() and
-ledStation.begin() must precede station.begin()'s clearIndicator() - both
-already in the right order).
+Reviewer independently traced all 3 BootMode paths by hand through
+IndependentLedPairDriver's real state machine, confirmed the new class is
+a faithful mirror of LedPairFlashIndicator<N> (including a deliberate,
+correct omission in its comment vs. a careless copy-paste), confirmed
+scope discipline (exactly 7 files touched, all 7 protected files
+untouched), confirmed suite count (52) and rooted-include tally (44)
+independently.
 
-1 Important finding (the headline one): the design spec's claim that this
-sub-project "proves the button-to-LED mechanics work on real hardware" is
-FALSE. Controller independently verified by reading ToggleTurnoutControl.cpp
-directly: update() only sends a command, never mutates Turnout or calls
-indicator_.display() - the LED only changes via applyFeedback(), which
-nothing calls with a no-op command port and no feedback source. A button
-press today produces literally zero observable effect. Fixed: corrected
-the design spec's claim, added a full "Turnout station wiring (sub-project
-#4)" CLAUDE.md section plainly stating this as a "Known, accepted gap"
-(what bring-up CAN verify: LED GPIO wiring + 500ms blink on all 4 channels;
-CANNOT verify: anything about button response, until real Loco2MQTT wiring
-exists).
+2 Important findings, both documentation-only:
+1. The false "update() already ticks every tick" premise that caused the
+   mid-implementation fix cycle is still uncorrected in the committed
+   design spec and plan - the plan's citation ("confirmed in sub-project
+   #4") was pointing at text that actually said the opposite.
+2. CLAUDE.md self-contradicts in 4 places left over from sub-projects #2
+   and #4 (the #4 "solid red during WirelessSetup" gap paragraph, two #2
+   "nothing calls it yet"/"remains uncalled" claims, and #4's incomplete
+   loop()-ordering sentence) - this project's own established convention
+   (annotate false claims in place, per sub-project #4's own precedent)
+   was not followed when #5 landed.
 
-1 Important finding (doc gap, same recurring pattern): CLAUDE.md was never
-updated for sub-project #4, and 3 passages (sub-project #1/#2/#3 sections)
-now asserted things that were false (no composition helper/button wiring -
-both now exist). Fixed: corrected all 3, re-grepped the rooted-include
-tally (44, not a naive 41+3=44 guess - verified independently by controller
-too, confirms the fix agent's math), fixed the "only rooted adapter include"
-claim to name both files, checked off PCB spec §7 items 2-3.
+4 Minor findings: ACN b4ad17a arguably @B not @F (not amending history,
+noted only); commit trailer inconsistency (cosmetic); CLAUDE.md inventory
+bullets not updated for the new class (lowest priority); a pre-existing
+wrong claim about the panel's own WirelessSetup branch (it does NOT call
+setIdentifying() per tick, contrary to 2 existing CLAUDE.md passages) that
+happens to matter now since #5's correctness argument rests on parity
+with that branch; plus 2 precision-clause suggestions (startup blocking
+delay before the flash begins; NeedsCommissioning/Normal being visually
+identical, not just "distinct from WirelessSetup").
 
-1 Minor finding -> user decision: all 4 LEDs sit solid red during
-BootMode::WirelessSetup (begin() runs before the boot-mode check, loop()
-returns early before ever reaching update()). User chose: document only,
-don't reorder (reordering risks leaving LED GPIOs floating during setup
-mode). Documented as a "Known, accepted gap" pointing at whichever future
-sub-project owns boot-mode LED feedback.
+Dispatching ONE fix subagent for all actionable findings (Important #1-2,
+the pre-existing panel-claim correction, and the 2 precision clauses) -
+no code changes required, only docs.
 
-2 Minor findings -> user approved as code additions (not required fixes,
-new-code safety hardening): deleted copy/move on IndependentLedPairStation
-(self-referential, a copy would dangle) and designated initializers for
-IndependentLedPairConfig (closes a silent-transposition footgun). Both
-implemented, verified by all 4 build/test commands, coded "^ r" not "^ F"
-with sound reasoning (runtime behavior provably unchanged, compile-time-
-only constraint).
+Fix landed: commit d3aff25 [. d]. Controller independently re-read every
+edit on disk against the dispatch's required fixes (A-F) rather than
+trusting the fix report: confirmed the design spec and plan both carry a
+"Correction (discovered during implementation)" note in place (not
+deleted) correcting the false "update() already ticks every tick"
+premise and the wrong "(confirmed in sub-project #4)" citation; confirmed
+CLAUDE.md's #2 section no longer says "nothing calls it yet"/"remains
+uncalled" (now correctly credits IndependentLedPairFlashIndicator as
+setIdentifying()'s first caller, with the MQTT-triggered identify-overlay
+correctly still described as unwired); confirmed CLAUDE.md's #4 section's
+"solid red" gap paragraph is now prefaced "Closed by sub-project #5 - see
+below" and its loop()-ordering sentence now mentions the WirelessSetup
+branch's own update() loop; confirmed the pre-existing wrong claim about
+the panel calling setIdentifying(true) per-tick was folded into the same
+#4-section fix (sound judgment call, not scope creep - the fix agent
+self-flagged this); confirmed both precision clauses (startup blocking
+delay before the flash begins; NeedsCommissioning/Normal visual parity)
+landed in CLAUDE.md's #5 section and the new header's comment
+respectively. pio test -e native re-run independently by controller:
+52/52 suites PASSED. Working tree clean except this ledger file (git-
+ignored scratch).
 
-Fix implementer self-flagged 2 reasonable scope judgment calls (fixed 5
-false CLAUDE.md passages instead of the literal 3 briefed, to avoid
-self-contradiction; used "r" not "F" intention letter) - both reviewed and
-accepted as sound judgment, not scope creep.
+## SUB-PROJECT #5 (BOOT-MODE LED INDICATOR) COMPLETE.
 
-Controller independently re-verified after all fixes: pio test -e native
-51/51, both esp32node4 and esp32dev builds SUCCESS (confirming the
-designated-initializer/deleted-copy-constructor changes compile under the
-real toolchain), new CLAUDE.md section read in full and confirmed accurate/
-complete, PCB doc checklist read and confirmed correct, rooted-include
-count (44) independently re-derived and confirmed matching.
-
-## SUB-PROJECT #4 (TURNOUT STATION WIRING) COMPLETE.
+Final state: 8 commits (2c7098b design spec .. d3aff25 final-review doc
+fix). Code confirmed correct by both per-task review and the final
+whole-branch review; one real functional bug (WirelessSetup LEDs never
+actually flashing) was caught mid-flight by a per-task reviewer, fixed,
+and re-reviewed clean; the final whole-branch review's remaining findings
+were all documentation-only and are now resolved. No regressions to the
+Mega, panel, or any existing suite across the whole sub-project.
