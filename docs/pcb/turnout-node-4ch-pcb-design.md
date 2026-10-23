@@ -387,12 +387,15 @@ the node board (sub-project #6 templated the Loco2MQTT classes that
 wiring will use; the wiring itself is sub-project #7). See
 `docs/superpowers/specs/2026-10-21-esp32-node4-channel-count-design.md`,
 `docs/superpowers/specs/2026-10-21-esp32-node4-independent-led-pair-driver-design.md`,
-`docs/superpowers/specs/2026-10-21-esp32-node4-setup-trigger-wiring-design.md`
-and
+`docs/superpowers/specs/2026-10-21-esp32-node4-setup-trigger-wiring-design.md`,
 `docs/superpowers/specs/2026-10-22-esp32-node4-turnout-station-wiring-design.md`,
+`docs/superpowers/specs/2026-10-22-esp32-node4-boot-mode-indicator-design.md`,
+and
+`docs/superpowers/specs/2026-10-22-esp32-node4-loco2mqtt-channel-count-design.md`,
 plus `CLAUDE.md`'s "4-channel node board: channel-count templating",
-"Independent-output turnout indicator", "Composite setup-mode trigger" and
-"Turnout station wiring" sections, for the implementations.
+"Independent-output turnout indicator", "Composite setup-mode trigger",
+"Turnout station wiring", "Boot-mode LED indicator", and "Loco2MQTT
+channel-count templating" sections, for the implementations.
 
 1. **Turnout count — done (sub-project #1).** `NodeConfig::kChannelCount` is a compile-time `12`, `main.cpp` builds `TURNOUT_CONFIGS[12]`, 12 `LedPairStation`s and 12 `ToggleTurnoutStation`s, and the commissioning web form carries 12 channel fields. A 4-turnout node needs a per-board-variant constant (build flag or separate PlatformIO environment) driving all of these. *(Resolved via a channel-count template parameter on 8 commissioning classes plus a new `[env:esp32node4]` environment and `src/esp32node4/main.cpp` composition root — the latter is still a minimal placeholder with no turnout stations/LEDs/buttons wired, which items 2-5 below still need.)*
 2. **Buttons.** Replace `MatrixScanner`/`MatrixDigitalInput` with four `ArduinoDigitalInput`s on GPIO 34/35/36/39 (active-low, no internal pull-up). The existing matrix column inputs use that same constructor form.
