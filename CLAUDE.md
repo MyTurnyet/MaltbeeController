@@ -603,6 +603,43 @@ driven by it) — blocked on real WiFi/MQTT wiring landing on the node
 board, a separate future sub-project. Status/activity LEDs and the
 4-channel commissioning form remain their own future sub-projects too.
 
+### Loco2MQTT channel-count templating (sub-project #6)
+
+Closes the gap sub-project #1's own forward-looking note flagged:
+`Loco2MqttTurnoutCommandAdapter`/`Loco2MqttFeedbackSource`
+(`lib/McsEsp32/src/adapters/`) were hard-bound to
+`std::array<int, NodeConfig::kChannelCount>` and could not be constructed
+with `NodeConfig4`'s 4-element `channelTurnoutAddresses` array. This is
+the first of what the roadmap originally called "real WiFi/MQTT/Loco2MQTT
+wiring on the node board" — narrowed, with Paige, to templating alone:
+isolated, fully testable, no hardware dependency, no `main.cpp` changes.
+Wiring these classes into `src/esp32node4/main.cpp` alongside real
+`WiFiLink`/`MqttLink`/`BrokerAddressResolver`/`EspMdnsResolver` is its own
+future sub-project (#7), as is presence/collision detection and the
+identify-overlay (both still blocked on #7 landing first).
+
+Both classes got the identical `Basic<X><N>` treatment sub-project #1
+used for `NvsConfigStore`/`CaptivePortalServer` (the two prior classes
+with a `.cpp`): `BasicLoco2MqttTurnoutCommandAdapter<N>` and
+`BasicLoco2MqttFeedbackSource<N>`, method bodies as template definitions
+in each `.cpp`, explicit instantiations for `N=12`/`N=4` at the bottom of
+each `.cpp`, and `using X = Basic...<12>;`/`using X4 = Basic...<4>;`
+aliases at the bottom of each header — zero behavior change for the
+existing N=12 panel code. Both classes dropped their
+`domain/NodeConfig.h` include entirely, since `N` as a template parameter
+removed their only dependency on it. The command adapter's range check
+became `address > N` (was `address > NodeConfig::kChannelCount`); the
+feedback source's constructor loop became `for (int i = 0; i < N; ++i)`
+(was `... < NodeConfig::kChannelCount; ...`).
+
+**Test coverage added:** `test/test_loco2mqtt_turnout_command_adapter4`
+(5 cases, mirroring `test_loco2mqtt_turnout_command_adapter`'s 5 cases)
+and `test/test_loco2mqtt_feedback_source4` (7 cases, mirroring
+`test_loco2mqtt_feedback_source`'s 7 cases) — 52 → 54 suites. No N=4
+mirror of `test_loco2mqtt_turnout_wiring` was added: its cases exercise
+cross-class logic that doesn't differ between N=12 and N=4, so a copy
+would add no coverage.
+
 ### Loco2MQTT turnout bridge (sub-project #9a)
 
 The ESP32 panel's turnout MQTT integration was migrated off JMRI-over-MQTT

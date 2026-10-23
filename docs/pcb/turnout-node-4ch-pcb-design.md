@@ -379,9 +379,12 @@ Indicative only; final placement is a KiCad decision.
 ## 7. Firmware impacts (Proposed)
 
 Grounded in the repo at the time of writing (`src/esp32/main.cpp`, `lib/McsEsp32/`).
-**Status as of sub-project #4 (2026-10-22):** items 1 (sub-project #1), 2
-(sub-project #4), 3 (sub-projects #2 and #4 together) and 6 (sub-project #3)
-are done; items 4-5 are not yet started. See
+**Status as of sub-project #6 (2026-10-22):** items 1 (sub-project #1), 2
+(sub-project #4), 3 (sub-projects #2 and #4 together), 4's boot/setup half
+(sub-project #5), and 6 (sub-project #3) are done; item 4's identify half
+and item 5 remain open, both blocked on real WiFi/MQTT wiring landing on
+the node board (sub-project #6 templated the Loco2MQTT classes that
+wiring will use; the wiring itself is sub-project #7). See
 `docs/superpowers/specs/2026-10-21-esp32-node4-channel-count-design.md`,
 `docs/superpowers/specs/2026-10-21-esp32-node4-independent-led-pair-driver-design.md`,
 `docs/superpowers/specs/2026-10-21-esp32-node4-setup-trigger-wiring-design.md`
