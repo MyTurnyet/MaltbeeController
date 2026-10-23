@@ -554,8 +554,11 @@ driver already resting in `Mode::Blink` from `begin()`/`clearIndicator()`
 alternating blink the unconfirmed state already shows (the same "keep the
 existing blink visual" decision sub-project #2 made, inherited here rather
 than re-decided); `show(BootMode::Normal)` leaves identifying off.
-`update()` is a no-op body, since `IndependentLedPairStation::update()`
-already drives the flash/blink timing every tick.
+`update()` is a no-op body — `IndependentLedPairFlashIndicator` itself
+drives nothing per-tick; the actual flash/blink timing comes from
+`IndependentLedPairStation::update()`, called from the `ledStations` loop
+in `loop()` (including, after this sub-project's own fix, the one inside
+the `BootMode::WirelessSetup` branch — see below).
 
 `src/esp32node4/main.cpp` wiring mirrors the panel's exact two call sites:
 a `bootModeLedPairs` array of `IndependentLedPairDriver*` built from
@@ -569,8 +572,13 @@ very first line of `loop()` — identical placement to `src/esp32/main.cpp`.
 green/red alternating) for the duration of a `BootMode::WirelessSetup`
 boot, instead of sitting solid red for the whole session — closing the
 "Known, accepted gap" sub-project #4 documented about wireless-setup mode
-giving no LED feedback. `NeedsCommissioning` and `Normal` are visually
-unchanged (both already showed the unconfirmed blink via `begin()`).
+giving no LED feedback. (This WirelessSetup flash required one additional
+fix beyond the original wiring: `loop()`'s `WirelessSetup` branch returned
+before ever reaching the `ledStations` update loop, so the flash never
+actually ticked until that branch gained its own `ledStation.update()`
+loop, mirroring `src/esp32/main.cpp`'s identical branch.) `NeedsCommissioning`
+and `Normal` are visually unchanged (both already showed the unconfirmed
+blink via `begin()`).
 
 **Test coverage added:** `test/test_independent_led_pair_flash_indicator`
 (3 cases, mirroring `test_led_pair_flash_indicator`'s 3 cases with both
