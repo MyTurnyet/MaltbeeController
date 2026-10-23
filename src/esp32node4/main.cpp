@@ -11,21 +11,27 @@
 #include "adapters/CaptivePortalServer.h"
 #include "adapters/EitherActiveDigitalInput.h"
 #include "adapters/EspDeviceIdentity.h"
+#include "adapters/EspMdnsResolver.h"
 #include "adapters/EspUartPort.h"
 #include "adapters/IndependentLedPairFlashIndicator.h"
 #include "adapters/IndependentLedPairStation.h"
-#include "adapters/NullTurnoutCommandPort.h"
+#include "adapters/Loco2MqttFeedbackSource.h"
+#include "adapters/Loco2MqttTurnoutCommandAdapter.h"
+#include "adapters/MqttLink.h"
 #include "adapters/NvsConfigStore.h"
 #include "adapters/NvsSetupModeRequestStore.h"
 #include "adapters/SerialCommissioningAdapter.h"
 #include "adapters/ToggleTurnoutStation.h"
 #include "adapters/WebFormCommissioningAdapter.h"
+#include "adapters/WiFiLink.h"
+#include "application/BrokerAddressResolver.h"
 #include "application/CommissioningSession.h"
 #include "domain/BootMode.h"
 #include "domain/BootModeSelector.h"
 #include "domain/LedPairDriver.h"
 #include "domain/MacAddress.h"
 #include "domain/NodeConfig.h"
+#include "domain/PresenceTopics.h"
 #include "domain/SetupApName.h"
 
 namespace
@@ -34,6 +40,8 @@ namespace
     constexpr unsigned long SETUP_TRIGGER_HOLD_MS = 3000;
     constexpr unsigned long BLINK_INTERVAL_MS = 500;
     constexpr LedPairColor DEFAULT_LED_COLOR = LedPairColor::Red;
+    constexpr unsigned long RETRY_INTERVAL_MS = 5000;
+    constexpr unsigned long BROKER_RESOLVE_INTERVAL_MS = 60000;
 }
 
 namespace
@@ -130,7 +138,18 @@ const std::array<IndependentLedPairDriver*, 4> bootModeLedPairs = {
 };
 IndependentLedPairFlashIndicator<4> bootModeIndicator(bootModeLedPairs);
 
-NullTurnoutCommandPort turnoutCommandPort;
+WiFiLink wifiLink(systemClock, RETRY_INTERVAL_MS);
+
+const std::string mqttClientId = "maltbee-node4-" + ownMac.lastFourHexDigits();
+const std::string mqttWillTopic = PresenceTopics::statusTopic(runningConfig.nodeId);
+const std::string mqttWillMessage = "offline";
+
+EspMdnsResolver mdnsResolver("maltbee-node4-" + ownMac.lastFourHexDigits());
+BrokerAddressResolver brokerAddressResolver(mdnsResolver, systemClock, BROKER_RESOLVE_INTERVAL_MS);
+MqttLink mqttLink(systemClock, RETRY_INTERVAL_MS, mqttClientId, mqttWillTopic, mqttWillMessage, brokerAddressResolver);
+
+Loco2MqttTurnoutCommandAdapter4 turnoutCommandPort(mqttLink, runningConfig.channelTurnoutAddresses);
+Loco2MqttFeedbackSource4 feedbackSource(mqttLink, runningConfig.channelTurnoutAddresses);
 
 ToggleTurnoutStation stations[4] = {
     ToggleTurnoutStation(TURNOUT_CONFIGS[0].address, TURNOUT_CONFIGS[0].name, buttons[0],
@@ -175,6 +194,12 @@ void setup()
         return;
     }
 
+    if (configValid)
+    {
+        wifiLink.begin(runningConfig.wifiSsid, runningConfig.wifiPassword);
+        mqttLink.begin(runningConfig.brokerHost, runningConfig.brokerPort);
+    }
+
     uartPort.write(configValid ? "MaltBee node ready (configured).\n"
                                 : "MaltBee node needs commissioning. Type 'show'.\n");
 }
@@ -213,6 +238,34 @@ void loop()
         else
         {
             uartPort.write("Failed to persist wireless setup request; staying in normal mode.\n");
+        }
+    }
+
+    if (configValid)
+    {
+        wifiLink.poll();
+        if (wifiLink.connected())
+        {
+            mqttLink.poll();
+        }
+    }
+
+    if (configValid && mqttLink.connected())
+    {
+        TurnoutFeedback feedback{};
+        while (feedbackSource.poll(feedback))
+        {
+            for (auto& station : stations)
+            {
+                station.applyFeedback(feedback);
+            }
+        }
+    }
+    else
+    {
+        for (auto& station : stations)
+        {
+            station.clearIndicator();
         }
     }
 
