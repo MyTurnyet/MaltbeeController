@@ -1,5 +1,6 @@
 #include <Arduino.h>
 
+#include <array>
 #include <string>
 
 #include <nvs_flash.h>
@@ -11,6 +12,7 @@
 #include "adapters/EitherActiveDigitalInput.h"
 #include "adapters/EspDeviceIdentity.h"
 #include "adapters/EspUartPort.h"
+#include "adapters/IndependentLedPairFlashIndicator.h"
 #include "adapters/IndependentLedPairStation.h"
 #include "adapters/NullTurnoutCommandPort.h"
 #include "adapters/NvsConfigStore.h"
@@ -120,6 +122,14 @@ IndependentLedPairStation ledStations[4] = {
                               systemClock, BLINK_INTERVAL_MS, DEFAULT_LED_COLOR),
 };
 
+const std::array<IndependentLedPairDriver*, 4> bootModeLedPairs = {
+    &ledStations[0].driver(),
+    &ledStations[1].driver(),
+    &ledStations[2].driver(),
+    &ledStations[3].driver(),
+};
+IndependentLedPairFlashIndicator<4> bootModeIndicator(bootModeLedPairs);
+
 NullTurnoutCommandPort turnoutCommandPort;
 
 ToggleTurnoutStation stations[4] = {
@@ -155,6 +165,8 @@ void setup()
         station.begin();
     }
 
+    bootModeIndicator.show(bootMode);
+
     if (bootMode == BootMode::WirelessSetup)
     {
         const std::string apName = SetupApName::from(ownMac);
@@ -169,6 +181,7 @@ void setup()
 
 void loop()
 {
+    bootModeIndicator.update();
     serialCommissioningAdapter.poll();
     if (serialCommissioningAdapter.rebootRequested())
     {
