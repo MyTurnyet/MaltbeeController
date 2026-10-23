@@ -192,6 +192,10 @@ void loop()
     if (bootMode == BootMode::WirelessSetup)
     {
         captivePortalServer.poll();
+        for (auto& ledStation : ledStations)
+        {
+            ledStation.update();
+        }
         return;
     }
 
