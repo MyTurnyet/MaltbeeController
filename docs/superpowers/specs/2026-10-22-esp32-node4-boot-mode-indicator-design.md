@@ -55,6 +55,16 @@ override already provides, exactly mirroring the panel's own
 no-op body, identical to its predecessor, since `IndependentLedPairStation::update()`
 already drives the flash timing every tick.
 
+**Correction (discovered during implementation):** this assumption was
+wrong for the `BootMode::WirelessSetup` path specifically —
+`src/esp32node4/main.cpp`'s `loop()` returned early in that branch before
+ever reaching the `ledStations` update loop, so the flash never actually
+ticked during wireless setup until the `WirelessSetup` branch itself
+gained an explicit `ledStation.update()` loop (mirroring
+`src/esp32/main.cpp`'s identical branch). See the "Boot-mode LED
+indicator (sub-project #5)" section of CLAUDE.md for the final, correct
+behavior.
+
 Lives in `lib/McsEsp32/src/adapters/`, matching where
 `LedPairFlashIndicator` already lives.
 

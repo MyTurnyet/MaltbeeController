@@ -10,7 +10,9 @@
 // own setIdentifying() override).
 // NeedsCommissioning: 500ms unconfirmed blink on every pair (release both
 // colors so IndependentLedPairDriver's existing blink path runs). Distinct
-// from WirelessSetup.
+// from WirelessSetup (and visually identical to Normal — both show the
+// plain unconfirmed blink; this is a deliberate inherited decision from
+// sub-project #2, not an oversight).
 // Normal: identifying off; later station ticks own the pairs.
 // update() is a no-op — IndependentLedPairStation::update() already ticks
 // the flash/blink timing every loop().
