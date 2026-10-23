@@ -485,5 +485,5 @@ for the panel end, a switch, a red LED and a green LED.
 - [x] **Firmware work** (§7) **item 6** — composite setup trigger (GPIO 0 or GPIO 16, 3 s hold-then-release), done in sub-project #3 (2026-10-21).
 - [x] **Firmware work** (§7) **item 2** — four direct-GPIO `ArduinoDigitalInput` buttons on GPIO 34/35/36/39, wired into per-channel `ToggleTurnoutStation`s, done in sub-project #4 (2026-10-22).
 - [x] **Firmware work** (§7) **item 3** — independent-LED adapter with "unconfirmed → blink" behaviour: `IndependentLedPairDriver`/`IndependentLedPairOutput` in sub-project #2 (2026-10-21), the GPIO-owning `IndependentLedPairStation` plus its real-GPIO wiring in sub-project #4 (2026-10-22). `ToggleTurnoutStation` needed no change, as predicted.
-- [ ] **Firmware work** (§7) items 4-5 — identify/setup-mode flashing, status LED ownership.
+- [x] **Firmware work** (§7) **item 4, boot/setup-mode half** — `IndependentLedPairFlashIndicator` mirrors `LedPairFlashIndicator` for the node board's independent outputs, sub-project #5 (2026-10-22). The identify-overlay half of item 4, and item 5 (status/activity LEDs), remain open — identify is blocked on real WiFi/MQTT wiring landing on the node board (own future sub-project).
 - [ ] **Reconcile** `esp32-turnout-node-rev-a/` with this design before starting the KiCad schematic.
