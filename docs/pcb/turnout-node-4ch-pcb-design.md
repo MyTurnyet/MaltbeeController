@@ -382,10 +382,10 @@ Grounded in the repo at the time of writing (`src/esp32/main.cpp`, `lib/McsEsp32
 **Status as of sub-project #7 (2026-10-22):** items 1 (sub-project #1), 2
 (sub-project #4), 3 (sub-projects #2 and #4 together), 4's boot/setup half
 (sub-project #5), and 6 (sub-project #3) are done; item 4's identify half
-and item 5 remain open. The real WiFi/MQTT/Loco2MQTT wiring both would
-build on landed in sub-project #7 (2026-10-22) — neither identify nor
-status LEDs are wired yet themselves, but the infrastructure they'll
-need now exists on the node board. See
+and item 5 remain open. Sub-project #7 (2026-10-22) landed the real
+WiFi/MQTT/Loco2MQTT wiring both of these would build on — neither
+identify nor status LEDs are wired yet themselves, but the infrastructure
+they'll need now exists on the node board. See
 `docs/superpowers/specs/2026-10-21-esp32-node4-channel-count-design.md`,
 `docs/superpowers/specs/2026-10-21-esp32-node4-independent-led-pair-driver-design.md`,
 `docs/superpowers/specs/2026-10-21-esp32-node4-setup-trigger-wiring-design.md`,
@@ -400,7 +400,7 @@ plus `CLAUDE.md`'s "4-channel node board: channel-count templating",
 channel-count templating", and "Loco2MQTT WiFi/MQTT wiring" sections,
 for the implementations.
 
-1. **Turnout count — done (sub-project #1).** `NodeConfig::kChannelCount` is a compile-time `12`, `main.cpp` builds `TURNOUT_CONFIGS[12]`, 12 `LedPairStation`s and 12 `ToggleTurnoutStation`s, and the commissioning web form carries 12 channel fields. A 4-turnout node needs a per-board-variant constant (build flag or separate PlatformIO environment) driving all of these. *(Resolved via a channel-count template parameter on 8 commissioning classes plus a new `[env:esp32node4]` environment and `src/esp32node4/main.cpp` composition root — the latter is still a minimal placeholder with no turnout stations/LEDs/buttons wired, which items 2-5 below still need.)*
+1. **Turnout count — done (sub-project #1).** `NodeConfig::kChannelCount` is a compile-time `12`, `main.cpp` builds `TURNOUT_CONFIGS[12]`, 12 `LedPairStation`s and 12 `ToggleTurnoutStation`s, and the commissioning web form carries 12 channel fields. A 4-turnout node needs a per-board-variant constant (build flag or separate PlatformIO environment) driving all of these. *(Resolved via a channel-count template parameter on 8 commissioning classes plus a new `[env:esp32node4]` environment and `src/esp32node4/main.cpp` composition root — the latter has since grown real turnout stations, LEDs, buttons (sub-project #4), boot-mode LED feedback (sub-project #5), and real WiFi/MQTT wiring (sub-project #7) — see those sections of CLAUDE.md for what's since landed.)*
 2. **Buttons.** Replace `MatrixScanner`/`MatrixDigitalInput` with four `ArduinoDigitalInput`s on GPIO 34/35/36/39 (active-low, no internal pull-up). The existing matrix column inputs use that same constructor form.
 3. **LEDs.** Replace `LedPairStation` (shared GPIO) with two independent `ArduinoDigitalOutput`s per turnout and an adapter supplying the "unconfirmed → blink" behaviour, since "both off" is now physically possible. `ToggleTurnoutStation` is unchanged.
 4. **Identify and setup-mode flashing.** `LedPairFlashIndicator` and the `panel/<nodeId>/identify` overlay both use `LedPairDriver::setIdentifying()`. They need equivalents for independent outputs.
@@ -412,7 +412,7 @@ for the implementations.
    release-settle logic is unchanged. *(Resolved via a new `EitherActiveDigitalInput`
    adapter feeding the unmodified `ButtonSetupModeTrigger` — see `CLAUDE.md`'s
    "Composite setup-mode trigger" section.)*
-7. **Unchanged:** `ButtonSetupModeTrigger`'s hold logic, Loco2MQTT per-channel addresses, `MqttPresenceAnnouncer`, collision detection. The MQTT client ID is already MAC-derived (`maltbee-esp32-<mac4>`), so several nodes on one broker do not collide. Each board still needs its own `nodeId`.
+7. **Unchanged:** `ButtonSetupModeTrigger`'s hold logic, Loco2MQTT per-channel addresses, `MqttPresenceAnnouncer`, collision detection. The MQTT client ID is already MAC-derived (`maltbee-esp32-<mac4>`), so several nodes on one broker do not collide (the node board's own client ID follows the same MAC-derived pattern but with a `maltbee-node4-` prefix instead, sub-project #7). Each board still needs its own `nodeId`.
 
 ---
 
