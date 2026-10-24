@@ -412,7 +412,7 @@ for the implementations.
    release-settle logic is unchanged. *(Resolved via a new `EitherActiveDigitalInput`
    adapter feeding the unmodified `ButtonSetupModeTrigger` — see `CLAUDE.md`'s
    "Composite setup-mode trigger" section.)*
-7. **Unchanged:** `ButtonSetupModeTrigger`'s hold logic, Loco2MQTT per-channel addresses, `MqttPresenceAnnouncer`, collision detection. The MQTT client ID is already MAC-derived (`maltbee-esp32-<mac4>`), so several nodes on one broker do not collide (the node board's own client ID follows the same MAC-derived pattern but with a `maltbee-node4-` prefix instead, sub-project #7). Each board still needs its own `nodeId`.
+7. **Unchanged:** `ButtonSetupModeTrigger`'s hold logic, Loco2MQTT per-channel addresses, `MqttPresenceAnnouncer`, collision detection — unmodified from the panel's implementation, and (as of sub-project #8, see `CLAUDE.md`'s "Presence/collision detection (sub-project #8)" section) wired onto the node board itself, not just reused conceptually. The MQTT client ID is already MAC-derived (`maltbee-esp32-<mac4>`), so several nodes on one broker do not collide (the node board's own client ID follows the same MAC-derived pattern but with a `maltbee-node4-` prefix instead, sub-project #7). Each board still needs its own `nodeId`.
 
 ---
 
