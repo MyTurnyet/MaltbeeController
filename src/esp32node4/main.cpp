@@ -13,6 +13,7 @@
 #include "adapters/EspDeviceIdentity.h"
 #include "adapters/EspMdnsResolver.h"
 #include "adapters/EspUartPort.h"
+#include "adapters/GatedDigitalInput.h"
 #include "adapters/IndependentLedPairFlashIndicator.h"
 #include "adapters/IndependentLedPairStation.h"
 #include "adapters/Loco2MqttFeedbackSource.h"
@@ -26,11 +27,13 @@
 #include "adapters/WiFiLink.h"
 #include "application/BrokerAddressResolver.h"
 #include "application/CommissioningSession.h"
+#include "application/MqttPresenceAnnouncer.h"
 #include "domain/BootMode.h"
 #include "domain/BootModeSelector.h"
 #include "domain/LedPairDriver.h"
 #include "domain/MacAddress.h"
 #include "domain/NodeConfig.h"
+#include "domain/NodeIdentityGuard.h"
 #include "domain/PresenceTopics.h"
 #include "domain/SetupApName.h"
 
@@ -115,6 +118,13 @@ ArduinoDigitalInput buttons[4] = {
     ArduinoDigitalInput(TURNOUT_CONFIGS[3].buttonGpio, /*activeLow=*/true, /*useInternalPullup=*/false),
 };
 
+GatedDigitalInput gatedButtons[4] = {
+    GatedDigitalInput(buttons[0]),
+    GatedDigitalInput(buttons[1]),
+    GatedDigitalInput(buttons[2]),
+    GatedDigitalInput(buttons[3]),
+};
+
 IndependentLedPairStation ledStations[4] = {
     IndependentLedPairStation(IndependentLedPairConfig{.redGpioPin = TURNOUT_CONFIGS[0].redGpio,
                                                        .greenGpioPin = TURNOUT_CONFIGS[0].greenGpio},
@@ -148,17 +158,20 @@ EspMdnsResolver mdnsResolver("maltbee-node4-" + ownMac.lastFourHexDigits());
 BrokerAddressResolver brokerAddressResolver(mdnsResolver, systemClock, BROKER_RESOLVE_INTERVAL_MS);
 MqttLink mqttLink(systemClock, RETRY_INTERVAL_MS, mqttClientId, mqttWillTopic, mqttWillMessage, brokerAddressResolver);
 
+NodeIdentityGuard identityGuard(ownMac.lastFourHexDigits());
+MqttPresenceAnnouncer presenceAnnouncer(mqttLink, systemClock, runningConfig.nodeId, ownMac.lastFourHexDigits());
+
 Loco2MqttTurnoutCommandAdapter4 turnoutCommandPort(mqttLink, runningConfig.channelTurnoutAddresses);
 Loco2MqttFeedbackSource4 feedbackSource(mqttLink, runningConfig.channelTurnoutAddresses);
 
 ToggleTurnoutStation stations[4] = {
-    ToggleTurnoutStation(TURNOUT_CONFIGS[0].address, TURNOUT_CONFIGS[0].name, buttons[0],
+    ToggleTurnoutStation(TURNOUT_CONFIGS[0].address, TURNOUT_CONFIGS[0].name, gatedButtons[0],
                           ledStations[0].green(), ledStations[0].red(), systemClock, turnoutCommandPort),
-    ToggleTurnoutStation(TURNOUT_CONFIGS[1].address, TURNOUT_CONFIGS[1].name, buttons[1],
+    ToggleTurnoutStation(TURNOUT_CONFIGS[1].address, TURNOUT_CONFIGS[1].name, gatedButtons[1],
                           ledStations[1].green(), ledStations[1].red(), systemClock, turnoutCommandPort),
-    ToggleTurnoutStation(TURNOUT_CONFIGS[2].address, TURNOUT_CONFIGS[2].name, buttons[2],
+    ToggleTurnoutStation(TURNOUT_CONFIGS[2].address, TURNOUT_CONFIGS[2].name, gatedButtons[2],
                           ledStations[2].green(), ledStations[2].red(), systemClock, turnoutCommandPort),
-    ToggleTurnoutStation(TURNOUT_CONFIGS[3].address, TURNOUT_CONFIGS[3].name, buttons[3],
+    ToggleTurnoutStation(TURNOUT_CONFIGS[3].address, TURNOUT_CONFIGS[3].name, gatedButtons[3],
                           ledStations[3].green(), ledStations[3].red(), systemClock, turnoutCommandPort),
 };
 
@@ -198,6 +211,8 @@ void setup()
     {
         wifiLink.begin(runningConfig.wifiSsid, runningConfig.wifiPassword);
         mqttLink.begin(runningConfig.brokerHost, runningConfig.brokerPort);
+        mqttLink.subscribe(PresenceTopics::macTopic(runningConfig.nodeId),
+                            [](const std::string& payload) { identityGuard.onMacObserved(payload); });
     }
 
     uartPort.write(configValid ? "MaltBee node ready (configured).\n"
@@ -226,6 +241,20 @@ void loop()
 
     setupTrigger.update();
 
+    const bool collision = identityGuard.collisionDetected();
+    static bool collisionLogged = false;
+    if (collision && !collisionLogged)
+    {
+        uartPort.write("NodeId collision detected: this node is " + ownMac.lastFourHexDigits() +
+                        ", another node claiming this node id is " + identityGuard.observedMac() + "\n");
+        collisionLogged = true;
+    }
+
+    for (auto& gated : gatedButtons)
+    {
+        gated.setSuppressed(collision);
+    }
+
     if (setupTrigger.requested())
     {
         const bool stored = setupModeRequestStore.requestOnNextBoot();
@@ -250,7 +279,9 @@ void loop()
         }
     }
 
-    if (configValid && mqttLink.connected())
+    presenceAnnouncer.update(mqttLink.connected());
+
+    if (configValid && mqttLink.connected() && !collision)
     {
         TurnoutFeedback feedback{};
         while (feedbackSource.poll(feedback))
