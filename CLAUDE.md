@@ -620,11 +620,12 @@ the first of what the roadmap originally called "real WiFi/MQTT/Loco2MQTT
 wiring on the node board" — narrowed, with Paige, to templating alone:
 isolated, fully testable, no hardware dependency, no `main.cpp` changes.
 Wiring these classes into `src/esp32node4/main.cpp` alongside real
-`WiFiLink`/`MqttLink`/`BrokerAddressResolver`/`EspMdnsResolver` is its own
-future sub-project (#7 in this node-board effort's numbering — not the
-unrelated, older "#7b" presence-detection spec referenced elsewhere in
-this file), as is presence/collision detection and the
-identify-overlay (both still blocked on #7 landing first).
+`WiFiLink`/`MqttLink`/`BrokerAddressResolver`/`EspMdnsResolver` was done
+in sub-project #7 (2026-10-22, in this node-board effort's own
+numbering — not the unrelated, older "#7b" presence-detection spec
+referenced elsewhere in this file) — see below. Presence/collision
+detection and the identify-overlay remain deferred to whichever future
+sub-project adds them.
 
 Both classes got the same general shape of `Basic<X><N>` treatment sub-project #1
 used for `NvsConfigStore`/`CaptivePortalServer` (the two prior classes
@@ -653,6 +654,53 @@ and `test/test_loco2mqtt_feedback_source4` (7 cases, mirroring
 mirror of `test_loco2mqtt_turnout_wiring` was added: its cases exercise
 cross-class logic that doesn't differ between N=12 and N=4, so a copy
 would add no coverage.
+
+### Loco2MQTT WiFi/MQTT wiring (sub-project #7)
+
+Closes the roadmap item CLAUDE.md has tracked since sub-project #4 as
+"real WiFi/MQTT/Loco2MQTT wiring on the node board" — the exact piece
+sub-project #6's design spec deferred, naming this sub-project by
+number. `src/esp32node4/main.cpp` now wires a real `WiFiLink`/
+`MqttLink`/`BrokerAddressResolver`/`EspMdnsResolver` stack, mirroring
+`src/esp32/main.cpp`'s working reference implementation with
+presence/collision detection and the identify-overlay both left out —
+neither is part of this sub-project; both remain deferred to whichever
+future sub-project adds them.
+
+`NullTurnoutCommandPort` is gone from this file, replaced by
+`Loco2MqttTurnoutCommandAdapter4`/`Loco2MqttFeedbackSource4`
+(sub-project #6's templated classes) constructed over the real
+`MqttLink`. The MQTT client ID and `EspMdnsResolver`'s self-advertised
+hostname both use `"maltbee-node4-" + ownMac.lastFourHexDigits()` —
+MAC-derived, mirroring the panel's own `"maltbee-esp32-"`/
+`"maltbee-panel-"` convention with a node4-specific prefix. The LWT
+(will topic/message) uses `PresenceTopics::statusTopic(runningConfig.nodeId)`/
+`"offline"`, the same values the panel passes — required unconditionally
+by `MqttLink`'s constructor, and dormant (nothing publishes `"online"`)
+until a future presence sub-project adds the active
+`MqttPresenceAnnouncer` equivalent, at which point it reuses this exact
+topic rather than inventing a new one.
+
+`setup()` gates `wifiLink.begin()`/`mqttLink.begin()` on `configValid`,
+mirroring the panel exactly but without the panel's two
+`mqttLink.subscribe(...)` calls (both presence/identify-only, out of
+scope here). `loop()` polls both links when `configValid`, then applies
+real feedback (`feedbackSource.poll()` → `station.applyFeedback()`) when
+`configValid && mqttLink.connected()`, or calls `station.clearIndicator()`
+otherwise — the panel's equivalent gate also ANDs `!collision`, which
+has no node4 equivalent yet.
+
+**Net effect:** a button press on the node board now genuinely publishes
+a Loco2MQTT command once commissioned with real WiFi/broker credentials
+and LocoNet turnout addresses, and a real state-topic confirmation now
+genuinely updates the turnout and its LED — closing sub-project #4's
+"Known, accepted gap: a button press currently produces zero observable
+effect" for the first time.
+
+**Test coverage added: none.** `main.cpp` is a composition root verified
+by build only (`pio run -e esp32node4`/`esp32dev`/`megaatmega2560`), same
+precedent as every prior `main.cpp`-only change in this project. Suite
+count stays at 54.
 
 ### Loco2MQTT turnout bridge (sub-project #9a)
 
