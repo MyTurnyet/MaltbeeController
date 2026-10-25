@@ -379,25 +379,29 @@ Indicative only; final placement is a KiCad decision.
 ## 7. Firmware impacts (Proposed)
 
 Grounded in the repo at the time of writing (`src/esp32/main.cpp`, `lib/McsEsp32/`).
-**Status as of sub-project #7 (2026-10-22):** items 1 (sub-project #1), 2
+**Status as of sub-project #8 (2026-10-24):** items 1 (sub-project #1), 2
 (sub-project #4), 3 (sub-projects #2 and #4 together), 4's boot/setup half
 (sub-project #5), and 6 (sub-project #3) are done; item 4's identify half
 and item 5 remain open. Sub-project #7 (2026-10-22) landed the real
-WiFi/MQTT/Loco2MQTT wiring both of these would build on — neither
-identify nor status LEDs are wired yet themselves, but the infrastructure
-they'll need now exists on the node board. See
+WiFi/MQTT/Loco2MQTT wiring both of these would build on, and sub-project
+#8 (2026-10-24) used that wiring to bring up presence/collision detection
+(item 7) on the node board itself — neither identify nor status LEDs are
+wired yet themselves, but the infrastructure they'll need now exists on
+the node board. See
 `docs/superpowers/specs/2026-10-21-esp32-node4-channel-count-design.md`,
 `docs/superpowers/specs/2026-10-21-esp32-node4-independent-led-pair-driver-design.md`,
 `docs/superpowers/specs/2026-10-21-esp32-node4-setup-trigger-wiring-design.md`,
 `docs/superpowers/specs/2026-10-22-esp32-node4-turnout-station-wiring-design.md`,
 `docs/superpowers/specs/2026-10-22-esp32-node4-boot-mode-indicator-design.md`,
 `docs/superpowers/specs/2026-10-22-esp32-node4-loco2mqtt-channel-count-design.md`,
-and
 `docs/superpowers/specs/2026-10-22-esp32-node4-loco2mqtt-wiring-design.md`,
+and
+`docs/superpowers/specs/2026-10-24-esp32node4-presence-collision-design.md`,
 plus `CLAUDE.md`'s "4-channel node board: channel-count templating",
 "Independent-output turnout indicator", "Composite setup-mode trigger",
 "Turnout station wiring", "Boot-mode LED indicator", "Loco2MQTT
-channel-count templating", and "Loco2MQTT WiFi/MQTT wiring" sections,
+channel-count templating", "Loco2MQTT WiFi/MQTT wiring", and
+"Presence/collision detection" sections,
 for the implementations.
 
 1. **Turnout count — done (sub-project #1).** `NodeConfig::kChannelCount` is a compile-time `12`, `main.cpp` builds `TURNOUT_CONFIGS[12]`, 12 `LedPairStation`s and 12 `ToggleTurnoutStation`s, and the commissioning web form carries 12 channel fields. A 4-turnout node needs a per-board-variant constant (build flag or separate PlatformIO environment) driving all of these. *(Resolved via a channel-count template parameter on 8 commissioning classes plus a new `[env:esp32node4]` environment and `src/esp32node4/main.cpp` composition root — the latter has since grown real turnout stations, LEDs, buttons (sub-project #4), boot-mode LED feedback (sub-project #5), and real WiFi/MQTT wiring (sub-project #7) — see those sections of CLAUDE.md for what's since landed.)*

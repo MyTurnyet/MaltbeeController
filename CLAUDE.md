@@ -737,6 +737,17 @@ each other — was already satisfied: sub-project #7 used
 `"maltbee-node4-" + mac4` for exactly this reason, even though
 collision detection itself wasn't wired yet at the time.
 
+`PresenceTopics` uses a single `panel/<nodeId>/...` topic prefix for
+both board families — there is no separate node4-specific prefix. As a
+new consequence of this sub-project, a panel and a node4 board
+accidentally commissioned with the same `nodeId` now mutually detect
+and lock each other out too, not just two node4 boards against each
+other. This is new behavior as of this commit: previously only the
+panel published or subscribed to these topics at all, so no node4-side
+detection — cross-family or otherwise — existed. Arguably correct (they
+genuinely do conflict over the same `nodeId`), but worth stating
+explicitly since nothing described this cross-family case before.
+
 The node board's 4 buttons, previously raw `ArduinoDigitalInput`s fed
 directly into `ToggleTurnoutStation`, are now each wrapped in a
 `GatedDigitalInput` — mirroring the panel's `gatedButtons[12]` — so a
@@ -757,11 +768,26 @@ two simultaneously-connected colliding boards each observe the other's
 live MAC publish.
 
 **Net effect:** two node4 boards accidentally commissioned with the
-same `nodeId`, once both reach `BootMode::Normal` and connect to MQTT,
-detect each other within 30 seconds (the heartbeat interval) and
-suppress all 4 buttons on both, falling back to the blink/unconfirmed
-LED state and logging the collision once over serial — identical
-behavior and latency to the panel's existing mechanism.
+same `nodeId`, once both are configured and connect to MQTT (any boot
+mode other than `WirelessSetup`), detect each other within 30 seconds
+(the heartbeat interval) and suppress all 4 buttons on both, falling
+back to the blink/unconfirmed LED state and logging the collision once
+over serial — identical behavior and latency to the panel's existing
+mechanism.
+
+**Bring-up note:** a latched collision produces the exact same LED
+signature as a WiFi/broker connectivity failure — both fall back to
+`clearIndicator()`'s solid unconfirmed blink on all 4 pairs, via the
+same gate this sub-project extended with `!collision`. The only
+discriminator is the serial collision line, and it fires only once per
+boot (the `static collisionLogged` guard) — a technician who attaches a
+terminal after boot, or re-attaches later, sees nothing, even though the
+collision is still active. `NodeIdentityGuard`'s latch never clears on
+its own; after re-commissioning one board's `nodeId` to resolve the
+conflict, that board needs a reboot (the serial `reboot` command works)
+before it re-evaluates cleanly. Serial commissioning and the BOOT/SETUP
+wireless-setup gesture both stay live during a lockout — recovery never
+needs broker access, same as the panel.
 
 **Test coverage added: none.** `main.cpp` is a composition root verified
 by build only (`pio run -e esp32node4`/`esp32dev`/`megaatmega2560`), same
