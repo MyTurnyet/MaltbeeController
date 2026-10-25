@@ -30,6 +30,7 @@
 #include "application/MqttPresenceAnnouncer.h"
 #include "domain/BootMode.h"
 #include "domain/BootModeSelector.h"
+#include "domain/IdentifyModeTimer.h"
 #include "domain/LedPairDriver.h"
 #include "domain/MacAddress.h"
 #include "domain/NodeConfig.h"
@@ -45,6 +46,7 @@ namespace
     constexpr LedPairColor DEFAULT_LED_COLOR = LedPairColor::Red;
     constexpr unsigned long RETRY_INTERVAL_MS = 5000;
     constexpr unsigned long BROKER_RESOLVE_INTERVAL_MS = 60000;
+    constexpr unsigned long IDENTIFY_DURATION_MS = 10000;
 }
 
 namespace
@@ -160,6 +162,7 @@ MqttLink mqttLink(systemClock, RETRY_INTERVAL_MS, mqttClientId, mqttWillTopic, m
 
 NodeIdentityGuard identityGuard(ownMac.lastFourHexDigits());
 MqttPresenceAnnouncer presenceAnnouncer(mqttLink, systemClock, runningConfig.nodeId, ownMac.lastFourHexDigits());
+IdentifyModeTimer identifyTimer(systemClock, IDENTIFY_DURATION_MS);
 
 Loco2MqttTurnoutCommandAdapter4 turnoutCommandPort(mqttLink, runningConfig.channelTurnoutAddresses);
 Loco2MqttFeedbackSource4 feedbackSource(mqttLink, runningConfig.channelTurnoutAddresses);
@@ -213,6 +216,8 @@ void setup()
         mqttLink.begin(runningConfig.brokerHost, runningConfig.brokerPort);
         mqttLink.subscribe(PresenceTopics::macTopic(runningConfig.nodeId),
                             [](const std::string& payload) { identityGuard.onMacObserved(payload); });
+        mqttLink.subscribe(PresenceTopics::identifyTopic(runningConfig.nodeId),
+                            [](const std::string&) { identifyTimer.trigger(); });
     }
 
     uartPort.write(configValid ? "MaltBee node ready (configured).\n"
@@ -297,6 +302,20 @@ void loop()
         for (auto& station : stations)
         {
             station.clearIndicator();
+        }
+    }
+
+    // Must run before the ledStation.update() loop below (and after
+    // mqttLink.poll(), which is where a fresh trigger() lands) so a new
+    // identify activation takes visible effect the same tick it arrives.
+    // Merging the two loops would compile and pass every test while
+    // silently reintroducing a one-tick activation lag.
+    if (bootMode == BootMode::Normal)
+    {
+        const bool identifying = identifyTimer.isActive();
+        for (auto& ledStation : ledStations)
+        {
+            ledStation.setIdentifying(identifying);
         }
     }
 
