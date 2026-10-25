@@ -616,8 +616,10 @@ already established over `test_led_pair_driver`) — 51 → 52 suites.
 **Non-goals, deferred:** identify-overlay wiring (`IdentifyModeTimer`, an
 MQTT `panel/<nodeId>/identify` subscription, a `setIdentifying()` loop
 driven by it) — closed by sub-project #9, see the "Identify-overlay
-(sub-project #9)" section below. Status/activity LEDs and the 4-channel
-commissioning form remain their own future sub-projects too.
+(sub-project #9)" section below. Status/activity LEDs — closed by
+sub-project #10, see the "Status/activity LEDs (sub-project #10)"
+section below. The 4-channel commissioning form remains its own future
+sub-project too.
 
 ### Loco2MQTT channel-count templating (sub-project #6)
 
@@ -807,8 +809,9 @@ count stays at 54.
 MQTT `panel/<nodeId>/identify` subscription, a `setIdentifying()` loop
 driven by it) — a separate choice from this sub-project's scope, closed
 by sub-project #9 (see the "Identify-overlay (sub-project #9)" section
-below). Status/activity LEDs and the 4-channel commissioning form remain
-their own future sub-projects too.
+below). Status/activity LEDs — closed by sub-project #10 (see the
+"Status/activity LEDs (sub-project #10)" section below). The 4-channel
+commissioning form remains its own future sub-project too.
 
 ### Identify-overlay (sub-project #9)
 
@@ -882,11 +885,82 @@ by build only (`pio run -e esp32node4`/`esp32dev`/`megaatmega2560`), same
 precedent as every prior `main.cpp`-only change in this project. Suite
 count stays at 54.
 
-**Non-goals, deferred:** status/activity LEDs (PCB doc §7 item 5) and the
-4-channel commissioning form remain their own future sub-projects. The
-hardware bring-up checklist (physically verifying buttons, LEDs, and
-LocoNet send/receive against real hardware) also remains outstanding,
-unrelated to this sub-project's scope.
+**Non-goals, deferred:** status/activity LEDs (PCB doc §7 item 5) — closed
+by sub-project #10, see the "Status/activity LEDs (sub-project #10)"
+section below. The 4-channel commissioning form remains its own future
+sub-project. The hardware bring-up checklist (physically verifying
+buttons, LEDs, and LocoNet send/receive against real hardware) also
+remains outstanding, unrelated to this sub-project's scope.
+
+### Status/activity LEDs (sub-project #10)
+
+(2026-10-25, in this node-board effort's own numbering — not the unrelated,
+older "#9a"/"#9b"/"#9c" panel-focused sub-project sequence referenced
+elsewhere in this file.)
+
+Closes the last open item in `docs/pcb/turnout-node-4ch-pcb-design.md`
+§7 (item 5, "Status and activity LEDs"). Unlike every node4 sub-project
+since #9, this one has no panel equivalent to mirror — the panel has no
+on-board status/activity LEDs at all, only its 12 turnout LED pairs,
+which is exactly the distinction the PCB doc draws ("this is also where
+wireless-setup and WiFi/broker state get their own indicator **instead
+of borrowing the turnout LEDs**"). Two new classes, both fully
+native-tested:
+
+- `StatusLedDriver` (`lib/McsEsp32/src/domain/`) — a new, generic
+  single-GPIO LED driver with four states (`Off`/`On`/`SlowBlink`/
+  `FastBlink`), mirroring `LedPairDriver`'s existing toggle-timing shape
+  (re-stamping the toggle time on a state change so a transition takes
+  visible effect immediately) but deliberately simpler: one color, one
+  GPIO, and a genuine `Off` — `LedPairDriver`'s "exactly one color is
+  always lit" invariant doesn't apply here and would have been the
+  wrong class to reuse or extend. Drives the network status LED
+  (GPIO 18): `src/esp32node4/main.cpp`'s `loop()` computes the desired
+  state every tick — collision (highest priority) → `FastBlink`; no
+  WiFi → `Off`; WiFi but no broker → `SlowBlink`; both connected → `On`
+  — and calls `setState()`/`update()`.
+- `ActivityTrackingTurnoutCommandPort` (`lib/McsEsp32/src/adapters/`,
+  header-only, no `.cpp`) — a decorator implementing `TurnoutCommandPort`
+  that forwards `send()` to a wrapped inner port while also triggering
+  an injected `IdentifyModeTimer&`. Wraps `turnoutCommandPort` before it
+  reaches the 4 `ToggleTurnoutStation`s — no change to
+  `ToggleTurnoutStation`, `ToggleTurnoutControl`, or
+  `Loco2MqttTurnoutCommandAdapter4`. This is the hexagonal-architecture
+  way to observe outbound traffic at the composition-root boundary
+  without touching any already-tested production class the panel also
+  depends on.
+- `IdentifyModeTimer` is reused **as-is, unmodified** for the activity
+  LED's momentary flash (GPIO 17, 150ms) — it already provides exactly
+  "trigger() stamps the clock, isActive() compares against a fixed
+  duration, a second trigger() before expiry extends rather than
+  stacks," with no identify-specific logic baked into its
+  implementation. No new timer class was needed. The activity flash
+  fires on every Loco2MQTT command sent (via the decorator above) or
+  feedback received (one added `activityFlashTimer.trigger()` line
+  inside the existing feedback-poll loop).
+
+`src/esp32node4/main.cpp`'s activity-LED GPIO read is the **very last
+statement in `loop()`**, after the `station.update()` loop where an
+outbound send actually reaches the decorator — the same ordering
+principle sub-project #9's identify wiring documents: a same-tick event
+must be visible the same tick, not one tick later.
+
+**`BootMode::WirelessSetup` needs no new branch.** WiFi/MQTT are never
+started in that mode, so the network LED's state computation reads
+`Off` naturally and no traffic ever exists to trigger the activity
+flash — both LEDs simply stay off, by construction rather than by a
+special case. The existing 4-turnout-LED flash (sub-project #5) remains
+the sole setup-mode indicator, a deliberate scope decision made during
+brainstorming rather than giving these two new LEDs a redundant pattern
+of their own.
+
+**Net effect:** closes the last open item in the PCB doc's firmware
+checklist (§7) — every item is now done.
+
+**Test coverage added:** `test/test_status_led_driver` (8 cases) and
+`test/test_activity_tracking_turnout_command_port` (3 cases) — 54 → 56
+suites. `src/esp32node4/main.cpp` itself has no native test target, same
+precedent as every prior `main.cpp`-only change in this project.
 
 ### Loco2MQTT turnout bridge (sub-project #9a)
 

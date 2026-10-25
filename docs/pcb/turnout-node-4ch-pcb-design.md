@@ -379,15 +379,16 @@ Indicative only; final placement is a KiCad decision.
 ## 7. Firmware impacts (Proposed)
 
 Grounded in the repo at the time of writing (`src/esp32/main.cpp`, `lib/McsEsp32/`).
-**Status as of sub-project #9 (2026-10-25):** items 1 (sub-project #1), 2
+**Status as of sub-project #10 (2026-10-25):** items 1 (sub-project #1), 2
 (sub-project #4), 3 (sub-projects #2 and #4 together), 4 (boot/setup half
-in sub-project #5, identify half in sub-project #9), and 6 (sub-project #3)
-are done; item 5 remains open. Sub-project #7 (2026-10-22) landed the real
-WiFi/MQTT/Loco2MQTT wiring that both item 4's identify half and item 7
-built on, sub-project #8 (2026-10-24) used it to bring up presence/collision
-detection (item 7), and sub-project #9 (2026-10-25) used it to bring up the
-identify-overlay (item 4's remaining half) — status LEDs (item 5) are the
-one item with no wiring yet. See
+in sub-project #5, identify half in sub-project #9), 5 (sub-project #10),
+and 6 (sub-project #3) are done — **all seven §7 items are now done.**
+Sub-project #7 (2026-10-22) landed the real WiFi/MQTT/Loco2MQTT wiring that
+both item 4's identify half and item 7 built on, sub-project #8
+(2026-10-24) used it to bring up presence/collision detection (item 7),
+sub-project #9 (2026-10-25) used it to bring up the identify-overlay (item
+4's remaining half), and sub-project #10 (2026-10-25) closed the last
+remaining item, status/activity LEDs (item 5). See
 `docs/superpowers/specs/2026-10-21-esp32-node4-channel-count-design.md`,
 `docs/superpowers/specs/2026-10-21-esp32-node4-independent-led-pair-driver-design.md`,
 `docs/superpowers/specs/2026-10-21-esp32-node4-setup-trigger-wiring-design.md`,
@@ -396,20 +397,21 @@ one item with no wiring yet. See
 `docs/superpowers/specs/2026-10-22-esp32-node4-loco2mqtt-channel-count-design.md`,
 `docs/superpowers/specs/2026-10-22-esp32-node4-loco2mqtt-wiring-design.md`,
 `docs/superpowers/specs/2026-10-24-esp32node4-presence-collision-design.md`,
-and
 `docs/superpowers/specs/2026-10-25-esp32node4-identify-overlay-design.md`,
+and
+`docs/superpowers/specs/2026-10-25-esp32node4-status-activity-leds-design.md`,
 plus `CLAUDE.md`'s "4-channel node board: channel-count templating",
 "Independent-output turnout indicator", "Composite setup-mode trigger",
 "Turnout station wiring", "Boot-mode LED indicator", "Loco2MQTT
 channel-count templating", "Loco2MQTT WiFi/MQTT wiring", "Presence/collision
-detection", and "Identify-overlay" sections,
+detection", "Identify-overlay", and "Status/activity LEDs" sections,
 for the implementations.
 
 1. **Turnout count — done (sub-project #1).** `NodeConfig::kChannelCount` is a compile-time `12`, `main.cpp` builds `TURNOUT_CONFIGS[12]`, 12 `LedPairStation`s and 12 `ToggleTurnoutStation`s, and the commissioning web form carries 12 channel fields. A 4-turnout node needs a per-board-variant constant (build flag or separate PlatformIO environment) driving all of these. *(Resolved via a channel-count template parameter on 8 commissioning classes plus a new `[env:esp32node4]` environment and `src/esp32node4/main.cpp` composition root — the latter has since grown real turnout stations, LEDs, buttons (sub-project #4), boot-mode LED feedback (sub-project #5), and real WiFi/MQTT wiring (sub-project #7) — see those sections of CLAUDE.md for what's since landed.)*
 2. **Buttons.** Replace `MatrixScanner`/`MatrixDigitalInput` with four `ArduinoDigitalInput`s on GPIO 34/35/36/39 (active-low, no internal pull-up). The existing matrix column inputs use that same constructor form.
 3. **LEDs.** Replace `LedPairStation` (shared GPIO) with two independent `ArduinoDigitalOutput`s per turnout and an adapter supplying the "unconfirmed → blink" behaviour, since "both off" is now physically possible. `ToggleTurnoutStation` is unchanged.
 4. **Identify and setup-mode flashing — done (sub-project #5 for boot/setup-mode feedback, sub-project #9 for the identify-overlay).** `LedPairFlashIndicator` and the `panel/<nodeId>/identify` overlay both use `LedPairDriver::setIdentifying()`. They need equivalents for independent outputs. *(Resolved via `IndependentLedPairFlashIndicator` mirroring `LedPairFlashIndicator` for boot/setup-mode feedback, sub-project #5; and via the unmodified `IdentifyModeTimer`/`PresenceTopics::identifyTopic()` wired against `IndependentLedPairStation::setIdentifying()` for the identify-overlay, sub-project #9 — see those sections of CLAUDE.md.)*
-5. **Status and activity LEDs.** New outputs, with no existing firmware owner. This is also where wireless-setup and WiFi/broker state get their own indicator instead of borrowing the turnout LEDs.
+5. **Status and activity LEDs — done (sub-project #10).** New outputs, with no existing firmware owner. This is also where wireless-setup and WiFi/broker state get their own indicator instead of borrowing the turnout LEDs. *(Resolved via a new `StatusLedDriver` for the network LED and the reused `IdentifyModeTimer` plus a new `ActivityTrackingTurnoutCommandPort` decorator for the activity LED — see CLAUDE.md's "Status/activity LEDs" section.)*
 6. **Setup trigger — done (sub-project #3).** `ButtonSetupModeTrigger` takes any `DigitalInput&`. Construct it
    with a small composite input that is active when either the existing `bootButton`
    (GPIO 0) or a new `ArduinoDigitalInput(16, /*activeLow=*/true,
@@ -499,5 +501,5 @@ for the panel end, a switch, a red LED and a green LED.
 - [x] **Firmware work** (§7) **item 6** — composite setup trigger (GPIO 0 or GPIO 16, 3 s hold-then-release), done in sub-project #3 (2026-10-21).
 - [x] **Firmware work** (§7) **item 2** — four direct-GPIO `ArduinoDigitalInput` buttons on GPIO 34/35/36/39, wired into per-channel `ToggleTurnoutStation`s, done in sub-project #4 (2026-10-22).
 - [x] **Firmware work** (§7) **item 3** — independent-LED adapter with "unconfirmed → blink" behaviour: `IndependentLedPairDriver`/`IndependentLedPairOutput` in sub-project #2 (2026-10-21), the GPIO-owning `IndependentLedPairStation` plus its real-GPIO wiring in sub-project #4 (2026-10-22). `ToggleTurnoutStation` needed no change, as predicted.
-- [x] **Firmware work** (§7) **item 4** — boot/setup-mode half: `IndependentLedPairFlashIndicator` mirrors `LedPairFlashIndicator` for the node board's independent outputs, sub-project #5 (2026-10-22). Identify-overlay half: `IdentifyModeTimer` wired via an MQTT `panel/<nodeId>/identify` subscription, sub-project #9 (2026-10-25) — item 4 is now fully done. Item 5 (status/activity LEDs) remains open.
+- [x] **Firmware work** (§7) **item 4** — boot/setup-mode half: `IndependentLedPairFlashIndicator` mirrors `LedPairFlashIndicator` for the node board's independent outputs, sub-project #5 (2026-10-22). Identify-overlay half: `IdentifyModeTimer` wired via an MQTT `panel/<nodeId>/identify` subscription, sub-project #9 (2026-10-25) — item 4 is now fully done. Item 5 (status/activity LEDs) is also done now, in sub-project #10 (2026-10-25) — see §7 item 5 above; all §7 items are now done.
 - [ ] **Reconcile** `esp32-turnout-node-rev-a/` with this design before starting the KiCad schematic.
