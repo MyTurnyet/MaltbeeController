@@ -5,6 +5,7 @@
 
 #include <nvs_flash.h>
 
+#include "adapters/ActivityTrackingTurnoutCommandPort.h"
 #include "adapters/ArduinoClock.h"
 #include "adapters/ArduinoDigitalInput.h"
 #include "adapters/ButtonSetupModeTrigger.h"
@@ -37,6 +38,7 @@
 #include "domain/NodeIdentityGuard.h"
 #include "domain/PresenceTopics.h"
 #include "domain/SetupApName.h"
+#include "domain/StatusLedDriver.h"
 
 namespace
 {
@@ -47,6 +49,11 @@ namespace
     constexpr unsigned long RETRY_INTERVAL_MS = 5000;
     constexpr unsigned long BROKER_RESOLVE_INTERVAL_MS = 60000;
     constexpr unsigned long IDENTIFY_DURATION_MS = 10000;
+    constexpr int NETWORK_STATUS_LED_GPIO = 18;
+    constexpr int ACTIVITY_LED_GPIO = 17;
+    constexpr unsigned long NETWORK_LED_SLOW_BLINK_MS = 500;
+    constexpr unsigned long NETWORK_LED_FAST_BLINK_MS = 150;
+    constexpr unsigned long ACTIVITY_FLASH_DURATION_MS = 150;
 }
 
 namespace
@@ -150,6 +157,12 @@ const std::array<IndependentLedPairDriver*, 4> bootModeLedPairs = {
 };
 IndependentLedPairFlashIndicator<4> bootModeIndicator(bootModeLedPairs);
 
+ArduinoDigitalOutput networkStatusLedGpio(NETWORK_STATUS_LED_GPIO, /*activeLow=*/false);
+ArduinoDigitalOutput activityLedGpio(ACTIVITY_LED_GPIO, /*activeLow=*/false);
+StatusLedDriver networkStatusLedDriver(networkStatusLedGpio, systemClock, NETWORK_LED_SLOW_BLINK_MS,
+                                         NETWORK_LED_FAST_BLINK_MS);
+IdentifyModeTimer activityFlashTimer(systemClock, ACTIVITY_FLASH_DURATION_MS);
+
 WiFiLink wifiLink(systemClock, RETRY_INTERVAL_MS);
 
 const std::string mqttClientId = "maltbee-node4-" + ownMac.lastFourHexDigits();
@@ -167,15 +180,17 @@ IdentifyModeTimer identifyTimer(systemClock, IDENTIFY_DURATION_MS);
 Loco2MqttTurnoutCommandAdapter4 turnoutCommandPort(mqttLink, runningConfig.channelTurnoutAddresses);
 Loco2MqttFeedbackSource4 feedbackSource(mqttLink, runningConfig.channelTurnoutAddresses);
 
+ActivityTrackingTurnoutCommandPort activityTrackingCommandPort(turnoutCommandPort, activityFlashTimer);
+
 ToggleTurnoutStation stations[4] = {
     ToggleTurnoutStation(TURNOUT_CONFIGS[0].address, TURNOUT_CONFIGS[0].name, gatedButtons[0],
-                          ledStations[0].green(), ledStations[0].red(), systemClock, turnoutCommandPort),
+                          ledStations[0].green(), ledStations[0].red(), systemClock, activityTrackingCommandPort),
     ToggleTurnoutStation(TURNOUT_CONFIGS[1].address, TURNOUT_CONFIGS[1].name, gatedButtons[1],
-                          ledStations[1].green(), ledStations[1].red(), systemClock, turnoutCommandPort),
+                          ledStations[1].green(), ledStations[1].red(), systemClock, activityTrackingCommandPort),
     ToggleTurnoutStation(TURNOUT_CONFIGS[2].address, TURNOUT_CONFIGS[2].name, gatedButtons[2],
-                          ledStations[2].green(), ledStations[2].red(), systemClock, turnoutCommandPort),
+                          ledStations[2].green(), ledStations[2].red(), systemClock, activityTrackingCommandPort),
     ToggleTurnoutStation(TURNOUT_CONFIGS[3].address, TURNOUT_CONFIGS[3].name, gatedButtons[3],
-                          ledStations[3].green(), ledStations[3].red(), systemClock, turnoutCommandPort),
+                          ledStations[3].green(), ledStations[3].red(), systemClock, activityTrackingCommandPort),
 };
 
 void setup()
@@ -199,6 +214,10 @@ void setup()
     {
         station.begin();
     }
+
+    networkStatusLedGpio.begin();
+    activityLedGpio.begin();
+    networkStatusLedDriver.begin();
 
     bootModeIndicator.show(bootMode);
 
@@ -284,6 +303,26 @@ void loop()
         }
     }
 
+    StatusLedDriver::State networkLedState;
+    if (collision)
+    {
+        networkLedState = StatusLedDriver::State::FastBlink;
+    }
+    else if (!wifiLink.connected())
+    {
+        networkLedState = StatusLedDriver::State::Off;
+    }
+    else if (!mqttLink.connected())
+    {
+        networkLedState = StatusLedDriver::State::SlowBlink;
+    }
+    else
+    {
+        networkLedState = StatusLedDriver::State::On;
+    }
+    networkStatusLedDriver.setState(networkLedState);
+    networkStatusLedDriver.update();
+
     presenceAnnouncer.update(mqttLink.connected());
 
     if (configValid && mqttLink.connected() && !collision)
@@ -291,6 +330,7 @@ void loop()
         TurnoutFeedback feedback{};
         while (feedbackSource.poll(feedback))
         {
+            activityFlashTimer.trigger();
             for (auto& station : stations)
             {
                 station.applyFeedback(feedback);
@@ -328,4 +368,11 @@ void loop()
     {
         station.update();
     }
+
+    // Must run after the station.update() loop above, where a same-tick send
+    // actually reaches activityTrackingCommandPort and calls trigger().
+    // Reading isActive() any earlier in this tick would show last tick's
+    // state and delay a fresh flash by one tick - the same ordering hazard
+    // sub-project #9's identify wiring documents for ledStation.update().
+    activityLedGpio.set(activityFlashTimer.isActive());
 }
