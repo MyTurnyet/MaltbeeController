@@ -7,7 +7,7 @@ bus to MQTT via its own on-device broker; and a newer 4-turnout ESP32 "node" boa
 per-cluster alternative to the 12-turnout panel — fully wired in firmware as of sub-project #10
 (2026-10-25): turnout stations, LEDs, buttons, wireless commissioning, real WiFi/MQTT/Loco2MQTT
 send-and-receive, presence/collision detection, MQTT-triggered identify-blink, and status/activity
-LEDs are all in place, pending only the 4-channel commissioning web form's own polish and
+LEDs are all in place, with the only remaining work being
 physical hardware bring-up (no hardware board exists yet; see
 `docs/pcb/turnout-node-4ch-pcb-design.md` for the hardware spec). Current development is
 focused on the node board; see `docs/superpowers/specs/` and `docs/superpowers/plans/` for
@@ -50,8 +50,9 @@ place, so a button press genuinely publishes a command and a real state-topic ec
 the turnout and its LED (sub-projects #6 and #7); multi-board presence/collision detection
 is wired (sub-project #8); MQTT-triggered identify-blink is wired (sub-project #9); and a
 network status LED plus an activity LED are wired (sub-project #10), closing the PCB doc's
-§7 firmware checklist entirely. What remains is the 4-channel commissioning web form's own
-polish and physical hardware bring-up — no hardware exists for this board yet (see
+§7 firmware checklist entirely. The 4-channel commissioning web form (`WebFormCommissioningAdapter4`/
+`CaptivePortalServer4`, wired and tested since sub-project #1) needs no further work either.
+What remains is physical hardware bring-up — no hardware exists for this board yet (see
 `docs/pcb/turnout-node-4ch-pcb-design.md` §11 for open items).
 
 See `internal_documents/MaltBee_Control_System_Architecture_and_Roadmap.md` for the Mega
@@ -136,7 +137,8 @@ See `internal_documents/archive/original-overview.md` for historical context.
   direct-GPIO buttons, composite setup trigger, turnout-station wiring, boot-mode LED
   feedback, Loco2MQTT channel-count templating, real WiFi/MQTT/Loco2MQTT wiring,
   presence/collision detection, the identify-overlay, and status/activity LEDs) have all
-  landed — see `CLAUDE.md`'s per-sub-project sections for each. What remains before hardware
-  bring-up is possible: a 4-channel commissioning form (see
-  `docs/pcb/turnout-node-4ch-pcb-design.md` §11), then physical bring-up once a
-  board exists.
+  landed — see `CLAUDE.md`'s per-sub-project sections for each. The 4-channel commissioning
+  web form has needed no further work since sub-project #1 (an earlier "remains its own
+  future sub-project" note here was stale — the form was already wired and tested). What
+  remains is physical hardware bring-up once a board exists (see
+  `docs/pcb/turnout-node-4ch-pcb-design.md` §11).

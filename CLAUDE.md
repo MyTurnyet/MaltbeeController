@@ -618,8 +618,19 @@ MQTT `panel/<nodeId>/identify` subscription, a `setIdentifying()` loop
 driven by it) — closed by sub-project #9, see the "Identify-overlay
 (sub-project #9)" section below. Status/activity LEDs — closed by
 sub-project #10, see the "Status/activity LEDs (sub-project #10)"
-section below. The 4-channel commissioning form remains its own future
-sub-project too.
+section below. **The "4-channel commissioning form" item named here was
+never actually a separate gap** — `WebFormCommissioningAdapter4`/
+`CaptivePortalServer4` were wired in sub-project #1 and `SetupFormRenderer`'s
+N=4 rendering has been tested since that same sub-project (`test_setup_form_renderer`'s
+"render includes a labeled input for each of the 4 turnout channels on the
+node variant" case, plus `test_web_form_commissioning_adapter4`'s own
+suite). `CaptivePortalServer4` itself is `#ifdef ARDUINO`-guarded like its
+N=12 counterpart and has no native test, the same precedent every other
+pure-construction hardware shim in this project follows. This "remains its
+own future sub-project" phrasing was stale early-roadmap framing, left
+unexamined because no sub-project's scope was ever specifically "verify the
+commissioning form" — corrected in place here rather than via a dedicated
+sub-project, since there was nothing left to build.
 
 ### Loco2MQTT channel-count templating (sub-project #6)
 
@@ -810,8 +821,10 @@ MQTT `panel/<nodeId>/identify` subscription, a `setIdentifying()` loop
 driven by it) — a separate choice from this sub-project's scope, closed
 by sub-project #9 (see the "Identify-overlay (sub-project #9)" section
 below). Status/activity LEDs — closed by sub-project #10 (see the
-"Status/activity LEDs (sub-project #10)" section below). The 4-channel
-commissioning form remains its own future sub-project too.
+"Status/activity LEDs (sub-project #10)" section below). The "4-channel
+commissioning form" item named in earlier sub-projects' non-goals was
+never actually a separate gap — see the correction in the "Boot-mode LED
+indicator (sub-project #5)" section's own non-goals above.
 
 ### Identify-overlay (sub-project #9)
 
@@ -887,8 +900,10 @@ count stays at 54.
 
 **Non-goals, deferred:** status/activity LEDs (PCB doc §7 item 5) — closed
 by sub-project #10, see the "Status/activity LEDs (sub-project #10)"
-section below. The 4-channel commissioning form remains its own future
-sub-project. The hardware bring-up checklist (physically verifying
+section below. The "4-channel commissioning form" item named in earlier
+sub-projects' non-goals was never actually a separate gap — see the
+correction in the "Boot-mode LED indicator (sub-project #5)" section's own
+non-goals above. The hardware bring-up checklist (physically verifying
 buttons, LEDs, and LocoNet send/receive against real hardware) also
 remains outstanding, unrelated to this sub-project's scope.
 
