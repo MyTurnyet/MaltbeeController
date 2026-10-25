@@ -345,9 +345,13 @@ section for the full current design and its remaining known limitations.
 **Decision (2026-08-30):** publish any message to `panel/<nodeId>/identify`
 to make that one physical panel's LEDs flash so you can find it among
 several deployed panels — useful when verifying commissioning worked,
-debugging via MQTT tooling, or telling apart two panels mid-collision
-(see above; identify keeps working even during a collision lockout, since
-that's exactly the situation where you need to tell two panels apart).
+debugging via MQTT tooling, or locating the panel(s) currently claiming a
+given `nodeId` mid-collision (see above; identify keeps working even
+during a collision lockout). **Caveat:** when the colliding pair are both
+panels (same family), identify flashes both of them identically and
+simultaneously — it locates the pair but cannot tell which-is-which
+between them; discriminating the two still requires a serial terminal on
+each candidate panel to check its own reported `nodeId`/MAC.
 
 - **The payload is ignored** — any message triggers it, including an empty
   one.

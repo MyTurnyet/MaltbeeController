@@ -38,7 +38,11 @@ exactly.
 
 1. New include: `#include "domain/IdentifyModeTimer.h"`, placed alphabetically
    among the existing `domain/` includes (between `MacAddress.h` and
-   `NodeConfig.h`).
+   `NodeConfig.h`). **Correction (post-implementation):** this placement was
+   imprecise — true alphabetical order against the file's full include block
+   puts it between `BootModeSelector.h` and `LedPairDriver.h`, which is where
+   the shipped `src/esp32node4/main.cpp` actually places it, matching the
+   panel's own `src/esp32/main.cpp` exactly.
 
 2. New constant in the file's anonymous namespace, alongside the existing
    `BLINK_INTERVAL_MS`/`RETRY_INTERVAL_MS`/etc.:

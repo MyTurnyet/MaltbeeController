@@ -182,8 +182,12 @@ equivalent: a technician trying to identify which physical panel is a
 given `nodeId` is by definition not already standing at the right panel
 with a USB cable. Buttons and turnout feedback stay fully live during
 identify — it's a pure visual overlay, unlike the collision suppression
-above — and it deliberately still works during a latched collision, since
-that's the intended way to tell two colliding panels apart. Publish this
+above — and it deliberately still works during a latched collision: it
+locates the physical panel(s) currently claiming a given `nodeId`, which is
+useful even mid-collision, but when the colliding pair are both panels
+(same family), both flash identically and simultaneously, so it cannot tell
+which-is-which between them — that still requires a serial terminal on each
+candidate panel to check its own reported `nodeId`/MAC. Publish this
 topic **non-retained**: a retained message would re-trigger a fresh
 10-second flash on every MQTT reconnect, since `MqttLink::connect()`
 replays every subscribed topic's last retained value.
@@ -808,6 +812,10 @@ their own future sub-projects too.
 
 ### Identify-overlay (sub-project #9)
 
+(2026-10-25, in this node-board effort's own numbering — not the unrelated,
+older "#9a"/"#9b"/"#9c" panel-focused sub-project sequence immediately
+below, which happens to reuse the same digit.)
+
 Closes the last item on CLAUDE.md's "deferred to whichever future
 sub-project adds it" list for the node board's identify mechanism — tracked
 since sub-project #5, reaffirmed as still open in #6, #7, and #8.
@@ -848,8 +856,13 @@ automatically revert — identical behavior to the panel. Re-publishing
 before the window expires extends it rather than stacking a second one
 (`IdentifyModeTimer`'s own existing behavior, unchanged). Identify has no
 button/feedback suppression and deliberately still works during a latched
-`nodeId` collision, exactly as on the panel — that's the intended way to
-tell two colliding boards apart. The `BootMode::WirelessSetup` branch
+`nodeId` collision, exactly as on the panel: it locates the board(s)
+currently claiming that `nodeId`, which is useful on its own even
+mid-collision, but when the colliding pair are both node4 boards (same
+family) it flashes both identically and simultaneously, so it cannot tell
+which-is-which between them — that still requires a serial terminal on
+each candidate board to check its own reported `nodeId`/MAC. The
+`BootMode::WirelessSetup` branch
 needs no change: its own LED flash (sub-project #5's
 `IndependentLedPairFlashIndicator`/`bootModeIndicator`) is a separate
 mechanism that the two can never overlap with, since wireless setup mode
