@@ -1,217 +1,176 @@
 # Subagent-Driven Development Progress
 
-Plan: docs/superpowers/plans/2026-10-25-esp32node4-status-activity-leds.md
+Plan: docs/superpowers/plans/2026-10-25-mega-routes-milestone-12.md
 
 Started: 2026-10-25
 
-Ledger reset for sub-project #10 (status/activity LEDs). Previous plan
-(sub-project #9, identify-overlay wiring) is complete and merged into
-main's history (commit 9626043).
+Ledger reset for Mega panel Routes (Milestone 12). This is a DIFFERENT
+effort from the ESP32 node4 sub-project series that occupied this same
+ledger file through sub-project #10 (complete, merged into main's
+history) - it reuses the same subagent-driven-development workflow and
+ledger file, but targets the Mega 2560 / LocoNet panel's own roadmap
+milestone, not the node4 board.
 
 Workspace: working directly on main per the user's standing explicit
-confirmation for this same overall effort.
+confirmation for this whole overall effort.
 
-Pre-flight plan scan: 4 tasks, a new shape for this project - Tasks 1
-and 2 add genuinely new, native-testable library code via TDD (first
-time since sub-project #6), not just composition-root wiring. Task 1
-(StatusLedDriver) and Task 2 (ActivityTrackingTurnoutCommandPort) are
-fully independent of each other (different files, no shared state) but
-will be dispatched sequentially, not in parallel, per this skill's own
-"never dispatch multiple implementation subagents in parallel" red
-flag - file independence doesn't override that rule. Task 3 depends on
-both 1 and 2 (constructs and wires both new classes into
-src/esp32node4/main.cpp). Task 4 is the established documentation
-pattern, now with a third required staleness-sweep step (README.md,
-added after sub-project #9's final review found a gap the first two
-sweeps couldn't catch). No contradictions against the plan's Global
-Constraints found. Proceeding without a batched question to the user.
+Pre-flight plan scan: 3 tasks. Task 1 is a new, fully native-testable
+application class (RouteExecutionService) via TDD, independent of
+main.cpp. Task 2 is a main.cpp-only composition-root change with no
+possible native test (consistent with every prior main.cpp-only change
+in this project, on both the Mega and ESP32 sides). Task 3 is
+documentation across 4 files with a required staleness-sweep grep step.
+No contradictions against the plan's Global Constraints. Proceeding
+without a batched question to the user.
 
-Base commit before Task 1: 063784ff17164aa8ea4b026758a5f51f654791f7
+Process note: the plan file itself was committed as 29c7251 BEFORE
+dispatching Task 1's implementer - this exact step was missed twice in
+the immediately preceding ESP32 node4 sub-projects (#9, #10) and only
+caught late both times. Committed first this time, deliberately, to
+break that pattern.
+
+Base commit before Task 1: 29c72512f1a7848c3e17eef802c8ea3e89c0b777
 
 ## Tasks
 
-Task 1 (StatusLedDriver domain class): complete (commit 063784f..db278d5
-[^ F], review clean — Approved, zero Critical/Important findings.
-Implementer (haiku) ran all steps in the foreground, no
-stalling/backgrounding issue. Reviewer independently ran both the
-filtered and full native suite itself, confirmed the diff is
-byte-for-byte identical to the plan's prescribed code (no drift), and
-hand-traced every test case against plausible buggy variants of the
-real implementation to confirm each assertion is actually
-discriminating, not tautological.
+Task 1 (RouteExecutionService application class): complete (commit
+29c7251..a3e2aad [^ F], review clean — Approved, zero findings. No
+stalling/backgrounding issue - implementer (haiku) ran all steps in
+the foreground, clean first try. Reviewer independently read the real
+PulsingLocoNetTransport.cpp and confirmed the single-pending-pulse
+hazard is genuinely real (sendPacket() force-releases any pending
+pulse before issuing a new one, unconditionally), then traced
+RouteExecutionService's start()/update() by hand and confirmed every
+sequential send within one route is genuinely gated by the spacing
+interval - the only ungated send is the deliberate immediate first
+send in start(), correct since nothing is pending yet. One design-
+level observation noted for future awareness (not a defect): replacing
+an in-progress route via a fresh start() call sends the new route's
+first command with no guaranteed elapsed time since the old route's
+last send, which could truncate a still-pulsing solenoid - this is
+spec-mandated "no queueing, replaces immediately" behavior, explicitly
+tested and asserted, not something this task introduced. Reviewer
+independently re-ran both the filtered and full native suite (25
+assertions/8 cases; 57/57 suites), hand-traced all 8 test cases against
+plausible buggy variants and confirmed none are tautological, and
+confirmed the diff touches only the 3 plan-specified files with
+PulsingLocoNetTransport/Route/TurnoutCommandPort/Clock all genuinely
+untouched.
 
-CORRECTION (caught by the final whole-branch review, see below): the
-suite-count note Task 1's reviewer made here was itself wrong. The
-reviewer's `git ls-tree` count of 55 directories at the pre-task
-baseline included `test/support` - a test-double directory, not a
-suite. The true baseline was 54, exactly what CLAUDE.md always said.
-HEAD's 57 directories (minus `test/support`) = 56 suites, matching
-every measured `pio test -e native` run in this sub-project. Do not
-act on the struck claim above; 54 was never wrong.
+Task 2 (wire RouteExecutionService + 2 route buttons + 2 placeholder
+routes into Mega main.cpp): complete (commit a3e2aad..fa56833 [@ F],
+review clean — Approved, zero findings of any severity). Implementer
+(sonnet) ran all steps in the foreground, no stalling. Reviewer
+independently traced the live final file (not just the diff): both
+route buttons' update() calls genuinely precede their wasPressed()
+checks; routeExecutionService.update() genuinely runs unconditionally
+every tick outside both button-press if-blocks; both placeholder
+routes are genuinely populated via addTurnout() in setup(), not left
+empty. Confirmed diff touches only src/mega/main.cpp. Independently
+rebuilt all 3 hardware environments and reproduced the exact reported
+RAM/Flash figures itself (Mega: RAM 18.1%/1486B, Flash 3.1%/7788B;
+esp32node4/esp32dev both byte-for-byte unaffected) and reran the full
+native suite (57/57) itself.
 
-3 Minor findings, all inherited verbatim from the plan's own prescribed
-test code (not introduced by the implementer) - not fixed now, flagged
-for the final whole-branch review's triage:
-1. Test 1 ("begins off...") is tautological - FakeDigitalOutput
-   defaults to false, so it passes even if the constructor never calls
-   applyGpio() at all.
-2. Test 7 ("update() is a no-op while On/Off...") never advances the
-   clock, so it only catches "writes GPIO unconditionally" bugs, not a
-   removed state-guard specifically (the elapsed-time check alone would
-   mask that specific regression).
-3. Test 9's first assertion (immediately after begin()) is weak in
-   isolation - true regardless of whether begin() re-stamps anything,
-   since blinkShowingOn_ was never toggled before begin() is called.
-   The test's second assertion (after advancing the clock) is the one
-   that actually catches a missing re-stamp, confirmed by trace.
-No live bug exists in the shipped StatusLedDriver from any of these -
-purely test-suite rigor notes for future maintainers.
+Task 3 (CLAUDE.md + roadmap doc + README.md + hardware checklist docs,
+staleness sweep): complete, but needed one fix cycle (commit
+fa56833..dac9005 [. d] initial, then 9e14bdd [. d] fix) - first review
+found a Critical self-contradiction (CLAUDE.md's new Milestone 12
+section claimed TWO RouteExecutionService instances, "each driving its
+own," when the real main.cpp has exactly ONE shared instance driving
+both route buttons - this also contradicted the same section's own
+correctly-stated interrupt-replaces-in-progress behavior, which only
+makes sense for a single shared instance) plus an Important stale
+claim the implementer's own sweep missed outside its literal grep
+pattern (HARDWARE_BRINGUP_CHECKLIST.md's pre-existing "Cross-cutting
+notes" section still said "routes...still ahead" after routes were
+done). Dispatched ONE fix subagent for both; fix corrected CLAUDE.md to
+accurately describe the single shared instance (tying it explicitly to
+the interrupt behavior) and narrowed the checklist's claim to only
+persistent configuration remaining. Controller independently verified
+the fix diff directly, then dispatched a re-review which independently
+confirmed against the live main.cpp (exactly one instance, both button
+handlers calling start() on it, one update() call) and confirmed no
+new inaccuracy was introduced - Approved, zero remaining issues. Master
+checklist and all other sections genuinely untouched throughout both
+passes.
 
-Task 2 (ActivityTrackingTurnoutCommandPort decorator): complete (commit
-db278d5..64e26b6 [^ F], review clean — Approved, zero findings of any
-severity). Implementer (haiku) ran all steps in the foreground, no
-stalling. Reviewer independently confirmed: diff touches exactly the 2
-new files (no .cpp, as required - trivial header-only decorator);
-confirmed TurnoutCommandPort.h/IdentifyModeTimer.h/.cpp all genuinely
-untouched; hand-traced all 3 test cases against plausible buggy variants
-(never-forwards, never-triggers, decorator-level trigger-suppression on
-repeat sends) and confirmed each would fail against that bug - none are
-tautological; independently ran both the filtered and full native suite
-(56/56, matches report exactly).
-
-Task 3 (wire StatusLedDriver + ActivityTrackingTurnoutCommandPort into
-node4 main.cpp): complete (commit 64e26b6..0efe7d6 [@ F], review clean
-— Approved, zero findings of any severity). Implementer (sonnet) ran
-all steps in the foreground, no stalling. Reviewer independently
-checked all 7 edit points against the brief byte-for-byte, traced the
-real control flow in the fresh final file (not just the diff) to
-confirm the collision-first priority order genuinely holds, the
-activity-LED read is the literal last statement in loop(), and the
-WirelessSetup branch's early return genuinely never reaches any new
-code (traced ArduinoDigitalOutput::begin()/StatusLedDriver::begin()
-by hand to confirm both new GPIOs rest off through that boot path
-rather than assuming it); confirmed diff touches only
-src/esp32node4/main.cpp; independently rebuilt all 3 hardware
-environments (all SUCCESS) and reran the full native suite (56/56)
-itself.
-
-Task 4 (CLAUDE.md + PCB doc + README.md docs, 3-way staleness sweep):
-complete (commit 0efe7d6..63dbc1e [. d], review clean — Approved, 2
-Minor findings neither blocking). No stalling - pure docs task, no
-pio commands needed. Staleness sweep found 3 stale "future
-sub-project" locations (1 more than the brief's list named, found by
-reading context) plus the PCB-doc status-line sweep plus 3 README.md
-fixes found by a genuine full read (not just grep) - the new,
-widened-scope check specifically added after sub-project #9's final
-review caught README.md drift no prior sweep had ever touched.
-Reviewer independently re-ran all 3 greps against live post-commit
-files, read README.md and the PCB doc's §7/§11 in full, and
-cross-checked every factual claim in the new CLAUDE.md section
-against the live src/esp32node4/main.cpp. 2 Minor findings, both
-inherited from the brief's own prescribed text rather than introduced
-by the implementer: (1) the new section says "test_status_led_driver
-(8 cases)" but the real file has 9 TEST_CASE blocks (the brief's own
-prose had this same off-by-one, traced back to this controller's own
-plan-writing count error); (2) the two new classes weren't added to
-CLAUDE.md's "Current source layout" top-level class-inventory bullet
-list, unlike precedent (e.g. IndependentLedPairFlashIndicator was
-added there for #5) - not a literal spec violation since Task 4's
-brief only specified the new section's text, but a consistency gap
-worth noting for the final review.
-
-ALL 4 TASKS COMPLETE. Proceeding to final full-suite verification and
+ALL 3 TASKS COMPLETE. Proceeding to final full-suite verification and
 the final whole-branch review.
 
-## Final whole-branch review (opus): "Ready to merge — with doc-only fixes" (zero code defects)
+## Final whole-branch review (opus): "Ready to merge — with fixes" (no live defect)
 
-Reviewer independently traced the real control flow in the live
-main.cpp: confirmed collision priority genuinely sits above WiFi/MQTT
-connectivity in the network-LED state chain; confirmed the
-activity-LED GPIO read is genuinely the last statement in loop();
-confirmed the WirelessSetup branch's early return genuinely means
-neither new LED's code ever runs during that mode (traced
-ArduinoDigitalOutput::begin()/StatusLedDriver::begin() by hand);
-confirmed zero changes to src/esp32/main.cpp, src/mega/main.cpp,
-TurnoutCommandPort.h, or IdentifyModeTimer.h/.cpp; independently
-rebuilt all 3 hardware environments (all SUCCESS) and reran the full
-native suite itself (56 PASSED, 0 FAILED/ERRORED, cross-checked
-against real suite directories). Also confirmed sub-project #9's
-widened-scope README.md sweep genuinely held up this time by reading
-README.md in full itself.
+Reviewer independently traced RouteExecutionService together with
+PulsingLocoNetTransport by hand: confirmed the single-pending-pulse
+hazard is real, confirmed 300ms spacing genuinely exceeds the 250ms
+pulse duration with a real margin, confirmed loop() ordering releases
+a route's prior pulse before starting its next command. Independently
+rebuilt all 3 hardware environments (Mega: RAM 18.1%/1486B, Flash
+3.1%/7788B - exact match) and reran the full native suite (57/57)
+itself. Confirmed all 3 design non-goals genuinely hold (no status LED,
+no per-route spacing, Route/RouteService/TurnoutService/TurnoutCollection
+genuinely untouched via git diff). Confirmed the already-fixed
+single-instance claim from Task 3's own fix cycle didn't resurface
+elsewhere in CLAUDE.md. Confirmed the much older, pre-existing
+roadmap-doc master checklist was genuinely left untouched, not
+half-fixed.
 
-8 Minor findings, all documentation, none blocking:
-1. CLAUDE.md:82's top-of-file suite count still said 54, contradicting
-   the new section's own correct 54→56 claim.
-2. The new section said "test_status_led_driver (8 cases)" - real file
-   has 9 (already known from Task 1's review).
-3. StatusLedDriver/ActivityTrackingTurnoutCommandPort weren't added to
-   CLAUDE.md's "Current source layout" class-inventory bullets, unlike
-   precedent (IndependentLedPairFlashIndicator was added there for #5).
-4. The rooted-include tally (44→47 now) had drifted a third time - the
-   two new files add 3 more cross-library includes.
-5. The activity LED's documentation overclaimed what it proves - it
-   flashes on every attempted send (even one that returns early with
-   nothing transmitted, e.g. an unconfigured channel address, or any
-   send while MQTT is disconnected), not confirmed delivery. No
-   "Bring-up note" existed for #10, unlike the precedent #7/#8 both
-   set for exactly this class of ambiguity.
-6. PCB doc §7's status line now claims "all seven items done," but
-   items 2/3's own paragraphs (both actually completed back in #4)
-   had no "- done" marker, contradicting the header.
-7. PCB doc §11 had no dedicated checklist bullet for item 5 - its
-   completion was buried as a trailing sentence inside item 4's bullet.
-8. CLAUDE.md's WirelessSetup description was subtly wrong - said the
-   state computation "reads Off naturally," when actually the
-   computation is never evaluated at all (the existing early-return
-   branch is what keeps the new code from running, not a computation
-   that happens to land on Off).
+1 Important code finding (no static_assert tying ROUTE_COMMAND_SPACING_MS
+to LOCONET_PULSE_DURATION_MS - a future retune of one constant without
+the other would silently reintroduce the pulse-truncation hazard this
+whole class exists to avoid, with no build or test failure to catch
+it), 1 Important doc finding (RouteExecutionService missing from
+CLAUDE.md's Test coverage checklist), and 5 Minor findings: a
+non-wrap-safe absolute-deadline time comparison in RouteExecutionService
+(inconsistent with 8 other classes in this codebase using wrap-safe
+elapsed-time comparison - proven to actually matter by the reviewer
+constructing a concrete rollover failure scenario), an untested
+empty-route-cancels-in-progress-route edge case (proven by mutation
+testing - deleted the line, tests still passed), an undocumented
+pointer-lifetime contract on start(), a stale 81.2%-vs-83.8% flash
+figure in the hardware checklist, and a missing note about station/
+route-button LocoNet pulse-slot contention. 2 further Minor items were
+explicitly left as informational only (a historical roadmap §6.7 note,
+and uncommitted ledger housekeeping - this file).
 
-Also caught and corrected: Task 1's own per-task review had left a
-ledger note claiming the true pre-task suite baseline was 55, not 54 -
-that note was itself wrong (it double-counted test/support, a test-
-double directory, as a suite). Struck from the ledger before any
-future doc task could act on it.
+Dispatched ONE fix subagent for all 7 actionable findings - this wave
+touched real production code (RouteExecutionService.h/.cpp,
+src/mega/main.cpp), not just docs, the first time in this session a
+final-review fix wave included a non-doc code change. Fix landed as
+commit 9f45f34 [^ B]. Controller independently read every code diff
+line-by-line before trusting it, independently rebuilt the Mega
+environment (clean, RAM 18.1%/Flash 3.1% - Flash dropped slightly to
+7750B from the wrap-safe rewrite's smaller code), and independently
+re-ran the one changed test suite directly (9 cases/29 assertions, up
+from 8/25) after the backgrounded `pio test -e native` run's captured
+output got truncated by the capture mechanism (confirmed via
+task-notification that the process itself completed with exit code 0,
+and independently re-ran the specific suite to confirm rather than
+trusting a truncated log). Dispatched a dedicated re-review given the
+code-touching nature of this fix wave (higher bar than a doc-only fix);
+it independently reconstructed the actual rollover failure scenario
+the wrap-safe rewrite fixes, hand-traced both start()/update() for
+behavioral equivalence, and confirmed all 7 fixes plus zero remaining
+issues.
 
-Dispatched ONE fix subagent for all 8 findings - no code changes, only
-CLAUDE.md and the PCB doc. Fix landed as commit 2a65a5f [. d], no
-stalling (pure documentation, no pio commands needed). Controller
-independently verified every fix via git diff + targeted grep: suite
-count corrected to 56 everywhere; "8 cases" corrected to "9 cases";
-both new classes added to the source-layout inventory with accurate
-parentheticals; the rooted-include tally bumped to 47 (42+5 split) with
-the drift noted explicitly a third time; a new Bring-up note added
-matching #7/#8's exact tone, softening the overclaim; PCB doc items 2/3
-given the same "- done" + resolution-parenthetical treatment as items
-1/4/6; a new dedicated item-5 bullet added to §11, trimmed out of
-item 4's; the WirelessSetup wording corrected to accurately describe
-the early-return mechanism. All fixes confirmed accurate and
-proportionate - no code files touched.
+## MILESTONE 12 (MEGA PANEL ROUTES) COMPLETE.
 
-## SUB-PROJECT #10 (STATUS/ACTIVITY LEDS) COMPLETE.
-
-Final state: 7 commits (063784f design spec .. 2a65a5f final-review doc
-fix). Code confirmed correct and safe by both per-task review (zero
-Critical/Important findings across all 4 tasks) and the final
-whole-branch review (traced the full network-LED priority chain,
-activity-LED ordering, and WirelessSetup non-interaction by hand
-through the real main.cpp and both new classes - no code defect
-found). This is the first sub-project since #6 to add genuinely new,
-native-tested library code (StatusLedDriver, ActivityTrackingTurnoutCommandPort)
-rather than pure composition-root wiring, and both per-task and final
-review explicitly verified the new tests exercise real behavior rather
-than being tautological (with 3 known, accepted Minor test-rigor gaps
-in test_status_led_driver, inherited from this controller's own plan-
-writing, none hiding a live bug). All findings across both review
-passes were documentation-only. Closes the LAST open item in the PCB
-doc's §7 firmware checklist - every item is now done. No regressions
-to the Mega, panel, or any existing suite (56/56 native, all 3 hardware
-builds clean). The node4 board now has a network status LED
-(collision/WiFi/broker-aware) and an activity LED (Loco2MQTT traffic-
-aware, with the known attempted-vs-confirmed-send caveat now
-documented). Remaining roadmap items: status/activity LEDs' own
-hardware doesn't exist yet (same as every other node4 feature - no
-physical board exists), the 4-channel commissioning form (already
-confirmed working and tested as of sub-project #1, despite stale
-CLAUDE.md language that once called it a future sub-project - worth a
-dedicated staleness check next time a doc task runs), and the overall
-physical hardware bring-up checklist.
+Final state: 8 commits (42e6ae5 design spec .. 9f45f34 final-review
+fix). Code confirmed correct and safe by per-task review (zero
+findings on Tasks 1-2's first try), a fix-and-re-review cycle on
+Task 3's documentation (one Critical self-contradiction, one Important
+stale claim, both corrected and re-verified), and the final
+whole-branch review's own fix-and-re-review cycle (1 Important
+code finding, fixed with a compile-time guard; 1 Important + 4 Minor
+doc/test findings, all fixed). No regressions to the ESP32 panel or
+node4 board (all 3 hardware builds clean throughout, 57/57 native
+suite). A dedicated button on the Mega panel now fires a full,
+correctly-ordered, properly-spaced sequence of turnout commands
+through the exact same TurnoutCommandPort every existing button press
+already uses - closing the next item in this project's original
+roadmap. The ported Route/RouteService/TurnoutService/TurnoutCollection
+stack remains completely untouched, as deliberately decided during
+brainstorming. Persistent configuration (Milestone 13) is the only
+remaining item in the Mega panel's original roadmap; physical hardware
+bring-up (both the 4 existing stations and the 2 new route buttons)
+remains outstanding and unrelated to this milestone's firmware scope.
