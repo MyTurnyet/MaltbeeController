@@ -168,3 +168,30 @@ TEST_CASE("starting a new route while one is in progress replaces it")
     service.update();
     REQUIRE(port.sentCommands.size() == 2);
 }
+
+TEST_CASE("starting an empty route while another is in progress cancels it")
+{
+    FakeTurnoutCommandPort port;
+    FakeClock clock;
+    RouteExecutionService service(port, clock, COMMAND_SPACING_MS);
+
+    Route routeA(1, "Route A");
+    routeA.addTurnout(101, TurnoutPosition::Thrown);
+    routeA.addTurnout(102, TurnoutPosition::Thrown);
+
+    Route emptyRoute(2, "Empty Route");
+
+    service.start(routeA);
+    REQUIRE(service.isRunning());
+    REQUIRE(port.sentCommands.size() == 1);
+
+    service.start(emptyRoute);
+
+    REQUIRE_FALSE(service.isRunning());
+
+    // Route A's un-sent second command (102) must never fire, even after
+    // the time it would have been due.
+    clock.advanceBy(COMMAND_SPACING_MS * 2);
+    service.update();
+    REQUIRE(port.sentCommands.size() == 1);
+}

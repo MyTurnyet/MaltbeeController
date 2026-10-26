@@ -27,7 +27,7 @@ void RouteExecutionService::start(const Route& route)
         return;
     }
 
-    nextSendAtMs_ = clock_.nowMilliseconds() + commandSpacingMs_;
+    lastSendAtMs_ = clock_.nowMilliseconds();
 }
 
 void RouteExecutionService::update()
@@ -43,7 +43,7 @@ void RouteExecutionService::update()
         return;
     }
 
-    if (clock_.nowMilliseconds() < nextSendAtMs_)
+    if (clock_.nowMilliseconds() - lastSendAtMs_ < commandSpacingMs_)
     {
         return;
     }
@@ -58,7 +58,7 @@ void RouteExecutionService::update()
         return;
     }
 
-    nextSendAtMs_ = clock_.nowMilliseconds() + commandSpacingMs_;
+    lastSendAtMs_ = clock_.nowMilliseconds();
 }
 
 bool RouteExecutionService::isRunning() const

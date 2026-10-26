@@ -27,6 +27,9 @@ namespace
     constexpr unsigned long ROUTE_BUTTON_DEBOUNCE_MS = 30;
 }
 
+static_assert(ROUTE_COMMAND_SPACING_MS > LOCONET_PULSE_DURATION_MS,
+              "route spacing must exceed the LocoNet pulse duration, or route commands will truncate turnout pulses");
+
 ArduinoClock clock;
 
 MrrwaLocoNetSwitchDriver locoNetSwitchDriver;

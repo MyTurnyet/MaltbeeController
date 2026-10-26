@@ -15,6 +15,9 @@ class RouteExecutionService
 public:
     RouteExecutionService(TurnoutCommandPort& commandPort, Clock& clock, unsigned long commandSpacingMs);
 
+    // route must outlive the entire execution (every update() call until the
+    // route completes or a new start() replaces it) - held by reference, not
+    // copied. Pass a long-lived object, not a temporary or stack-local.
     void start(const Route& route);
     void update();
     [[nodiscard]] bool isRunning() const;
@@ -26,5 +29,5 @@ private:
 
     const Route* activeRoute_ = nullptr;
     int nextCommandIndex_ = 0;
-    unsigned long nextSendAtMs_ = 0;
+    unsigned long lastSendAtMs_ = 0;
 };

@@ -1135,6 +1135,7 @@ mode is confusing rather than a clean error.
 - ✅ NullTurnoutCommandPort (no-op send is safely callable)
 - ✅ Route (command sequences, capacity limit)
 - ✅ RouteService (execution, capacity limit)
+- ✅ RouteExecutionService (executes a route's commands one at a time directly through TurnoutCommandPort, spaced over time to avoid truncating LocoNet pulses; isRunning() reflects progress; starting a new route always replaces an in-progress one)
 - ✅ MrrwaLocoNetTurnoutAdapter (command → LocoNet packet translation)
 - ✅ PulsingLocoNetTransport (non-blocking solenoid pulse timing)
 - ✅ LocoNetFeedbackDecoder (switch-outputs report → TurnoutFeedback translation)

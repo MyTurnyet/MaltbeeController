@@ -104,6 +104,14 @@ Verify after all 4 turnout stations (1.1-1.4) are already working —
 routes just fire the same `TurnoutCommandPort` sends a station's own
 button would, so there's nothing new to verify about the LocoNet send
 path itself, only the route-triggering mechanism and command spacing.
+During route verification, avoid also pressing a station's own
+throw/close button at the same time: all sends (4 stations' buttons and
+both route buttons) share one `PulsingLocoNetTransport` with a single
+pending-pulse slot, so a station press landing inside a route's
+in-progress pulse sequence can truncate whichever route command is
+mid-pulse, and vice versa — the same one-pending-pulse limitation
+`PulsingLocoNetTransport` has always had, just newly relevant now that
+routes fire multiple sends in a burst.
 
 1. Wire the 2 route buttons (GPIO 30/31, active-low, internal pull-up —
    no external parts needed, same as the existing station buttons).
@@ -306,8 +314,8 @@ restarting a second, independent one.
   a step genuinely can't be made to work as described, that's a real bug
   or a real design gap — not something to work around by editing the
   firmware to match what actually happened. Bring it back.
-- Flash headroom on the ESP32 build is currently at 81.2% (per the
-  #2d-b final review) — routes (Milestone 12) are done on the programming
+- Flash headroom on the ESP32 build (both `esp32dev` and `esp32node4`)
+  is currently at 83.8% — routes (Milestone 12) are done on the programming
   side as of this same commit (see "1.5 Route buttons (Milestone 12)"
   above); only the persistent-configuration milestone is still ahead for
   this project's Mega side, and it's worth keeping an eye on this number
