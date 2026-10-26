@@ -1,14 +1,18 @@
 #include <Arduino.h>
 #include <LocoNet.h>
 
+#include <string.h>
+
 #include "adapters/ArduinoClock.h"
 #include "adapters/ArduinoDigitalInput.h"
+#include "adapters/EepromConfigurationRepository.h"
 #include "adapters/LocoNetFeedbackDecoder.h"
 #include "adapters/MrrwaLocoNetFeedbackSource.h"
 #include "adapters/MrrwaLocoNetSwitchDriver.h"
 #include "adapters/MrrwaLocoNetTurnoutAdapter.h"
 #include "adapters/PulsingLocoNetTransport.h"
 #include "adapters/TurnoutStation.h"
+#include "application/MegaCommissioningSession.h"
 #include "application/RouteExecutionService.h"
 #include "domain/Button.h"
 #include "domain/Route.h"
@@ -25,6 +29,8 @@ namespace
     constexpr unsigned long LOCONET_PULSE_DURATION_MS = 250;
     constexpr unsigned long ROUTE_COMMAND_SPACING_MS = 300;
     constexpr unsigned long ROUTE_BUTTON_DEBOUNCE_MS = 30;
+    constexpr unsigned long UART_BAUD_RATE = 115200;
+    constexpr int SERIAL_LINE_BUFFER_SIZE = 64;
 }
 
 static_assert(ROUTE_COMMAND_SPACING_MS > LOCONET_PULSE_DURATION_MS,
@@ -39,11 +45,45 @@ MrrwaLocoNetTurnoutAdapter turnoutCommandPort(locoNetTransport);
 MrrwaLocoNetFeedbackSource locoNetFeedbackSource;
 LocoNetFeedbackDecoder locoNetFeedbackDecoder;
 
+namespace
+{
+    MegaConfig buildDefaultConfig()
+    {
+        MegaConfig config;
+        for (int i = 0; i < MegaConfig::kStationCount; ++i)
+        {
+            config.stations[i].address = STATION_CONFIGS[i].address;
+            config.stations[i].name = FixedString32(STATION_CONFIGS[i].name);
+        }
+        return config;
+    }
+}
+
+EepromConfigurationRepository configRepository;
+const MegaConfig DEFAULT_CONFIG = buildDefaultConfig();
+MegaCommissioningSession commissioningSession(configRepository, DEFAULT_CONFIG);
+
+namespace
+{
+    TurnoutConfig buildEffectiveStationConfig(const int index)
+    {
+        const MegaStationConfig& stationConfig = commissioningSession.draft().stations[index];
+        return TurnoutConfig{
+            stationConfig.address,
+            stationConfig.name.c_str(),
+            STATION_CONFIGS[index].throwButtonPin,
+            STATION_CONFIGS[index].closeButtonPin,
+            STATION_CONFIGS[index].thrownLedPin,
+            STATION_CONFIGS[index].closedLedPin,
+        };
+    }
+}
+
 TurnoutStation stations[STATION_COUNT] = {
-    TurnoutStation(STATION_CONFIGS[0], clock, turnoutCommandPort),
-    TurnoutStation(STATION_CONFIGS[1], clock, turnoutCommandPort),
-    TurnoutStation(STATION_CONFIGS[2], clock, turnoutCommandPort),
-    TurnoutStation(STATION_CONFIGS[3], clock, turnoutCommandPort),
+    TurnoutStation(buildEffectiveStationConfig(0), clock, turnoutCommandPort),
+    TurnoutStation(buildEffectiveStationConfig(1), clock, turnoutCommandPort),
+    TurnoutStation(buildEffectiveStationConfig(2), clock, turnoutCommandPort),
+    TurnoutStation(buildEffectiveStationConfig(3), clock, turnoutCommandPort),
 };
 
 ArduinoDigitalInput route1ButtonInput(30, /*activeLow=*/true, /*useInternalPullup=*/true);
@@ -58,8 +98,13 @@ Route route2(2, "Example Route 2");
 
 RouteExecutionService routeExecutionService(turnoutCommandPort, clock, ROUTE_COMMAND_SPACING_MS);
 
+char serialLineBuffer[SERIAL_LINE_BUFFER_SIZE] = {};
+int serialLineLength = 0;
+
 void setup()
 {
+    Serial.begin(UART_BAUD_RATE);
+
     route1.addTurnout(101, TurnoutPosition::Thrown);
     route1.addTurnout(102, TurnoutPosition::Closed);
     route2.addTurnout(103, TurnoutPosition::Closed);
@@ -110,4 +155,39 @@ void loop()
         routeExecutionService.start(route2);
     }
     routeExecutionService.update();
+
+    while (Serial.available())
+    {
+        const char c = static_cast<char>(Serial.read());
+        if (c == '\n' || c == '\r')
+        {
+            if (serialLineLength > 0)
+            {
+                serialLineBuffer[serialLineLength] = '\0';
+                if (strcmp(serialLineBuffer, "show") == 0)
+                {
+                    for (int i = 0; i < MegaConfig::kStationCount; ++i)
+                    {
+                        const MegaStationConfig& station = commissioningSession.draft().stations[i];
+                        Serial.print("Station ");
+                        Serial.print(i + 1);
+                        Serial.print(": address=");
+                        Serial.print(station.address);
+                        Serial.print(" name=");
+                        Serial.println(station.name.c_str());
+                    }
+                }
+                else
+                {
+                    const FixedString32 response = commissioningSession.handleLine(serialLineBuffer);
+                    Serial.println(response.c_str());
+                }
+                serialLineLength = 0;
+            }
+        }
+        else if (serialLineLength < SERIAL_LINE_BUFFER_SIZE - 1)
+        {
+            serialLineBuffer[serialLineLength++] = c;
+        }
+    }
 }
