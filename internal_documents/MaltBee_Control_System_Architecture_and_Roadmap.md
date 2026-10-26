@@ -1004,21 +1004,44 @@ Remaining work is hands-on, shared with Milestones 9-10: verify the electrical L
 
 ---
 
-## Milestone 12: Add Routes
+## ✅ Milestone 12: Add Routes
+**Status:** COMPLETE (route status indication deferred — see note below)
 
 ### Tasks
 
-- TDD `Route`.
-- TDD `RouteExecutionService`.
-- Create route buttons.
-- Execute a sequence of turnout commands.
-- Add optional command spacing if the layout requires it.
-- Add route status indication.
+- [x] TDD `Route` — already done; see Milestone 5's own status note above:
+  `Route` was ported wholesale from an earlier, separate project
+  ("MaltBee-Control-System", 2026-07-13), not built fresh for this
+  milestone.
+- [x] TDD `RouteExecutionService` — built fresh for this milestone, since
+  the ported `RouteService` (also from Milestone 5) is a different
+  design that operates against a separate, currently-unwired
+  `TurnoutService`/`TurnoutCollection` registry and never reaches
+  `TurnoutCommandPort` — it doesn't satisfy this section's original
+  "execute a route through the turnout command port" intent (§6.7).
+  `RouteExecutionService` is the class this section originally
+  specified; `RouteService`/`TurnoutService`/`TurnoutCollection` are
+  left exactly as they were — unused, not removed.
+- [x] Create route buttons — 2 dedicated buttons, GPIO 30/31 on the Mega.
+- [x] Execute a sequence of turnout commands —
+  `RouteExecutionService::start()`/`update()`, directly through the
+  existing `TurnoutCommandPort`.
+- [x] Add optional command spacing if the layout requires it — not
+  optional in practice: `PulsingLocoNetTransport` can only track one
+  pending pulse at a time, so firing a route's commands back-to-back
+  would truncate every earlier pulse's duration. `RouteExecutionService`
+  spaces sends by `ROUTE_COMMAND_SPACING_MS` (300ms), folded into the
+  base design rather than an add-on.
+- [ ] Add route status indication — deferred. This was a task, not one
+  of the two stated completion criteria below, and is left for a future
+  increment.
 
 ### Completion Criteria
 
-- A route button sends all required turnout commands.
-- Routes are defined as data rather than hard-coded conditionals.
+- [x] A route button sends all required turnout commands.
+- [x] Routes are defined as data rather than hard-coded conditionals —
+  2 placeholder `Route` objects in `src/mega/main.cpp`, built via
+  `addTurnout()` calls, not hard-coded if/else logic.
 
 ---
 

@@ -95,6 +95,35 @@ For each station, in order:
 - All 4 stations: an external turnout change → correct LED update.
 - No station's button/feedback affects another station's LED.
 
+### 1.5 Route buttons (Milestone 12)
+
+**Reference:** `src/mega/main.cpp` for the 2 route buttons' exact pins
+(GPIO 30/31) and the 2 placeholder routes' turnout addresses/positions.
+
+Verify after all 4 turnout stations (1.1-1.4) are already working —
+routes just fire the same `TurnoutCommandPort` sends a station's own
+button would, so there's nothing new to verify about the LocoNet send
+path itself, only the route-triggering mechanism and command spacing.
+
+1. Wire the 2 route buttons (GPIO 30/31, active-low, internal pull-up —
+   no external parts needed, same as the existing station buttons).
+2. Press the first route button. Using a LocoNet monitor (or watching
+   the DR4018's own output LEDs if configured for the placeholder
+   routes' addresses), confirm every command in that route fires, in
+   order, with a visible gap between each (`ROUTE_COMMAND_SPACING_MS =
+   300` in `src/mega/main.cpp` — if a DR4018 doesn't reliably latch
+   from back-to-back route commands, this is the first thing to
+   adjust, same as `LOCONET_PULSE_DURATION_MS` for individual turnouts).
+3. Repeat for the second route button.
+4. Press a route button, then immediately press the other one before
+   the first route finishes — confirm the second route's commands
+   fire and the first route's remaining (un-sent) commands never do
+   (`RouteExecutionService`'s interrupt-replaces-in-progress behavior).
+
+**Done when:** both route buttons fire their full, correctly-ordered,
+properly-spaced command sequence, and starting one route mid-sequence
+of another cleanly replaces it rather than firing both.
+
 ---
 
 ## Part 2: ESP32 / MQTT Panel
