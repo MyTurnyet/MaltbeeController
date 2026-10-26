@@ -1,5 +1,6 @@
 #define CATCH_CONFIG_MAIN
 #include <catch2/catch_test_macros.hpp>
+#include <cstring>
 
 #include "domain/FixedString32.h"
 
@@ -31,3 +32,9 @@ TEST_CASE("FixedString32 truncates values longer than capacity")
     REQUIRE(value == "1234567890123456789012345678901");
 }
 
+TEST_CASE("FixedString32's c_str() exposes the stored value as a null-terminated C string")
+{
+    const FixedString32 value("Main Yard");
+
+    REQUIRE(strcmp(value.c_str(), "Main Yard") == 0);
+}

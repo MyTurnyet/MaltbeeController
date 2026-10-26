@@ -17,6 +17,11 @@ public:
         buffer_[i] = '\0';
     }
 
+    [[nodiscard]] const char* c_str() const
+    {
+        return buffer_;
+    }
+
     bool operator==(const char* other) const
     {
         int i = 0;
