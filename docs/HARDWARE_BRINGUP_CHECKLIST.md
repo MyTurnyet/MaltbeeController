@@ -51,6 +51,15 @@ no serial startup banner (unlike the ESP32 side) — silence after upload
 is the expected "it's running" signal. If you want a heartbeat while
 debugging, temporarily add one; don't leave debug prints in committed code.
 
+**Update (Milestone 13):** the "silence is expected" claim above is now
+only half true. The Mega still prints no startup banner, but as of
+Milestone 13 it calls `Serial.begin(115200)` and genuinely reads/responds
+to typed commands (`show`/`address`/`name`/`save`) — see 1.6 below. A
+terminal that stays silent after upload is still normal; a terminal that
+stays silent after you *type* `show` and press enter is not — that
+indicates a real problem, not the expected "it's running" signal this
+note originally described.
+
 ### 1.3 Per-station wiring and verification (4 stations)
 
 Wire **at least one station** end-to-end before moving to the rest — it's
@@ -131,6 +140,34 @@ routes fire multiple sends in a burst.
 **Done when:** both route buttons fire their full, correctly-ordered,
 properly-spaced command sequence, and starting one route mid-sequence
 of another cleanly replaces it rather than firing both.
+
+### 1.6 Persistent configuration (Milestone 13)
+
+**Reference:** `src/mega/main.cpp` for the serial baud rate (115200,
+matching the ESP32 side's own convention) and the 3 commissioning commands
+(`address`, `name`, `save`) plus the `show` command.
+
+1. Connect via `pio device monitor` (or any serial terminal) at 115200
+   baud. Type `show` and confirm it prints all 4 stations' current
+   address/name — on a factory-fresh board (nothing ever saved), these
+   should be the compile-time defaults (101-104, "Turnout 1".."Turnout 4").
+2. Type `address 1 999` then `show` again — confirm station 1's address
+   is now 999 in the draft, but a power cycle at this point (before
+   `save`) should revert it back to the default, since nothing was
+   persisted yet.
+3. Type `address 1 999` then `save`, then power-cycle the board. Type
+   `show` again — confirm station 1 now shows 999, surviving the power
+   cycle (this is the actual EEPROM round-trip, not just the in-memory
+   draft).
+4. Type `name 1 MainYard` then `save`, power-cycle, `show` — confirm the
+   name persists the same way.
+5. Confirm station 1 still throws/closes correctly over LocoNet using
+   its *new* address (999) after the change — the effective address used
+   by `TurnoutStation`/`TurnoutControl` is resolved once at boot from
+   whatever's in EEPROM, not re-read live.
+
+**Done when:** `show`/`address`/`name`/`save` all work as described, and
+a changed address/name survives a power cycle.
 
 ---
 
@@ -317,6 +354,9 @@ restarting a second, independent one.
 - Flash headroom on the ESP32 build (both `esp32dev` and `esp32node4`)
   is currently at 83.8% — routes (Milestone 12) are done on the programming
   side as of this same commit (see "1.5 Route buttons (Milestone 12)"
-  above); only the persistent-configuration milestone is still ahead for
-  this project's Mega side, and it's worth keeping an eye on this number
-  if the ESP32 side grows further too.
+  above). **Update (Milestone 13):** persistent configuration has since
+  landed too (see "1.6 Persistent configuration (Milestone 13)" above) —
+  it was the last milestone on the Mega side's original roadmap, so no
+  programming milestone remains ahead of it there; it's still worth
+  keeping an eye on this ESP32 flash-headroom number if that side grows
+  further.

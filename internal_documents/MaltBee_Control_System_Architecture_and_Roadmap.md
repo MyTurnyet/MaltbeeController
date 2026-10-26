@@ -1045,21 +1045,48 @@ Remaining work is hands-on, shared with Milestones 9-10: verify the electrical L
 
 ---
 
-## Milestone 13: Add Persistent Configuration
+## ✅ Milestone 13: Add Persistent Configuration
+**Status:** COMPLETE
 
 ### Tasks
 
-- Define configuration data structures.
-- Add `ConfigurationRepository`.
-- Create an in-memory repository first.
-- Add EEPROM persistence.
-- Add schema versioning.
-- Add safe defaults when configuration is invalid.
+- [x] Define configuration data structures — `MegaStationConfig`/`MegaConfig`
+  (`lib/McsCore/src/domain/`), covering address and name per station. Pin
+  assignments stay compile-time (never persisted), unlike this section's
+  original "pin assignments" language — see the completion-criteria note
+  below for why.
+- [x] Add `ConfigurationRepository` — built with the ESP32 side's
+  `ConfigStore` API shape (`load()` returns a config value, `save(config)`
+  takes one) rather than this section's own original bool-returning
+  sketch (§5.7), for consistency with the only other persistence port in
+  this project.
+- [x] Create an in-memory repository first — `InMemoryConfigurationRepository`,
+  a real, reusable implementation (not merely a test double), matching
+  this project's §8 "allows configuration tests without EEPROM" intent
+  exactly.
+- [x] Add EEPROM persistence — `EepromConfigurationRepository`, a 139-byte
+  schema (2-byte magic + 1-byte version + the `MegaConfig` struct) against
+  the ATmega2560's 4096-byte EEPROM.
+- [x] Add schema versioning — the 1-byte schema version in the EEPROM
+  header; a mismatch (or magic mismatch) is treated as "no valid config,"
+  triggering the compile-time fallback.
+- [x] Add safe defaults when configuration is invalid — `MegaCommissioningSession`
+  falls back to the compile-time `STATION_CONFIGS` defaults whenever the
+  loaded config fails `validate()` (out-of-range or duplicate addresses,
+  or nothing ever saved).
 
 ### Completion Criteria
 
-- Turnout addresses and pin assignments can be loaded from storage.
-- Invalid configuration does not leave the system in an unsafe state.
+- [x] Turnout addresses and pin assignments can be loaded from storage —
+  **narrowed with Paige during brainstorming**: only addresses (and
+  names) are persisted; pin assignments stay compile-time, matching the
+  ESP32 side's own `NodeConfig` precedent (which never persists GPIO
+  pins either) and avoiding a stored config that could point at hardware
+  that doesn't exist.
+- [x] Invalid configuration does not leave the system in an unsafe state —
+  an invalid or absent EEPROM config falls back to the known-good
+  compile-time defaults rather than booting with garbage turnout
+  addresses.
 
 ---
 

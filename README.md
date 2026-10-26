@@ -20,13 +20,15 @@ computer, independent of any specific hardware target — that's also what lets 
 
 ## Current Status
 
-**Mega 2560 panel:** Milestones 1-12 are complete on the programming side (native test
+**Mega 2560 panel:** Milestones 1-13 are complete on the programming side (native test
 harness, I/O ports, domain layer, hardware integration, LocoNet output, LocoNet feedback,
-multiple turnouts, routes). Physical wiring and on-hardware verification (button-to-LED and
-LocoNet send/receive against a real DR5000/DR4018, across all 4 stations, plus the 2 new
-route buttons) are still outstanding — see `CLAUDE.md`'s "Milestone 8 hardware" section and
-its "Milestone 12: Routes (Mega panel)" section. Persistent configuration (Milestone 13) is
-not yet started.
+multiple turnouts, routes, persistent configuration) — the last item on this panel's
+original roadmap. Physical wiring and on-hardware verification (button-to-LED and
+LocoNet send/receive against a real DR5000/DR4018, across all 4 stations, plus the 2
+route buttons and serial commissioning) are still outstanding — see `CLAUDE.md`'s
+"Milestone 8 hardware" section, its "Milestone 12: Routes (Mega panel)" section, and its
+"Milestone 13: Persistent configuration (Mega panel)" section. Persistent configuration
+(Milestone 13) is done in firmware; only its own hardware bring-up pass remains.
 
 **ESP32 panel:** shipped and in active development. 12-turnout button-matrix panels talk
 directly to Loco2MQTT — see `CLAUDE.md`'s "Loco2MQTT turnout bridge" section for the full
@@ -131,8 +133,9 @@ See `internal_documents/archive/original-overview.md` for historical context.
 
 - **Mega 2560 panel:** verify the electrical LocoNet interface and confirm DR5000/DR4018
   behavior on hardware across all 4 stations, both send and feedback (finish Milestone 8's
-  hardware pass), plus the 2 new route buttons (Milestone 12, done in firmware — see
-  `CLAUDE.md`'s Milestone 12 section); then persistent configuration (Milestone 13).
+  hardware pass), plus the 2 route buttons (Milestone 12) and serial commissioning
+  (Milestone 13, done in firmware — see `CLAUDE.md`'s Milestone 13 section). This was the
+  last item on the Mega panel's original roadmap; only physical hardware bring-up remains.
 - **ESP32 panel:** re-verify hardware bring-up against the current Loco2MQTT-based
   procedure — see `docs/HARDWARE_BRINGUP_CHECKLIST.md` Part 2 for outstanding items.
 - **ESP32 node board:** sub-projects #2 through #10 (independent-output turnout indicator,
