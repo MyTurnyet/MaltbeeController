@@ -307,6 +307,8 @@ restarting a second, independent one.
   or a real design gap — not something to work around by editing the
   firmware to match what actually happened. Bring it back.
 - Flash headroom on the ESP32 build is currently at 81.2% (per the
-  #2d-b final review) — routes and persistent-configuration milestones
-  are still ahead for this project's Mega side, and it's worth keeping an
-  eye on this number if the ESP32 side grows further too.
+  #2d-b final review) — routes (Milestone 12) are done on the programming
+  side as of this same commit (see "1.5 Route buttons (Milestone 12)"
+  above); only the persistent-configuration milestone is still ahead for
+  this project's Mega side, and it's worth keeping an eye on this number
+  if the ESP32 side grows further too.

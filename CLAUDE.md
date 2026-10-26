@@ -1198,11 +1198,18 @@ are left exactly as they were — unused, not removed, not modified.
 `src/mega/main.cpp` wires 2 dedicated route buttons (GPIO 30/31, same
 active-low/internal-pullup convention as the existing station buttons) and
 2 placeholder `Route` objects (built via `addTurnout()` calls — data, not
-hard-coded conditionals), each driving its own `RouteExecutionService` over
-the shared `TurnoutCommandPort`. `loop()` calls `update()` on both services
-every tick alongside the existing 4 stations'. The 2 routes' turnout
-addresses are placeholders, not yet matched to a real layout — see
-`src/mega/main.cpp` for their exact values.
+hard-coded conditionals), both driving a single shared
+`RouteExecutionService` over the shared `TurnoutCommandPort` — one
+instance, not one per route: `route1Button.wasPressed()` calls
+`routeExecutionService.start(route1)`, `route2Button.wasPressed()` calls
+`routeExecutionService.start(route2)` on that same instance, and `loop()`
+calls `update()` on it once every tick alongside the existing 4 stations'.
+This single-instance wiring is what makes the "starting a new route while
+one is in progress replaces it" interrupt behavior described above work at
+all — pressing one route button while the other's route is still sending
+interrupts it, exactly like calling `start()` again on the same service.
+The 2 routes' turnout addresses are placeholders, not yet matched to a real
+layout — see `src/mega/main.cpp` for their exact values.
 
 **Net effect:** pressing either route button now sends its route's full,
 correctly-ordered, properly-spaced sequence of turnout commands through the
