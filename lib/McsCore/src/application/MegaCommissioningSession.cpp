@@ -1,7 +1,7 @@
 #include "MegaCommissioningSession.h"
 
-#include <cstdio>
-#include <cstring>
+#include <stdio.h>
+#include <string.h>
 
 MegaCommissioningSession::MegaCommissioningSession(ConfigurationRepository& repository, const MegaConfig& defaults)
     : repository_(repository), draft_(repository_.load())
