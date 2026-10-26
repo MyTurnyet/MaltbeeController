@@ -2,12 +2,16 @@
 #include <LocoNet.h>
 
 #include "adapters/ArduinoClock.h"
+#include "adapters/ArduinoDigitalInput.h"
 #include "adapters/LocoNetFeedbackDecoder.h"
 #include "adapters/MrrwaLocoNetFeedbackSource.h"
 #include "adapters/MrrwaLocoNetSwitchDriver.h"
 #include "adapters/MrrwaLocoNetTurnoutAdapter.h"
 #include "adapters/PulsingLocoNetTransport.h"
 #include "adapters/TurnoutStation.h"
+#include "application/RouteExecutionService.h"
+#include "domain/Button.h"
+#include "domain/Route.h"
 
 namespace
 {
@@ -19,6 +23,8 @@ namespace
         {104, "Turnout 4", 28, 29, 14, 15},
     };
     constexpr unsigned long LOCONET_PULSE_DURATION_MS = 250;
+    constexpr unsigned long ROUTE_COMMAND_SPACING_MS = 300;
+    constexpr unsigned long ROUTE_BUTTON_DEBOUNCE_MS = 30;
 }
 
 ArduinoClock clock;
@@ -37,8 +43,28 @@ TurnoutStation stations[STATION_COUNT] = {
     TurnoutStation(STATION_CONFIGS[3], clock, turnoutCommandPort),
 };
 
+ArduinoDigitalInput route1ButtonInput(30, /*activeLow=*/true, /*useInternalPullup=*/true);
+ArduinoDigitalInput route2ButtonInput(31, /*activeLow=*/true, /*useInternalPullup=*/true);
+Button route1Button(route1ButtonInput, clock, ROUTE_BUTTON_DEBOUNCE_MS);
+Button route2Button(route2ButtonInput, clock, ROUTE_BUTTON_DEBOUNCE_MS);
+
+// Placeholder routes - replace with real route definitions for your layout.
+// Populated in setup() via addTurnout() calls below.
+Route route1(1, "Example Route 1");
+Route route2(2, "Example Route 2");
+
+RouteExecutionService routeExecutionService(turnoutCommandPort, clock, ROUTE_COMMAND_SPACING_MS);
+
 void setup()
 {
+    route1.addTurnout(101, TurnoutPosition::Thrown);
+    route1.addTurnout(102, TurnoutPosition::Closed);
+    route2.addTurnout(103, TurnoutPosition::Closed);
+    route2.addTurnout(104, TurnoutPosition::Closed);
+
+    route1ButtonInput.begin();
+    route2ButtonInput.begin();
+
     for (auto& station : stations)
     {
         station.begin();
@@ -68,4 +94,17 @@ void loop()
             }
         }
     }
+
+    route1Button.update();
+    route2Button.update();
+
+    if (route1Button.wasPressed())
+    {
+        routeExecutionService.start(route1);
+    }
+    if (route2Button.wasPressed())
+    {
+        routeExecutionService.start(route2);
+    }
+    routeExecutionService.update();
 }
