@@ -1,0 +1,25 @@
+---
+# Flight Plan — baseline pre-commit gate.
+#
+# Installed into a consuming repo by the Flight Plan SessionStart hook
+# ONLY when the repo has no .pre-commit-config.yaml of its own. It is a
+# deliberately language-agnostic baseline — safe to drop into any repo:
+#
+#   - trailing-whitespace / check-merge-conflict  (universal hygiene)
+#   - shellcheck                                   (shell scripts)
+#
+# Teams should extend this with language-specific hooks (ruff/pyupgrade
+# for Python, gofmt/golangci-lint for Go, etc.) for their stack. The
+# four PR-readiness gates (coverage, duplication, Prizm, work-item
+# prefix) are enforced by the pull-request skill + SonarQube/Prizm in
+# CI, not by these local hooks.
+repos:
+- repo: https://github.com/pre-commit/pre-commit-hooks
+  rev: v6.0.0
+  hooks:
+  - id: trailing-whitespace
+  - id: check-merge-conflict
+- repo: https://github.com/koalaman/shellcheck-precommit
+  rev: v0.11.0
+  hooks:
+  - id: shellcheck
