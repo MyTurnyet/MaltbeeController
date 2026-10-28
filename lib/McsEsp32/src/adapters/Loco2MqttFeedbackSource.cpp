@@ -1,44 +1,30 @@
 #include "Loco2MqttFeedbackSource.h"
 
-#include <optional>
-
-#include "../domain/PayloadCodec.h"
-#include "../domain/TopicScheme.h"
+namespace
+{
+    TurnoutPosition toTurnoutPosition(const Loco2MqttPosition position)
+    {
+        return position == Loco2MqttPosition::Closed ? TurnoutPosition::Closed : TurnoutPosition::Thrown;
+    }
+}
 
 template <int N>
 BasicLoco2MqttFeedbackSource<N>::BasicLoco2MqttFeedbackSource(
     MqttTransport& transport, const std::array<int, N>& channelTurnoutAddresses)
+    : stateSource_(transport, channelTurnoutAddresses)
 {
-    for (int i = 0; i < N; ++i)
-    {
-        const int turnoutAddress = channelTurnoutAddresses[i];
-        if (turnoutAddress == 0)
-        {
-            continue;
-        }
-
-        const int channel = i + 1;
-        transport.subscribe(TopicScheme::stateTopicFor(turnoutAddress), [this, channel](const std::string& payload) {
-            const std::optional<TurnoutPosition> position = PayloadCodec::decode(payload);
-            if (!position.has_value())
-            {
-                return;
-            }
-            pending_.push_back(TurnoutFeedback{channel, *position});
-        });
-    }
 }
 
 template <int N>
 bool BasicLoco2MqttFeedbackSource<N>::poll(TurnoutFeedback& outFeedback)
 {
-    if (pending_.empty())
+    Loco2MqttStateUpdate update{};
+    if (!stateSource_.poll(update))
     {
         return false;
     }
 
-    outFeedback = pending_.front();
-    pending_.pop_front();
+    outFeedback = TurnoutFeedback{update.channel, toTurnoutPosition(update.position)};
     return true;
 }
 

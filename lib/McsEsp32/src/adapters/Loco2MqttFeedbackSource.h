@@ -1,11 +1,12 @@
 #pragma once
 
 #include <array>
-#include <deque>
 
+#include "adapters/Loco2MqttStateSource.h"
 #include "ports/MqttTransport.h"
 #include "ports/TurnoutCommandPort.h"
 
+// Translates the shared mcs-net state source into this project's TurnoutFeedback.
 template <int N>
 class BasicLoco2MqttFeedbackSource
 {
@@ -15,7 +16,7 @@ public:
     bool poll(TurnoutFeedback& outFeedback);
 
 private:
-    std::deque<TurnoutFeedback> pending_;
+    BasicLoco2MqttStateSource<N> stateSource_;
 };
 
 using Loco2MqttFeedbackSource = BasicLoco2MqttFeedbackSource<12>;
