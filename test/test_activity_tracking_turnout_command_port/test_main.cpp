@@ -3,7 +3,7 @@
 
 #include "adapters/ActivityTrackingTurnoutCommandPort.h"
 #include "domain/IdentifyModeTimer.h"
-#include "support/FakeClock.h"
+#include "testing/FakeClock.h"
 #include "support/FakeTurnoutCommandPort.h"
 
 namespace

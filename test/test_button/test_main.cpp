@@ -2,7 +2,7 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include "domain/Button.h"
-#include "support/FakeClock.h"
+#include "testing/FakeClock.h"
 #include "support/FakeDigitalInput.h"
 
 namespace

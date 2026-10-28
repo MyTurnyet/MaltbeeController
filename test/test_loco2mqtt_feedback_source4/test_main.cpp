@@ -1,7 +1,7 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include "adapters/Loco2MqttFeedbackSource.h"
-#include "support/FakeMqttTransport.h"
+#include "testing/FakeMqttTransport.h"
 
 namespace
 {

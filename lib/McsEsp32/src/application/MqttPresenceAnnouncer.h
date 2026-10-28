@@ -3,7 +3,7 @@
 #include <string>
 
 #include "../domain/PresenceTopics.h"
-#include "../ports/MqttTransport.h"
+#include "ports/MqttTransport.h"
 #include "ports/Clock.h"
 
 class MqttPresenceAnnouncer

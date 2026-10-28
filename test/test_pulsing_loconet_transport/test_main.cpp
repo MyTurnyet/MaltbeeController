@@ -2,7 +2,7 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include "adapters/PulsingLocoNetTransport.h"
-#include "support/FakeClock.h"
+#include "testing/FakeClock.h"
 #include "support/FakeLocoNetSwitchDriver.h"
 
 namespace

@@ -6,7 +6,7 @@
 #include "domain/Indicator.h"
 #include "domain/Turnout.h"
 #include "domain/TurnoutIndicator.h"
-#include "support/FakeClock.h"
+#include "testing/FakeClock.h"
 #include "support/FakeDigitalInput.h"
 #include "support/FakeDigitalOutput.h"
 #include "support/FakeTurnoutCommandPort.h"

@@ -3,7 +3,7 @@
 
 #include "adapters/LedPairOutput.h"
 #include "domain/LedPairDriver.h"
-#include "support/FakeClock.h"
+#include "testing/FakeClock.h"
 #include "support/FakeDigitalOutput.h"
 
 namespace

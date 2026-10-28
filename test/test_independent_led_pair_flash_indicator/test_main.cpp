@@ -3,7 +3,7 @@
 
 #include "adapters/IndependentLedPairFlashIndicator.h"
 #include "domain/IndependentLedPairDriver.h"
-#include "support/FakeClock.h"
+#include "testing/FakeClock.h"
 #include "support/FakeDigitalOutput.h"
 
 #include <array>

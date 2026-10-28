@@ -2,7 +2,7 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include "adapters/ToggleTurnoutStation.h"
-#include "support/FakeClock.h"
+#include "testing/FakeClock.h"
 #include "support/FakeDigitalInput.h"
 #include "support/FakeDigitalOutput.h"
 #include "support/FakeTurnoutCommandPort.h"

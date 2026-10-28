@@ -1,7 +1,7 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include "adapters/ButtonSetupModeTrigger.h"
-#include "support/FakeClock.h"
+#include "testing/FakeClock.h"
 #include "support/FakeDigitalInput.h"
 
 namespace

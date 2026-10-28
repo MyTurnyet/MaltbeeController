@@ -9,10 +9,10 @@
 #include "domain/NodeConfig.h"
 #include "domain/Turnout.h"
 #include "domain/TurnoutIndicator.h"
-#include "support/FakeClock.h"
+#include "testing/FakeClock.h"
 #include "support/FakeDigitalInput.h"
 #include "support/FakeDigitalOutput.h"
-#include "support/FakeMqttTransport.h"
+#include "testing/FakeMqttTransport.h"
 #include "support/FakeTurnoutCommandPort.h"
 
 namespace

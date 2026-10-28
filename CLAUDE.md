@@ -1335,3 +1335,12 @@ bad `save`).
 - **Single responsibility**: e.g. a `Button` only reads button state, a `Turnout` only models turnout position — it must not own LEDs or call LocoNet directly.
 - **Explicit state**: state changes go through methods that enforce valid transitions, not direct field mutation.
 - **No blocking calls** (`delay()`) in domain/application code — `loop()` must stay non-blocking via `update()`/`poll()`.
+
+## Shared libraries (`mcs-core`, `mcs-net`)
+
+Code shared with other MaltBee projects lives in two public PlatformIO libraries, pinned by tag in `platformio.ini`:
+
+- [`mcs-core`](https://github.com/MyTurnyet/mcs-core) — AVR-safe code (currently the `Clock` port).
+- [`mcs-net`](https://github.com/MyTurnyet/mcs-net) — `MqttTransport`/`MdnsResolver` ports, `BrokerAddressResolver`, the `MqttLink`/`WiFiLink`/`EspMdnsResolver` adapters, and the test fakes `FakeClock`, `FakeMqttTransport`, `FakeMdnsResolver` (include them as `testing/Fake*.h`). Their tests live in the `mcs-net` repo. ESP32 environments must still list `knolleary/PubSubClient` themselves; the Mega environment does not use `mcs-net`.
+
+Do not re-add these files under `lib/`. Change them in the library repo, tag a new version, then bump the tag here.

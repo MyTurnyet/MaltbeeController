@@ -1,8 +1,8 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include "application/MqttPresenceAnnouncer.h"
-#include "support/FakeClock.h"
-#include "support/FakeMqttTransport.h"
+#include "testing/FakeClock.h"
+#include "testing/FakeMqttTransport.h"
 
 TEST_CASE("update does not publish anything while never connected")
 {
