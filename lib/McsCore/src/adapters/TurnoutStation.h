@@ -7,7 +7,7 @@
 #include "../domain/Indicator.h"
 #include "../domain/Turnout.h"
 #include "../domain/TurnoutIndicator.h"
-#include "../ports/Clock.h"
+#include "ports/Clock.h"
 #include "../ports/TurnoutCommandPort.h"
 
 struct TurnoutConfig

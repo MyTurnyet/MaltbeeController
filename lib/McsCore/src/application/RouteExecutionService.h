@@ -1,7 +1,7 @@
 #pragma once
 
 #include "../domain/Route.h"
-#include "../ports/Clock.h"
+#include "ports/Clock.h"
 #include "../ports/TurnoutCommandPort.h"
 
 // Executes a Route's turnout commands one at a time, directly through the

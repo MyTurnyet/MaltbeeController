@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../ports/Clock.h"
+#include "ports/Clock.h"
 
 class ArduinoClock final : public Clock
 {
